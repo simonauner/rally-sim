@@ -412,6 +412,19 @@ function buildBumper(halfX: number, z: number, y: number, depth: number): Deform
   return new DeformablePart(g, mat);
 }
 
+/** En detalj som lossnar när karossen under den buckats in, och då faller till marken. */
+interface Detail {
+  mesh: THREE.Mesh;
+  home: THREE.Vector3;
+  dent: number;
+  loose: boolean;
+  vel: THREE.Vector3;
+  spin: THREE.Vector3;
+}
+
+/** Bucklans djup (m) vid en detalj innan den lossnar. */
+const DETACH_DENT = 0.12;
+
 /** Små odeformerbara detaljer: speglar, främre nummerplåt, stänkskydd, dörrhandtag. */
 function buildDetails(b: BodyShape, wheelZ: Range): THREE.Group {
   const g = new THREE.Group();
@@ -475,6 +488,9 @@ export class CarMesh {
   private qSpin = new THREE.Quaternion();
   private yAxis = new THREE.Vector3(0, 1, 0);
   private xAxis = new THREE.Vector3(1, 0, 0);
+  private detailGroup: THREE.Group;
+  private details: Detail[];
+  private lastUpdate = 0;
 
   constructor(
     private car: Car,
@@ -494,7 +510,16 @@ export class CarMesh {
       buildBumper(b.halfX, b.tail - 0.09 + b.rearBumperDepth / 2, b.bumperY[1], b.rearBumperDepth),
     ];
     this.parts.forEach((p) => this.group.add(p.mesh));
-    this.group.add(buildDetails(b, wheelZ));
+    this.detailGroup = buildDetails(b, wheelZ);
+    this.group.add(this.detailGroup);
+    this.details = (this.detailGroup.children as THREE.Mesh[]).map((mesh) => ({
+      mesh,
+      home: mesh.position.clone(),
+      dent: 0,
+      loose: false,
+      vel: new THREE.Vector3(),
+      spin: new THREE.Vector3(),
+    }));
     for (let i = 0; i < 4; i++) {
       const w = buildWheel(car.params.wheelRadius);
       this.wheels.push(w);
@@ -506,17 +531,46 @@ export class CarMesh {
     this.wheels.forEach((w) => scene.add(w));
   }
 
-  applyDamage(events: DamageEvent[]) {
+  /** `fall` = false när skadan återskapas (dentFrom): lösa detaljer saknas då bara, de ramlar inte. */
+  applyDamage(events: DamageEvent[], fall = true) {
     if (events.length === 0) return;
     for (const e of events) {
       const amount = Math.min(0.32, e.impulse * 0.00009);
-      for (const part of this.parts) part.dent(e.local, e.normal, amount, e.kind === 'ground' ? 0.5 : 0.75);
+      const radius = e.kind === 'ground' ? 0.5 : 0.75;
+      for (const part of this.parts) part.dent(e.local, e.normal, amount, radius);
+      for (const d of this.details) {
+        if (d.loose) continue;
+        d.dent += amount * Math.exp(-d.home.distanceToSquared(e.local) / (radius * radius));
+        if (d.dent > DETACH_DENT) this.detach(d, fall);
+      }
     }
     for (const part of this.parts) part.commit();
   }
 
+  private detach(d: Detail, fall: boolean) {
+    d.loose = true;
+    const scene = this.group.parent;
+    if (!fall || !scene) {
+      d.mesh.visible = false;
+      return;
+    }
+    this.group.updateMatrixWorld();
+    d.mesh.applyMatrix4(this.group.matrixWorld);
+    scene.add(d.mesh);
+    d.vel.copy(this.car.vel).add(new THREE.Vector3(Math.random() - 0.5, Math.random() + 0.5, Math.random() - 0.5));
+    d.spin.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(12);
+  }
+
   repair() {
     for (const p of this.parts) p.reset();
+    for (const d of this.details) {
+      d.dent = 0;
+      d.loose = false;
+      d.mesh.visible = true;
+      d.mesh.position.copy(d.home);
+      d.mesh.quaternion.identity();
+      this.detailGroup.add(d.mesh);
+    }
   }
 
   /** Lyktglaset: svagt sken på dagen, starkt med strålkastarna på, släckt när lyktan är trasig. Baklyktorna lyser alltid. */
@@ -539,7 +593,7 @@ export class CarMesh {
         events.push({ local: new THREE.Vector3(x, y, z), normal: new THREE.Vector3(nx, ny, nz), impulse, kind: 'object' });
       }
     }
-    this.applyDamage(events);
+    this.applyDamage(events, false);
   }
 
   /** Krymper bucklorna mot k; anropas varje bildruta under en lagning. */
@@ -547,8 +601,26 @@ export class CarMesh {
     for (const p of this.parts) p.scale(k);
   }
 
+  /** Lös detalj: faller, studsar lite mot marken och glider till stillastående. */
+  private fallStep(d: Detail, dt: number) {
+    const m = d.mesh;
+    d.vel.y -= 9.81 * dt;
+    m.position.addScaledVector(d.vel, dt);
+    m.rotateX(d.spin.x * dt).rotateY(d.spin.y * dt).rotateZ(d.spin.z * dt);
+    const ground = this.car.world.heightAt(m.position.x, m.position.z) + 0.02;
+    if (m.position.y < ground) {
+      m.position.y = ground;
+      d.vel.set(d.vel.x * 0.6, Math.abs(d.vel.y) * 0.25, d.vel.z * 0.6);
+      d.spin.multiplyScalar(0.6);
+    }
+  }
+
   update() {
     const car = this.car;
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - this.lastUpdate) / 1000);
+    this.lastUpdate = now;
+    for (const d of this.details) if (d.loose && d.mesh.visible) this.fallStep(d, dt);
     this.group.position.copy(car.pos);
     this.group.quaternion.copy(car.quat);
     car.wheels.forEach((w, i) => {
