@@ -123,6 +123,8 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
   }
   let countFrom = career.money - gained - bonus.bonus;
   for (;;) {
+    // Köp har redan räknat ner och klirrat; här räknas bara intäkter upp.
+    countFrom = Math.min(countFrom, career.money);
     const ongoing = loadChampionship();
     // En ny karriär börjar utan bil: då finns bara bilhandlaren.
     const firstCar = Object.keys(career.garage).length === 0;
@@ -153,8 +155,7 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
       cancel: 'back',
     });
     if (countFrom !== career.money) {
-      // Köp har redan spelat ljudet; bara intäkter klirrar här.
-      if (career.money > countFrom) coins();
+      coins();
       countUp(countFrom, career.money);
     }
     countFrom = career.money;
