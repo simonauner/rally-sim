@@ -156,7 +156,11 @@ async function main() {
 
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
   type MainChoice = 'stage' | 'test' | 'controls' | 'account' | 'career';
-  let choice: MainChoice = query.has('testbana') ? 'test' : 'controls';
+  let choice: MainChoice = query.has('testbana') ? 'test' : query.has('karriar') ? 'career' : 'controls';
+  /** ?karriar=<kr>: tillbaka från ett avslutat mästerskap; kassan räknar upp med prispengarna. */
+  let gained = Number(query.get('karriar')) || 0;
+  // Ladda man om sidan ska kassan inte räkna upp igen.
+  if (query.has('karriar')) history.replaceState(null, '', location.pathname + (forceWebGL ? '?webgl' : ''));
   let model = CARS[0]!;
   let stageDef: StageDef = STAGE_SKOGSBERG;
   /** Karriärlopp ger prispengar; fri körning gör det inte. */
@@ -187,7 +191,8 @@ async function main() {
       if (choice === 'account') await showAccount();
     }
     if (choice === 'career') {
-      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts));
+      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts), gained);
+      gained = 0;
       if (launch) {
         ({ model, stage: stageDef, championship: champ } = launch);
         careerMode = !champ;
@@ -436,7 +441,10 @@ async function main() {
         room.show(model, d);
         return room;
       });
-      return next === 'next' ? goToNextLeg() : goToMainMenu();
+      if (next === 'next') return goToNextLeg();
+      if (next === 'menu') return goToMainMenu();
+      location.href = `${location.pathname}?karriar=${next.prize}${forceWebGL ? '&webgl' : ''}`;
+      return;
     }
     const c = await showMenu<'again' | 'menu'>({
       title: 'Mål',

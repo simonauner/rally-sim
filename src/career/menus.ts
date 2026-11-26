@@ -92,9 +92,10 @@ export async function confirmAbort(): Promise<boolean> {
 
 /**
  * Karriärens huvudmeny. Delar ut dagsbonusen första gången per dag. Returnerar vad som ska
- * köras, eller null om spelaren backar.
+ * köras, eller null om spelaren backar. Med `gained` (t.ex. prispengar från ett avslutat mästerskap)
+ * räknar kassan upp från det gamla beloppet första gången menyn visas.
  */
-export async function careerMenu(pick: Pick): Promise<Launch | null> {
+export async function careerMenu(pick: Pick, gained = 0): Promise<Launch | null> {
   let career = loadCareer().career;
   const bonus = claimDailyBonus(career, localDay());
   let message = '';
@@ -103,11 +104,12 @@ export async function careerMenu(pick: Pick): Promise<Launch | null> {
     commit(career);
     message = `Dagens besök: <span class="ahead">+${formatMoney(bonus.bonus)}</span>`;
   }
+  let countFrom = career.money - gained;
   for (;;) {
     const ongoing = loadChampionship();
-    const c = await showMenu<string>({
+    const menu = showMenu<string>({
       title: 'Karriär',
-      subtitle: `Kassa: ${formatMoney(career.money)}`,
+      subtitle: `Kassa: ${formatMoney(countFrom)}`,
       solid: true,
       body: `${message ? `<div>${message}</div>` : ''}<div>Enstaka etapp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`,
       items: [
@@ -121,6 +123,9 @@ export async function careerMenu(pick: Pick): Promise<Launch | null> {
       ],
       cancel: 'back',
     });
+    if (countFrom !== career.money) countUp(countFrom, career.money);
+    countFrom = career.money;
+    const c = await menu;
     message = '';
     if (c === 'back') return null;
     if (c === 'stage') {
@@ -140,6 +145,19 @@ export async function careerMenu(pick: Pick): Promise<Launch | null> {
     if (c === 'dealer') await dealer(pick);
     career = loadCareer().career;
   }
+}
+
+/** Räknar upp kassan i menyns underrubrik under 1,5 s, snabbt först och långsamt mot slutet. */
+function countUp(from: number, to: number) {
+  const el = document.querySelector('#menu .subtitle');
+  const start = performance.now();
+  const tick = (now: number) => {
+    if (!el?.isConnected) return;
+    const t = Math.min(1, (now - start) / 1500);
+    el.textContent = `Kassa: ${formatMoney(Math.round(from + (to - from) * (1 - (1 - t) ** 3)))}`;
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 /** Garaget: samma vridbord som bilväljaren, med uppgraderingarna som undermeny. */
@@ -323,7 +341,7 @@ function damageHtml(d: CarDamage) {
 /**
  * Efter en etapp i mästerskapet. Mellan etapperna: service där spelaren lagar för egna pengar,
  * kör vidare skadad eller avbryter. Efter sista: totaltid och prispengar. Returnerar 'next' när
- * nästa etapp ska laddas och 'menu' för huvudmenyn. På servicen står bilen med sina skador på
+ * nästa etapp ska laddas, 'menu' för huvudmenyn och prispengarna när mästerskapet är klart. På servicen står bilen med sina skador på
  * vridbordet från showCar.
  */
 export async function championshipLegDone(
@@ -332,7 +350,7 @@ export async function championshipLegDone(
   resultBody: string,
   damage: CarDamage,
   showCar: (d: CarDamage) => Showroom,
-): Promise<'next' | 'menu'> {
+): Promise<'next' | 'menu' | { prize: number }> {
   const def = championshipById(p.id)!;
   const times = [...p.times, time];
   const total = times.reduce((a, b) => a + b, 0);
@@ -347,9 +365,9 @@ export async function championshipLegDone(
       title: `${def.name}: klart`,
       side: true,
       body: `<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ''}</div><div>Bilen lagas och står hel i garaget.</div>`,
-      items: [{ label: 'Huvudmeny', value: 0 }],
+      items: [{ label: 'Till karriären', value: 0 }],
     });
-    return 'menu';
+    return { prize };
   }
 
   await showMenu({
