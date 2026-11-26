@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 import type { SurfaceId } from './surfaces';
+import type { Weather } from './weather';
 
 export interface Box {
   minX: number;
@@ -42,6 +43,8 @@ export class World {
     { minX: 6, maxX: 7.5, minY: -2, maxY: 2, minZ: 220, maxZ: 221.5 },
   ];
   readonly trunks: Trunk[] = [];
+  /** Vädret ändrar greppet per underlag, se WEATHER_GRIP. */
+  weather: Weather = 'clear';
 
   heightAt(x: number, z: number): number {
     // Mjuka kullar, men platt i början så accelerationstester blir rena.

@@ -3,6 +3,7 @@ import { collide, type DamageEvent } from './collision';
 import { Drivetrain, splitDiff } from './drivetrain';
 import type { CarParams } from './params';
 import { SURFACES, TYRE_GRIP, type SurfaceId } from './surfaces';
+import { WEATHER_GRIP } from './weather';
 import { tyreForce, type TyreOut } from './tires';
 import type { World } from './world';
 
@@ -260,7 +261,7 @@ export class Car {
       target += clamp(beta, 0.3) * this.assists.steerAssist;
       // Girdämpare: motstyr när bilen roterar fortare än föraren styr (eller greppet tillåter).
       const yaw = this.angVel.dot(_up);
-      const mu = TYRE_GRIP[p.tyre][wheels[0]!.surface] * p.gripScale;
+      const mu = TYRE_GRIP[p.tyre][wheels[0]!.surface] * p.gripScale * (WEATHER_GRIP[this.world.weather][wheels[0]!.surface] ?? 1);
       const wanted = clamp((this.forwardSpeed * Math.tan(driverAngle)) / p.wheelbase, (mu * G) / v);
       const excess = yaw - wanted;
       if (excess * yaw > 0) target -= clamp(excess * 0.3, 0.35) * this.assists.steerAssist;
@@ -446,7 +447,7 @@ export class Car {
       const vy = _vP.dot(_lw);
       const den = Math.max(Math.abs(vx), V_MIN);
       const sp = SURFACES[surf];
-      const mu = TYRE_GRIP[p.tyre][surf] * p.gripScale * (1 - 0.15 * w.damage);
+      const mu = TYRE_GRIP[p.tyre][surf] * p.gripScale * (WEATHER_GRIP[this.world.weather][surf] ?? 1) * (1 - 0.15 * w.damage);
       const tanA = vy / den;
 
       const fxAt = (om: number) => {

@@ -2,6 +2,7 @@ import { Quaternion, Vector3 } from 'three';
 import { Car, LAMP_BROKEN, type Input } from '../src/physics/car';
 import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
+import { rollWeather, type Weather } from '../src/physics/weather';
 import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad, driveAlongRoad } from '../src/physics/autopilot';
@@ -479,6 +480,36 @@ for (const def of STAGES) {
     return { t, off };
   });
   check('menyns autopilot håller vägen', runs.every((r) => r.t < 40 && r.off < 1), runs.map((r) => `${r.t.toFixed(1)} s, ${r.off.toFixed(1)} m utanför`).join(' · '));
+}
+
+// 17. Väder: regn förlänger bromssträckan på asfalt tydligt, dimma ändrar inget, och ungefär tre
+// av fyra etapper har uppehåll. Snöfall bara på vinteretapper, regn bara på de andra.
+{
+  const brakeDist = (weather: Weather) => {
+    const world = new FlatWorld('asphalt');
+    world.weather = weather;
+    const car = makeCar(world, 'tarmac');
+    car.reset(0, 0, 0, 100 / 3.6);
+    let dist = 0;
+    let stopped = false;
+    run(car, 12, () => ({ ...idle, brake: stopped ? 0 : 1 }), () => {
+      if (!stopped && car.forwardSpeed < 0.3) {
+        stopped = true;
+        dist = car.pos.z;
+      }
+    });
+    return dist;
+  };
+  const dry = brakeDist('clear');
+  const wet = brakeDist('rain');
+  const foggy = brakeDist('fog');
+  check('väder: regn ger längre bromssträcka', wet > dry * 1.2 && Math.abs(foggy - dry) < 0.01, `torrt ${dry.toFixed(1)} m, regn ${wet.toFixed(1)} m, dimma ${foggy.toFixed(1)} m`);
+  const rolls = (def: (typeof STAGES)[number]) => Array.from({ length: 1000 }, (_, i) => rollWeather(def, (i + 0.5) / 1000));
+  const summer = rolls(STAGE_SKOGSBERG);
+  const winter = rolls(STAGE_FROSTBERGA);
+  const share = (list: Weather[], w: Weather) => list.filter((x) => x === w).length / list.length;
+  const ok = share(summer, 'clear') > 0.7 && share(summer, 'clear') < 0.85 && share(summer, 'snowfall') === 0 && share(winter, 'rain') === 0 && share(winter, 'snowfall') > 0.05;
+  check('väder: oftast uppehåll', ok, `sommar: uppehåll ${(share(summer, 'clear') * 100).toFixed(0)} %, regn ${(share(summer, 'rain') * 100).toFixed(0)} %, dimma ${(share(summer, 'fog') * 100).toFixed(0)} % · vinter: snöfall ${(share(winter, 'snowfall') * 100).toFixed(0)} %`);
 }
 
 if (failures) {
