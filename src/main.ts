@@ -6,7 +6,9 @@ import { Hud } from './hud';
 import { Controls } from './input';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
-import { START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
+import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
+import { StageTimer } from './physics/timing';
+import { loadRecord, saveRecord, type StageRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { DebugVectors } from './render/debug';
@@ -106,9 +108,26 @@ async function main() {
         ['Krocktest (20 m/s)', 'crash'],
       ];
   let spawn = Object.values(spawns)[0]!;
+  const timer = stage ? new StageTimer(START_S, stage.length - FINISH_MARGIN) : null;
+  let best: StageRecord | null = stage ? loadRecord(stage.def.name) : null;
+  /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
+  let previousBest: StageRecord | null = null;
+  let resultSaved = false;
+  /** false = kameran hoppar direkt till bilen nästa bildruta i stället för att glida dit. */
+  let camInit = false;
   const place = (s: Spawn, keepDamage: boolean) => {
+    camInit = false;
     spawn = s;
     car.reset(s.x, s.z, s.heading, s.speed, keepDamage);
+    timer?.reset();
+    resultSaved = false;
+  };
+  // På etappen ställer R tillbaka bilen på vägen där den är, och klockan fortsätter.
+  const recover = () => {
+    if (!stage) return place(spawn, true);
+    const p = stage.poseAt(stage.project(car.pos.x, car.pos.z).s);
+    car.reset(p.x, p.z, p.heading, 0, true);
+    camInit = false;
   };
   const repair = () => {
     for (const k of Object.keys(car.damage) as (keyof typeof car.damage)[]) car.damage[k] = 0;
@@ -128,7 +147,6 @@ async function main() {
   const camLook = new THREE.Vector3();
   const tmpDir = new THREE.Vector3();
   const tmpV = new THREE.Vector3();
-  let camInit = false;
 
   const updateCamera = (dt: number) => {
     const fwd = tmpDir.set(0, 0, 1).applyQuaternion(car.quat);
@@ -193,7 +211,11 @@ async function main() {
     const frameDt = Math.min(0.05, (now - last) / 1000);
     last = now;
 
-    if (controls.wasPressed('KeyR')) place(spawn, true);
+    if (controls.wasPressed('KeyR')) recover();
+    if (controls.wasPressed('KeyT') && stage) {
+      repair();
+      place(spawns.start!, true);
+    }
     if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
     if (controls.wasPressed('F3')) debug.lines.visible = !debug.lines.visible;
     if (controls.wasPressed('KeyH')) hud.toggleHelp();
@@ -215,7 +237,16 @@ async function main() {
     acc += frameDt;
     while (acc >= DT) {
       car.step(DT, input);
+      if (stage && timer) timer.update(stage.project(car.pos.x, car.pos.z).s, DT);
       acc -= DT;
+    }
+    if (stage && timer?.state === 'finished' && !resultSaved) {
+      resultSaved = true;
+      previousBest = best;
+      if (!best || timer.time < best.time) {
+        best = { time: timer.time, splits: [...timer.splits] };
+        saveRecord(stage.def.name, best);
+      }
     }
     controls.endFrame();
 
@@ -234,6 +265,7 @@ async function main() {
     sun.position.set(car.pos.x + 40, car.pos.y + 70, car.pos.z - 30);
     sun.target.position.copy(car.pos);
     hud.update(car, input, CAMERAS[camMode]!);
+    if (timer) hud.updateTimer(timer, best, previousBest);
     pipeline.render();
     (window as unknown as { __afterRender?: () => void }).__afterRender?.();
   });

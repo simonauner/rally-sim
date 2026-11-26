@@ -24,7 +24,8 @@ Kräver WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM-Mac) eller Safari 26.
 | W / S | Gas / broms (S backar vid stopp) |
 | A / D | Styr |
 | Mellanslag | Handbroms |
-| R | Placera om bilen (behåller skador) |
+| R | Tillbaka på vägen där bilen är (klockan går vidare; på testbanan: till startplatsen) |
+| T | Starta om etappen (reparerar bilen) |
 | C | Byt kamera (bakifrån, förarvy, uppifrån, sidovy för skador) |
 | M, E / Q | Manuell växellåda |
 | F3 | Kraftvektorer av/på (röd = däckkraft, blå = hjullast, grön = färdriktning) |
@@ -37,6 +38,9 @@ Gamepad: vänsterspak, RT/LT, A = handbroms. Panelen till höger trimmar bilen m
 Spelet startar på etappen *Skogsberg* (ca 1,8 km): grus, en asfaltsbit och en lerig skogsdel.
 Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och underlag
 (underlaget gäller fram till nästa punkt). Utanför vägen kommer ett dike och sedan lera.
+
+Klockan startar när bilen passerar startportalen och stannar vid målportalen, med två mellantider.
+Bästa tiden sparas i webbläsaren (localStorage) tills konto och sparning finns.
 
 ## Testbanan (`?testbana`)
 

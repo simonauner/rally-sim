@@ -1,5 +1,7 @@
 import type { Car, Input } from './physics/car';
 import { SURFACES, TYRE_NAMES } from './physics/surfaces';
+import type { StageTimer } from './physics/timing';
+import type { StageRecord } from './records';
 
 const WHEEL_NAMES = ['VF', 'HF', 'VB', 'HB'];
 
@@ -7,6 +9,7 @@ export class Hud {
   private hud = document.getElementById('hud')!;
   private help = document.getElementById('help')!;
   private damage = document.getElementById('damage')!;
+  private timer = document.getElementById('timer')!;
   private gg = document.getElementById('gg') as HTMLCanvasElement;
   private ctx = this.gg.getContext('2d')!;
   private trail: [number, number][] = [];
@@ -15,8 +18,8 @@ export class Hud {
   constructor() {
     this.help.innerHTML = [
       '<b>W/S</b> gas/broms (S bakåt vid stopp) · <b>A/D</b> styr',
-      '<b>Mellanslag</b> handbroms · <b>R</b> placera om · <b>C</b> kamera (4 vyer)',
-      '<b>M</b> manuell växellåda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
+      '<b>Mellanslag</b> handbroms · <b>R</b> tillbaka på vägen · <b>T</b> starta om',
+      '<b>C</b> kamera · <b>M</b> manuell låda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
       '<b>H</b> visa/dölj panelen · <b>N</b> ljud av/på',
     ].join('<br/>');
   }
@@ -60,6 +63,26 @@ export class Hud {
     this.drawGG(car);
   }
 
+  /** Klocka, mellantider och resultat. best är rekordet nu, previousBest rekordet före senaste åket. */
+  updateTimer(timer: StageTimer, best: StageRecord | null, previousBest: StageRecord | null) {
+    const delta = (t: number, ref: number | undefined) =>
+      ref === undefined ? '' : ` <span class="${t <= ref ? 'ahead' : 'behind'}">${t <= ref ? '−' : '+'}${Math.abs(t - ref).toFixed(2)}</span>`;
+    const ref = timer.state === 'finished' ? previousBest : best;
+    const splits = timer.splits.map((t, i) => `M${i + 1} ${formatTime(t)}${delta(t, ref?.splits[i])}`).join(' · ');
+    let html: string;
+    if (timer.state === 'ready') {
+      html = `Kör över startlinjen${best ? `<br/>Bästa ${formatTime(best.time)}` : ''}`;
+    } else if (timer.state === 'running') {
+      html = `<div class="clock">${formatTime(timer.time)}</div>${splits}`;
+    } else {
+      const record = !previousBest || timer.time < previousBest.time;
+      html = `<div class="clock">Mål ${formatTime(timer.time)}</div>${splits}<br/>${
+        record ? '<b>Nytt rekord!</b>' : `Bästa ${formatTime(previousBest.time)}${delta(timer.time, previousBest.time)}`
+      } · <b>T</b> kör igen`;
+    }
+    if (this.timer.innerHTML !== html) this.timer.innerHTML = html;
+  }
+
   private drawGG(car: Car) {
     const ctx = this.ctx;
     const w = this.gg.width;
@@ -93,4 +116,11 @@ export class Hud {
     ctx.font = '20px ui-monospace, monospace';
     ctx.fillText('g', 8, 22);
   }
+}
+
+/** m:ss.cc */
+function formatTime(t: number) {
+  const cs = Math.round(t * 100);
+  const m = Math.floor(cs / 6000);
+  return `${m}:${((cs % 6000) / 100).toFixed(2).padStart(5, '0')}`;
 }
