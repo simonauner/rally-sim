@@ -69,21 +69,16 @@ export class Hud {
   }
 
   /** Klocka, mellantider och resultat. best är rekordet nu, previousBest rekordet före senaste åket. */
-  updateTimer(timer: StageTimer, best: StageRecord | null, previousBest: StageRecord | null) {
-    const delta = (t: number, ref: number | undefined) =>
-      ref === undefined ? '' : ` <span class="${t <= ref ? 'ahead' : 'behind'}">${t <= ref ? '−' : '+'}${Math.abs(t - ref).toFixed(2)}</span>`;
-    const ref = timer.state === 'finished' ? previousBest : best;
-    const splits = timer.splits.map((t, i) => `M${i + 1} ${formatTime(t)}${delta(t, ref?.splits[i])}`).join(' · ');
+  updateTimer(timer: StageTimer, best: StageRecord | null) {
+    const splits = timer.splits.map((t, i) => `M${i + 1} ${formatTime(t)}${formatDelta(t, best?.splits[i])}`).join(' · ');
     let html: string;
     if (timer.state === 'ready') {
       html = `Kör över startlinjen${best ? `<br/>Bästa ${formatTime(best.time)}` : ''}`;
     } else if (timer.state === 'running') {
       html = `<div class="clock">${formatTime(timer.time)}</div>${splits}`;
     } else {
-      const record = !previousBest || timer.time < previousBest.time;
-      html = `<div class="clock">Mål ${formatTime(timer.time)}</div>${splits}<br/>${
-        record ? '<b>Nytt rekord!</b>' : `Bästa ${formatTime(previousBest.time)}${delta(timer.time, previousBest.time)}`
-      } · <b>T</b> kör igen`;
+      // Resultatet med jämförelser visas på målskärmen.
+      html = `<div class="clock">Mål ${formatTime(timer.time)}</div>`;
     }
     if (this.timer.innerHTML !== html) this.timer.innerHTML = html;
   }
@@ -131,6 +126,22 @@ export class Hud {
     ctx.font = '20px ui-monospace, monospace';
     ctx.fillText('g', 8, 22);
   }
+}
+
+/** Resultat för målskärmen: tid, mellantider och jämförelse mot rekordet före åket. */
+export function resultHtml(timer: StageTimer, previousBest: StageRecord | null) {
+  const splits = timer.splits.map((t, i) => `M${i + 1} ${formatTime(t)}${formatDelta(t, previousBest?.splits[i])}`).join(' · ');
+  const record = !previousBest || timer.time < previousBest.time;
+  const verdict = record
+    ? `<b>Nytt rekord!</b>${previousBest ? ` Förra ${formatTime(previousBest.time)}${formatDelta(timer.time, previousBest.time)}` : ''}`
+    : `Bästa ${formatTime(previousBest.time)}${formatDelta(timer.time, previousBest.time)}`;
+  return `<div class="result">${formatTime(timer.time)}</div><div>${splits}</div><div>${verdict}</div>`;
+}
+
+/** " −0.32" i grönt eller " +0.84" i rött; tomt utan referens. */
+function formatDelta(t: number, ref: number | undefined) {
+  if (ref === undefined) return '';
+  return ` <span class="${t <= ref ? 'ahead' : 'behind'}">${t <= ref ? '−' : '+'}${Math.abs(t - ref).toFixed(2)}</span>`;
 }
 
 /** m:ss.cc */

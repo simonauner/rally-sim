@@ -48,6 +48,10 @@ Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och un
 (underlaget gäller fram till nästa punkt). Utanför vägen kommer ett dike och sedan lera.
 
 Klockan startar när bilen passerar startportalen och stannar vid målportalen, med två mellantider.
+Efter mål tar en autopilot över och bromsar in bilen längs vägen (det finns 80 m utrullning), och
+en målskärm visar tid, mellantider och jämförelse mot rekordet, med valen Kör igen och Huvudmeny.
+Målskärmen har en karta över etappen ovanifrån där varje 25 m-bit färgas grön eller röd efter hur
+mycket tid åket tjänade eller tappade mot förra rekordets ghost, plus var man tappade och tjänade mest.
 Bästa tiden sparas i webbläsaren (localStorage) tills konto och sparning finns, tillsammans med
 en ghost: bästa åket inspelat i 20 Hz, som körs som en genomskinlig bil bredvid dig.
 

@@ -2,14 +2,15 @@ import * as THREE from 'three/webgpu';
 import { toonOutlinePass } from 'three/tsl';
 import { Sound } from './audio';
 import { createGui } from './gui';
-import { CONTROLS_HTML, formatTime, Hud } from './hud';
+import { CONTROLS_HTML, formatTime, Hud, resultHtml } from './hud';
 import { CoDriver } from './codriver';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
+import { brakeAlongRoad } from './physics/autopilot';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
-import { GhostRecorder, sampleGhost } from './physics/ghost';
+import { GhostRecorder, sampleGhost, sectionLosses, timeAlongStage } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
 import { loadRecord, saveRecord, type StageRecord } from './records';
@@ -19,6 +20,7 @@ import { DebugVectors } from './render/debug';
 import { Dust } from './render/dust';
 import { buildGhostMesh } from './render/ghostMesh';
 import { buildStage } from './render/stage';
+import { stageMapHtml } from './render/stageMap';
 import { buildTerrain } from './render/terrain';
 
 const DT = 1 / 240;
@@ -150,8 +152,13 @@ async function main() {
   let showGhost = true;
   /** false = kameran hoppar direkt till bilen nästa bildruta i stället för att glida dit. */
   let camInit = false;
+  /** Tid sedan målgång och om målskärmen visas; bilen körs av autopiloten under tiden. */
+  let finishedFor = 0;
+  let finishShown = false;
   const place = (s: Spawn, keepDamage: boolean) => {
     camInit = false;
+    finishedFor = 0;
+    finishShown = false;
     spawn = s;
     car.reset(s.x, s.z, s.heading, s.speed, keepDamage);
     timer?.reset();
@@ -251,6 +258,29 @@ async function main() {
     place(spawns.start!, true);
   };
 
+  // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
+  const goToMainMenu = () => void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
+
+  const showFinish = async () => {
+    if (!stage || !timer) return;
+    // Var tiden vanns eller förlorades: åket mot förra rekordets ghost, meter för meter.
+    const finishS = stage.length - FINISH_MARGIN;
+    const run = timeAlongStage(recorder.data(), stage);
+    const ref = previousBest?.ghost ? timeAlongStage(previousBest.ghost, stage) : null;
+    const sections = ref ? sectionLosses(run, ref, START_S, finishS) : null;
+    const c = await showMenu<'again' | 'menu'>({
+      title: 'Mål',
+      wide: true,
+      body: resultHtml(timer, previousBest) + stageMapHtml(stage, START_S, finishS, sections),
+      items: [
+        { label: 'Kör igen', value: 'again' },
+        { label: 'Huvudmeny', value: 'menu' },
+      ],
+    });
+    if (c === 'menu') return goToMainMenu();
+    restart();
+  };
+
   let paused = false;
   const pause = async () => {
     paused = true;
@@ -271,8 +301,7 @@ async function main() {
         await showControls(false);
         continue;
       }
-      // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
-      if (c === 'menu') return void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
+      if (c === 'menu') return goToMainMenu();
       if (c === 'restart') restart();
       break;
     }
@@ -290,9 +319,11 @@ async function main() {
       pipeline.render();
       return;
     }
-    if (controls.wasPressed('Escape')) void pause();
+    // Efter mål styr autopiloten; målskärmen tar över tangenterna när den visas.
+    const finished = !!stage && timer?.state === 'finished';
+    if (controls.wasPressed('Escape') && !finishShown) void pause();
 
-    if (controls.wasPressed('KeyR')) recover();
+    if (controls.wasPressed('KeyR') && !finished) recover();
     if (controls.wasPressed('KeyT')) restart();
     if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
     if (controls.wasPressed('F3')) debug.lines.visible = !debug.lines.visible;
@@ -312,7 +343,7 @@ async function main() {
       }
     }
 
-    const input = controls.sample(frameDt);
+    const input = finished ? brakeAlongRoad(stage, car) : controls.sample(frameDt);
     acc += frameDt;
     while (acc >= DT) {
       car.step(DT, input);
@@ -328,6 +359,13 @@ async function main() {
       if (!best || timer.time < best.time) {
         best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
         saveRecord(stage.def.name, best);
+      }
+    }
+    if (finished && !finishShown) {
+      finishedFor += frameDt;
+      if (car.speed < 1 || finishedFor > 2.5) {
+        finishShown = true;
+        void showFinish();
       }
     }
     controls.endFrame();
@@ -355,7 +393,7 @@ async function main() {
     sun.position.set(car.pos.x + 40, car.pos.y + 70, car.pos.z - 30);
     sun.target.position.copy(car.pos);
     hud.update(car, input, CAMERAS[camMode]!);
-    if (timer) hud.updateTimer(timer, best, previousBest);
+    if (timer) hud.updateTimer(timer, best);
     if (stage && caller) {
       const s = stage.project(car.pos.x, car.pos.z).s;
       const called = caller.update(s, car.speed);

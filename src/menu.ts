@@ -15,6 +15,8 @@ export interface MenuOptions<T> {
   cancel?: T;
   /** Täck spelet helt (huvudmeny) i stället för att visa det dämpat bakom (paus). */
   solid?: boolean;
+  /** Bredare panel, t.ex. för målskärmens karta. */
+  wide?: boolean;
 }
 
 const root = () => document.getElementById('menu')!;
@@ -28,7 +30,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const el = root();
   el.className = opts.solid ? 'solid' : '';
   el.innerHTML = `
-    <div class="panel">
+    <div class="panel${opts.wide ? ' wide' : ''}">
       <h1>${opts.title}</h1>
       ${opts.subtitle ? `<div class="subtitle">${opts.subtitle}</div>` : ''}
       ${opts.body ? `<div class="body">${opts.body}</div>` : ''}
