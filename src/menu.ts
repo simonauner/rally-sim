@@ -1,4 +1,5 @@
 import applauseUrl from './assets/applause.mp3';
+import coinsUrl from './assets/coins.mp3';
 import { settings } from './settings';
 
 export interface MenuItem<T> {
@@ -86,14 +87,19 @@ function blip(freq: number, length: number, delay = 0) {
   osc.stop(t + length);
 }
 
-/** Lågmälda applåder och jubel när ett mästerskap är klart. */
-export function applause() {
+function playClip(url: string, volume: number) {
   if (!settings.sound || !settings.menuSound) return;
-  const a = new Audio(applauseUrl);
-  a.volume = 0.4;
+  const a = new Audio(url);
+  a.volume = volume;
   // Webbläsaren kan vägra spela; då blir det tyst i stället för ett fel.
   a.play().catch(() => {});
 }
+
+/** Lågmälda applåder och jubel när ett mästerskap är klart. */
+export const applause = () => playClip(applauseUrl, 0.4);
+
+/** Mynt som faller ner i en börs när man betalar för något. */
+export const coins = () => playClip(coinsUrl, 0.6);
 
 /**
  * Visar en meny och väntar på ett val. Styrs med piltangenter/W/S och Enter, eller musen.

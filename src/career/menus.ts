@@ -3,7 +3,7 @@
 import type { CareerState, HistoryEntry } from '../account/protocol';
 import { localChanged } from '../account/sync';
 import type { PickOptions, Showroom } from '../carSelect';
-import { applause, showMenu } from '../menu';
+import { applause, coins, showMenu } from '../menu';
 import skogsrallytImg from '../assets/champ-skogsrallyt.webp';
 import myrkullarallytImg from '../assets/champ-myrkullarallyt.webp';
 import vinterrallytImg from '../assets/champ-vinterrallyt.webp';
@@ -305,7 +305,10 @@ async function parts(car: string, group: string) {
       message = '';
       continue;
     }
-    if (typeof result === 'object') commit(result);
+    if (typeof result === 'object') {
+      commit(result);
+      coins();
+    }
     message = buyMessage(result, u.price, `<div class="ahead">${u.name} monterad.</div>`);
   }
 }
@@ -349,7 +352,10 @@ async function dealer(pick: Pick) {
         run: async (m) => {
           const name = nameOf(m);
           const result = buyCar(loadCareer().career, name);
-          if (typeof result === 'object') commit(result);
+          if (typeof result === 'object') {
+            commit(result);
+            coins();
+          }
           await showMenu({
             title: typeof result === 'object' ? 'Köpt' : 'Inget köp',
             side: true,
@@ -595,6 +601,7 @@ async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, s
         continue;
       }
       commit({ ...loadCareer().career, money: money - price });
+      coins();
       damage = fix.reduce(repairPart, damage);
       room?.repair(fix.includes('body'), fix.includes('wheels'));
       message = `<div class="ahead">${c === 'all' ? 'Lagad' : `Lagade ${PART_NAMES[c]}`} för ${formatMoney(price)}.</div>`;
