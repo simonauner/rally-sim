@@ -1,8 +1,9 @@
-import { Vector3 } from 'three';
+import { Quaternion, Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
 import { kvarn240 } from '../src/physics/params';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
 import type { SurfaceId, TyreType } from '../src/physics/surfaces';
+import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
 import { StageTimer } from '../src/physics/timing';
 import { World } from '../src/physics/world';
 
@@ -205,6 +206,8 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   car.reset(p0.x, p0.z, p0.heading, 0);
   const finish = stage.length - FINISH_MARGIN;
   const timer = new StageTimer(START_S, finish);
+  const recorder = new GhostRecorder();
+  const checkpoints: [number, Vector3, Quaternion][] = [];
   let startT = NaN;
   let s = START_S - 8;
   let maxOver = 0;
@@ -229,12 +232,31 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   }, (t) => {
     timer.update(stage.project(car.pos.x, car.pos.z).s, DT);
     if (Number.isNaN(startT) && timer.state === 'running') startT = t;
+    if (timer.state === 'running') {
+      recorder.record(timer.time, car.pos, car.quat);
+      // Spara bilens läge ibland, mitt mellan två ghostbilder, för att jämföra med uppspelningen.
+      if (Math.abs((timer.time % 7.025) - 7) < DT / 2) checkpoints.push([timer.time, car.pos.clone(), car.quat.clone()]);
+    }
     if (Number.isNaN(time) && s >= finish) time = t;
   });
   check('etapp: förare når målet', time > 60 && time < 150, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, kom ${s.toFixed(0)} av ${finish.toFixed(0)} m`);
   check('etapp: håller sig på vägen', maxOver < 1, `som mest ${maxOver.toFixed(2)} m utanför kanten`);
   const expected = time - startT;
   check('tidtagning: start till mål', timer.state === 'finished' && Math.abs(timer.time - expected) < 0.05, `${timer.time.toFixed(2)} s (förare ${expected.toFixed(2)} s), tillstånd ${timer.state}`);
+  const ghost = recorder.data();
+  const gp = new Vector3();
+  const gq = new Quaternion();
+  let worstPos = 0;
+  let worstAng = 0;
+  for (const [t, p, q] of checkpoints) {
+    sampleGhost(ghost, t, gp, gq);
+    worstPos = Math.max(worstPos, gp.distanceTo(p));
+    worstAng = Math.max(worstAng, gq.angleTo(q));
+  }
+  const ended = !sampleGhost(ghost, timer.time + 1, gp, gq);
+  const kb = JSON.stringify(ghost).length / 1024;
+  check('ghost: följer bilen', checkpoints.length > 8 && worstPos < 0.25 && worstAng < 0.02 && ended, `${checkpoints.length} punkter, max ${(worstPos * 100).toFixed(1)} cm / ${((worstAng * 180) / Math.PI).toFixed(2)}°, slut efter målet ${ended}`);
+  check('ghost: sparstorlek', kb < 200, `${kb.toFixed(0)} kB för ${timer.time.toFixed(0)} s`);
   check('tidtagning: mellantider', timer.splits.length === 2 && timer.splits[0]! < timer.splits[1]! && timer.splits[1]! < timer.time, timer.splits.map((x) => x.toFixed(1)).join(', '));
 }
 
