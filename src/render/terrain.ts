@@ -7,7 +7,9 @@ export const COLORS: Record<string, number> = {
   gravel: 0xb89f78,
   asphalt: 0x44464c,
   mud: 0x5f4532,
-  snow: 0xf1f5f8,
+  // Packad vägsnö är gråare än den lösa snön i vallarna.
+  snow: 0xe3e6e7,
+  snowbank: 0xfafcfd,
 };
 
 export function buildTerrain(world: World): THREE.Group {
