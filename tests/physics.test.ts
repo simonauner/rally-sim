@@ -3,6 +3,7 @@ import { Car, type Input } from '../src/physics/car';
 import { kvarn240 } from '../src/physics/params';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
 import type { SurfaceId, TyreType } from '../src/physics/surfaces';
+import { StageTimer } from '../src/physics/timing';
 import { World } from '../src/physics/world';
 
 const DT = 1 / 240;
@@ -200,10 +201,12 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
 {
   const stage = new Stage(STAGE_SKOGSBERG);
   const car = makeCar(stage, 'gravel');
-  const p0 = stage.poseAt(START_S);
+  const p0 = stage.poseAt(START_S - 8);
   car.reset(p0.x, p0.z, p0.heading, 0);
   const finish = stage.length - FINISH_MARGIN;
-  let s = START_S;
+  const timer = new StageTimer(START_S, finish);
+  let startT = NaN;
+  let s = START_S - 8;
   let maxOver = 0;
   let time = NaN;
   run(car, 200, (_t, c) => {
@@ -224,10 +227,28 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
       brake: c.forwardSpeed > target + 2 ? 0.6 : 0,
     };
   }, (t) => {
+    timer.update(stage.project(car.pos.x, car.pos.z).s, DT);
+    if (Number.isNaN(startT) && timer.state === 'running') startT = t;
     if (Number.isNaN(time) && s >= finish) time = t;
   });
   check('etapp: förare når målet', time > 60 && time < 150, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, kom ${s.toFixed(0)} av ${finish.toFixed(0)} m`);
   check('etapp: håller sig på vägen', maxOver < 1, `som mest ${maxOver.toFixed(2)} m utanför kanten`);
+  const expected = time - startT;
+  check('tidtagning: start till mål', timer.state === 'finished' && Math.abs(timer.time - expected) < 0.05, `${timer.time.toFixed(2)} s (förare ${expected.toFixed(2)} s), tillstånd ${timer.state}`);
+  check('tidtagning: mellantider', timer.splits.length === 2 && timer.splits[0]! < timer.splits[1]! && timer.splits[1]! < timer.time, timer.splits.map((x) => x.toFixed(1)).join(', '));
+}
+
+// 10. Tidtagning: teleport över linjen räknas inte, och efter mål står klockan still.
+{
+  const timer = new StageTimer(20, 1000);
+  timer.update(0, DT);
+  timer.update(500, DT);
+  const teleportIgnored = timer.state === 'ready';
+  timer.reset();
+  for (let s = 10; s <= 1010; s += 0.1) timer.update(s, DT);
+  const frozen = timer.time;
+  timer.update(1011, DT);
+  check('tidtagning: teleport och mål', teleportIgnored && timer.state === 'finished' && timer.time === frozen, `teleport ignorerad ${teleportIgnored}, ${timer.state} ${frozen.toFixed(2)} s`);
 }
 
 if (failures) {
