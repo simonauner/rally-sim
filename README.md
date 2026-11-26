@@ -113,8 +113,18 @@ Det som återstår är att köra och känna.
 2. Fas 1: kamera (spline-etapp, ljud och dammpartiklar är klara).
 3. Fas 2: tidtagning, ghost, pacenotes.
 4. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
-5. Driftsätta synkservern och spelet; sätt `ALLOWED_ORIGINS` i `sync/wrangler.jsonc` och
-   `VITE_SYNC_URL` vid bygget.
+
+## Driftsättning
+
+`.github/workflows/deploy.yml` bygger och testar vid varje push och pull request. Vid push till
+main driftsätts spelet på GitHub Pages (https://simonauner.github.io/rally-sim/) och synkservern
+på Cloudflare Workers. Det kräver, en gång:
+
+- Settings → Pages → Source: GitHub Actions.
+- Secret `CLOUDFLARE_API_TOKEN` (Cloudflare-mallen "Edit Cloudflare Workers").
+- Variabel `SYNC_URL` med synkserverns adress, som visas efter första `npm run deploy` i `sync/`.
+
+Vilka adresser som får anropa synkservern står i `ALLOWED_ORIGINS` i `sync/wrangler.jsonc`.
 
 ## Konto och synk
 
