@@ -108,6 +108,12 @@ export class Sound {
     return [f, g];
   }
 
+  /** Pausar allt ljud, t.ex. när pausmenyn är öppen. */
+  setPaused(paused: boolean) {
+    if (!this.ctx) return;
+    void (paused ? this.ctx.suspend() : this.ctx.resume());
+  }
+
   toggleMute() {
     this.muted = !this.muted;
     if (this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.5, this.ctx.currentTime, 0.05);

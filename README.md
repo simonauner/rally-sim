@@ -27,12 +27,19 @@ Kräver WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM-Mac) eller Safari 26.
 | R | Tillbaka på vägen där bilen är (klockan går vidare; på testbanan: till startplatsen) |
 | T | Starta om etappen (reparerar bilen) |
 | G | Ghost av/på |
+| Esc | Pausmeny (fortsätt, starta om, kontroller, huvudmeny) |
 | C | Byt kamera (bakifrån, förarvy, uppifrån, sidovy för skador) |
 | M, E / Q | Manuell växellåda |
 | F3 | Kraftvektorer av/på (röd = däckkraft, blå = hjullast, grön = färdriktning) |
 | H | Dölj/visa hjälptext |
 
 Gamepad: vänsterspak, RT/LT, A = handbroms. Panelen till höger trimmar bilen medan du kör.
+
+## Menyer
+
+Spelet startar i en huvudmeny: kör etappen, testbanan eller se kontrollerna. Världen byggs först
+när man valt. Esc öppnar pausmenyn; "Huvudmeny" laddar om sidan, eftersom byte av värld under
+körning inte finns. `?testbana` hoppar över menyn och går direkt till testbanan.
 
 ## Etappen
 

@@ -2,9 +2,10 @@ import * as THREE from 'three/webgpu';
 import { toonOutlinePass } from 'three/tsl';
 import { Sound } from './audio';
 import { createGui } from './gui';
-import { Hud } from './hud';
+import { CONTROLS_HTML, formatTime, Hud } from './hud';
 import { CoDriver } from './codriver';
 import { Controls } from './input';
+import { showLoading, showMenu } from './menu';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
@@ -66,8 +67,29 @@ async function main() {
   sun.shadow.bias = -0.0004;
   scene.add(sun, sun.target);
 
-  // ?testbana laddar den gamla lekplatsen med hinder och underlagsprov.
-  const stage = query.has('testbana') ? null : new Stage(STAGE_SKOGSBERG);
+  const showControls = (solid: boolean) =>
+    showMenu({ title: 'Kontroller', body: CONTROLS_HTML, items: [{ label: 'Tillbaka', value: 0 }], cancel: 0, solid });
+
+  // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
+  type MainChoice = 'stage' | 'test' | 'controls';
+  let choice: MainChoice = query.has('testbana') ? 'test' : 'controls';
+  while (choice === 'controls') {
+    const best = loadRecord(STAGE_SKOGSBERG.name);
+    choice = await showMenu<MainChoice>({
+      title: 'RALLY',
+      subtitle: 'Kvarn 240 GL · fysikprototyp',
+      solid: true,
+      items: [
+        { label: `Kör etapp: ${STAGE_SKOGSBERG.name}`, detail: best ? `bästa ${formatTime(best.time)}` : undefined, value: 'stage' },
+        { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
+        { label: 'Kontroller', value: 'controls' },
+      ],
+    });
+    if (choice === 'controls') await showControls(true);
+  }
+  // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
+  let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : STAGE_SKOGSBERG.name);
+  const stage = choice === 'test' ? null : new Stage(STAGE_SKOGSBERG);
   const world = stage ?? new World();
   scene.add(stage ? buildStage(stage) : buildTerrain(world));
 
@@ -223,17 +245,55 @@ async function main() {
     camera.updateProjectionMatrix();
   });
 
+  const restart = () => {
+    if (!stage) return;
+    repair();
+    place(spawns.start!, true);
+  };
+
+  let paused = false;
+  const pause = async () => {
+    paused = true;
+    codriver.stop();
+    sound.setPaused(true);
+    for (;;) {
+      const c = await showMenu<'resume' | 'restart' | 'controls' | 'menu'>({
+        title: 'Paus',
+        items: [
+          { label: 'Fortsätt', value: 'resume' },
+          ...(stage ? [{ label: 'Starta om etappen', value: 'restart' as const }] : []),
+          { label: 'Kontroller', value: 'controls' },
+          { label: 'Huvudmeny', value: 'menu' },
+        ],
+        cancel: 'resume',
+      });
+      if (c === 'controls') {
+        await showControls(false);
+        continue;
+      }
+      // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
+      if (c === 'menu') return void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
+      if (c === 'restart') restart();
+      break;
+    }
+    sound.setPaused(false);
+    paused = false;
+  };
+
   let acc = 0;
   let last = performance.now();
   renderer.setAnimationLoop((now: number) => {
-    const frameDt = Math.min(0.05, (now - last) / 1000);
+    // rAF:s tidsstämpel kan ligga före performance.now() från när loopen skapades.
+    const frameDt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
+    if (paused) {
+      pipeline.render();
+      return;
+    }
+    if (controls.wasPressed('Escape')) void pause();
 
     if (controls.wasPressed('KeyR')) recover();
-    if (controls.wasPressed('KeyT') && stage) {
-      repair();
-      place(spawns.start!, true);
-    }
+    if (controls.wasPressed('KeyT')) restart();
     if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
     if (controls.wasPressed('F3')) debug.lines.visible = !debug.lines.visible;
     if (controls.wasPressed('KeyH')) hud.toggleHelp();
@@ -303,6 +363,8 @@ async function main() {
       hud.updateNotes(caller.active(s), codriver.missingVoice);
     }
     pipeline.render();
+    hideLoading?.();
+    hideLoading = null;
     (window as unknown as { __afterRender?: () => void }).__afterRender?.();
   });
 }

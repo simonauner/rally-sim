@@ -6,6 +6,14 @@ import type { StageRecord } from './records';
 
 const WHEEL_NAMES = ['VF', 'HF', 'VB', 'HB'];
 
+/** Tangentlistan, både i hjälprutan och i menyns Kontroller. */
+export const CONTROLS_HTML = [
+  '<b>W/S</b> gas/broms (S bakåt vid stopp) · <b>A/D</b> styr',
+  '<b>Mellanslag</b> handbroms · <b>R</b> tillbaka på vägen · <b>T</b> starta om',
+  '<b>C</b> kamera · <b>M</b> manuell låda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
+  '<b>H</b> visa/dölj panelen · <b>N</b> ljud av/på · <b>G</b> ghost av/på · <b>Esc</b> meny',
+].join('<br/>');
+
 export class Hud {
   private hud = document.getElementById('hud')!;
   private help = document.getElementById('help')!;
@@ -18,12 +26,7 @@ export class Hud {
   private frame = 0;
 
   constructor() {
-    this.help.innerHTML = [
-      '<b>W/S</b> gas/broms (S bakåt vid stopp) · <b>A/D</b> styr',
-      '<b>Mellanslag</b> handbroms · <b>R</b> tillbaka på vägen · <b>T</b> starta om',
-      '<b>C</b> kamera · <b>M</b> manuell låda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
-      '<b>H</b> visa/dölj panelen · <b>N</b> ljud av/på · <b>G</b> ghost av/på',
-    ].join('<br/>');
+    this.help.innerHTML = CONTROLS_HTML;
   }
 
   toggleHelp() {
@@ -131,7 +134,7 @@ export class Hud {
 }
 
 /** m:ss.cc */
-function formatTime(t: number) {
+export function formatTime(t: number) {
   const cs = Math.round(t * 100);
   const m = Math.floor(cs / 6000);
   return `${m}:${((cs % 6000) / 100).toFixed(2).padStart(5, '0')}`;

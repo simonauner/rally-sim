@@ -25,6 +25,19 @@
       #notes .now { font-size: 24px; font-weight: 700; }
       #notes .hint { font-size: 11px; opacity: 0.7; }
       #notes .icon { display: inline-block; min-width: 1.2em; }
+      #menu { display: none; position: fixed; inset: 0; z-index: 2000; align-items: center; justify-content: center; background: #1b1b2499; }
+      #menu.solid { background: linear-gradient(160deg, #cfe3ee, #a9c3a0); }
+      #menu .panel { min-width: 320px; max-width: min(560px, calc(100vw - 32px)); background: #fffe; border-radius: 12px; padding: 24px 28px; box-shadow: 0 8px 32px #0003; color: #1b1b1b; }
+      #menu h1 { margin: 0; font-size: 34px; letter-spacing: 0.08em; }
+      #menu .subtitle { margin-top: 2px; opacity: 0.7; font-size: 13px; }
+      #menu .body { margin-top: 14px; font-size: 13px; line-height: 1.7; }
+      #menu .items { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+      #menu button { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font: inherit; font-size: 17px; text-align: left; padding: 10px 14px; border: 2px solid transparent; border-radius: 8px; background: #0000000d; color: inherit; cursor: pointer; }
+      #menu button.selected { border-color: #1b1b1b; background: #fff; }
+      #menu .loading { margin-top: 16px; display: flex; align-items: center; gap: 10px; font-size: 15px; }
+      #menu .spinner { width: 18px; height: 18px; border: 3px solid #1b1b1b33; border-top-color: #1b1b1b; border-radius: 50%; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      #menu button small { font-size: 12px; opacity: 0.7; }
       #damage { position: fixed; left: 12px; top: 112px; color: #1b1b1b; font-size: 12px; background: #fffb; padding: 8px 10px; border-radius: 8px; pointer-events: none; }
     </style>
   </head>
@@ -36,6 +49,7 @@
     <div id="damage"></div>
     <div id="timer"></div>
     <div id="notes"></div>
+    <div id="menu"></div>
     <div id="unsupported">
       <div>Det här spelet kräver WebGPU.<br />Uppdatera till Chrome/Edge, Firefox 141+ eller Safari 26.</div>
     </div>

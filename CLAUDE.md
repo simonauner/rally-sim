@@ -34,4 +34,4 @@ dem bara medvetet.
 ## Nästa steg (fas 1)
 
 Fas 1 är klar: spline-etappen (`src/physics/stage.ts`), tidtagningen (`src/physics/timing.ts`), ghosten (`src/physics/ghost.ts`), dammet (`src/render/dust.ts`), pacenotes (`src/physics/pacenotes.ts`) och motorljudet.
-Därefter konto/sparning enligt README (modell: season-o-meter).
+Huvud- och pausmeny finns (`src/menu.ts`). Nästa: konto/sparning enligt README (modell: season-o-meter).
