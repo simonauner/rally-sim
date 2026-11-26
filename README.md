@@ -42,9 +42,10 @@ Spelet startar i en huvudmeny: kör etappen, testbanan eller se kontrollerna. V�
 när man valt. Esc öppnar pausmenyn; "Huvudmeny" laddar om sidan, eftersom byte av värld under
 körning inte finns. `?testbana` hoppar över menyn och går direkt till testbanan.
 
-## Etappen
+## Etapperna
 
-Spelet startar på etappen *Skogsberg* (ca 1,8 km): grus, en asfaltsbit och en lerig skogsdel.
+Etapperna är *Skogsberg* (ca 1,8 km: grus, en asfaltsbit och en lerig skogsdel) och *Skogsberg
+baklänges*, samma väg åt andra hållet med egna noter, rekord och ghost.
 Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och underlag
 (underlaget gäller fram till nästa punkt). Utanför vägen kommer ett dike och sedan lera.
 
@@ -112,7 +113,7 @@ Det som återstår är att köra och känna.
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
 2. Fas 1: kamera (spline-etapp, ljud och dammpartiklar är klara).
 3. Fas 2: tidtagning, ghost, pacenotes.
-4. Mästerskap i karriären (kräver fler etapper).
+4. Fler etapper och mästerskap (`STAGES` i `src/physics/stage.ts`, `CHAMPIONSHIPS` i `src/career/championship.ts`).
 5. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
 
 ## Karriär
@@ -122,8 +123,11 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
 - **Enstaka etapp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
   gratis efteråt, så bilarna i garaget tar aldrig skada.
-- **Mästerskap:** kommer när det finns fler etapper. Där ska skador följa med mellan
-  etapperna och lagas för pengar, och den som avbryter erbjuds gratis reparation.
+- **Mästerskap** (Skogsrallyt: Skogsberg och Skogsberg baklänges): totaltiden avgör och
+  prispengarna är större. Skador följer med mellan etapperna; på servicen lagar man för egna
+  pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis
+  men inga prispengar. Framsteget sparas i webbläsaren, eftersom sidan laddas om mellan
+  etapperna (`?mastarskap` laddar nästa etapp).
 
 Pengarna köper uppgraderingar i garaget (motor, bromsar, fjädring, däck, tre nivåer var) och
 bilar hos bilhandlaren. Man börjar med Kvarn 240 GL. Regler och priser finns i

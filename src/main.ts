@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { toonOutlinePass } from 'three/tsl';
 import { Sound } from './audio';
 import { createGui } from './gui';
-import { CONTROLS_HTML, formatTime, Hud, resultHtml } from './hud';
+import { CONTROLS_HTML, Hud, resultHtml } from './hud';
 import { CoDriver } from './codriver';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
@@ -12,7 +12,9 @@ import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
 import { CARS } from './physics/params';
-import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
+import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
+import { pickStage } from './stageMenu';
+import type { CarDamage, ChampionshipProgress } from './career/championship';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
@@ -22,7 +24,7 @@ import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { pickCar } from './carSelect';
 import { formatMoney } from './career/career';
-import { awardPrize, careerMenu } from './career/menus';
+import { awardPrize, careerMenu, championshipLegDone, confirmAbort, resumeChampionship } from './career/menus';
 import { loadCareer } from './career/store';
 import { DebugVectors } from './render/debug';
 import { Dust } from './render/dust';
@@ -143,18 +145,25 @@ async function main() {
   type MainChoice = 'stage' | 'test' | 'controls' | 'account' | 'career';
   let choice: MainChoice = query.has('testbana') ? 'test' : 'controls';
   let model = CARS[0]!;
+  let stageDef: StageDef = STAGE_SKOGSBERG;
   /** Karriärlopp ger prispengar; fri körning gör det inte. */
   let careerMode = false;
-  for (;;) {
+  /** Pågående mästerskap; ?mastarskap laddar dess nästa etapp direkt. */
+  let champ: ChampionshipProgress | null = null;
+  const resumed = query.has('mastarskap') ? resumeChampionship() : null;
+  if (resumed) {
+    ({ model, stage: stageDef, championship: champ } = resumed);
+    choice = 'stage';
+  }
+  while (!resumed) {
     while (choice === 'controls' || choice === 'account') {
-      const best = loadRecord(STAGE_SKOGSBERG);
       choice = await showMenu<MainChoice>({
         title: 'RALLY',
         subtitle: 'Kvarn 240 GL',
         solid: true,
         items: [
           { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
-          { label: `Fri körning: ${STAGE_SKOGSBERG.name}`, detail: best ? `bästa ${formatTime(best.time)}` : undefined, value: 'stage' },
+          { label: 'Fri körning', detail: `${STAGES.length} etapper, alla bilar`, value: 'stage' },
           { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
           { label: 'Kontroller', value: 'controls' },
           { label: 'Konto', value: 'account' },
@@ -164,15 +173,23 @@ async function main() {
       if (choice === 'account') await showAccount();
     }
     if (choice === 'career') {
-      const fromCareer = await careerMenu((models) => pickCar(renderer, models));
-      if (fromCareer) {
-        model = fromCareer;
-        careerMode = true;
+      const launch = await careerMenu((models) => pickCar(renderer, models));
+      if (launch) {
+        ({ model, stage: stageDef, championship: champ } = launch);
+        careerMode = !champ;
         choice = 'stage';
         break;
       }
       choice = 'controls';
       continue;
+    }
+    if (choice === 'stage') {
+      const picked = await pickStage('Fri körning');
+      if (!picked) {
+        choice = 'controls';
+        continue;
+      }
+      stageDef = picked;
     }
     // Bilväljaren före varje start; Tillbaka går till huvudmenyn.
     const picked = query.has('testbana') ? model : await pickCar(renderer, CARS);
@@ -183,8 +200,8 @@ async function main() {
     choice = 'controls';
   }
   // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
-  let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : STAGE_SKOGSBERG.name);
-  const stage = choice === 'test' ? null : new Stage(STAGE_SKOGSBERG);
+  let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : stageDef.name);
+  const stage = choice === 'test' ? null : new Stage(stageDef);
   const world = stage ?? new World();
   scene.add(stage ? buildStage(stage) : buildTerrain(world));
   const barriers = stage ? new Barriers(stage) : null;
@@ -284,6 +301,14 @@ async function main() {
     carMesh.repair();
   };
   place(spawn, false);
+  // Mästerskapets skador följer med från förra etappen.
+  // shortcut: bara siffrorna; plåtens bucklor ritas inte om efter omladdningen.
+  const readDamage = (): CarDamage => ({ body: { ...car.damage }, wheels: car.wheels.map((w) => w.damage), powerFactor: car.drivetrain.powerFactor });
+  if (champ?.damage) {
+    Object.assign(car.damage, champ.damage.body);
+    car.wheels.forEach((w, i) => (w.damage = champ!.damage!.wheels[i] ?? 0));
+    car.drivetrain.powerFactor = champ.damage.powerFactor;
+  }
   createGui(car, places, {
     teleport: (name) => place(spawns[name]!, true),
     repair,
@@ -380,11 +405,16 @@ async function main() {
 
   // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
   const goToMainMenu = () => void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
+  const goToNextLeg = () => void (location.href = `${location.pathname}?mastarskap${forceWebGL ? '&webgl' : ''}`);
 
   /** Prispengarna från senaste åket, för målskärmen. */
   let prizeHtml = '';
   const showFinish = async () => {
     if (!stage || !timer) return;
+    if (champ) {
+      const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), readDamage());
+      return next === 'next' ? goToNextLeg() : goToMainMenu();
+    }
     const c = await showMenu<'again' | 'menu'>({
       title: 'Mål',
       side: true,
@@ -404,13 +434,14 @@ async function main() {
     codriver.stop();
     sound.setPaused(true);
     for (;;) {
-      const c = await showMenu<'resume' | 'restart' | 'controls' | 'menu'>({
+      // I mästerskapet finns ingen omstart; att lämna det är att avbryta.
+      const c = await showMenu<'resume' | 'restart' | 'controls' | 'menu' | 'abort'>({
         title: 'Paus',
         items: [
           { label: 'Fortsätt', value: 'resume' },
-          ...(stage ? [{ label: 'Starta om etappen', value: 'restart' as const }] : []),
+          ...(stage && !champ ? [{ label: 'Starta om etappen', value: 'restart' as const }] : []),
           { label: 'Kontroller', value: 'controls' },
-          { label: 'Huvudmeny', value: 'menu' },
+          champ ? { label: 'Avbryt mästerskapet', value: 'abort' as const } : { label: 'Huvudmeny', value: 'menu' as const },
         ],
         cancel: 'resume',
       });
@@ -419,6 +450,10 @@ async function main() {
         continue;
       }
       if (c === 'menu') return goToMainMenu();
+      if (c === 'abort') {
+        if (await confirmAbort()) return goToMainMenu();
+        continue;
+      }
       if (c === 'restart') restart();
       break;
     }
@@ -441,7 +476,7 @@ async function main() {
     if (controls.wasPressed('Escape') && !finishShown) void pause();
 
     if (controls.wasPressed('KeyR') && !finished) recover();
-    if (controls.wasPressed('KeyT')) restart();
+    if (controls.wasPressed('KeyT') && !champ) restart();
     if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
     if (controls.wasPressed('F1')) document.body.classList.toggle('debug');
     if (controls.wasPressed('F3')) showVectors = !showVectors;
