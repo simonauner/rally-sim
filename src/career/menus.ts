@@ -116,7 +116,7 @@ export async function careerMenu(pick: Pick): Promise<Launch | null> {
           : CHAMPIONSHIPS.map((ch) => ({ label: `Mästerskap: ${ch.name}`, detail: `${ch.legs.length} etapper, upp till ${formatMoney(CHAMPIONSHIP_MEDALS[0].prize)}`, value: `champ:${ch.id}` }))),
         { label: 'Garage', detail: Object.keys(career.garage).length === 1 ? '1 bil' : `${Object.keys(career.garage).length} bilar`, value: 'garage' },
         { label: 'Bilhandlare', value: 'dealer' },
-        { label: 'Tillbaka', value: 'back' },
+        { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
     });
@@ -163,7 +163,7 @@ async function upgrades(car: string) {
           const parts = UPGRADES.filter((u) => u.group === g);
           return { label: g, detail: `${parts.filter((u) => levelOf(career, car, u.id)).length}/${parts.length} monterade`, value: g };
         }),
-        { label: 'Tillbaka', value: '' },
+        { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
     });
@@ -184,7 +184,7 @@ async function parts(car: string, group: string) {
       body: `${message}<table class="specs">${parts.map((u) => `<tr><th>${u.name}</th><td>${u.effect}</td></tr>`).join('')}</table>`,
       items: [
         ...parts.map((u) => ({ label: u.name, detail: levelOf(career, car, u.id) ? 'monterad' : formatMoney(u.price), value: u.id })),
-        { label: 'Tillbaka', value: '' },
+        { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
     });
@@ -202,7 +202,7 @@ async function dealer(pick: Pick) {
     const career = loadCareer().career;
     const forSale = CARS.filter((m) => !career.garage[nameOf(m)]);
     if (!forSale.length) {
-      await showMenu({ title: 'Bilhandlare', solid: true, body: 'Du äger redan alla bilar.', items: [{ label: 'Tillbaka', value: 0 }], cancel: 0 });
+      await showMenu({ title: 'Bilhandlare', solid: true, body: 'Du äger redan alla bilar.', items: [{ label: '← Tillbaka', value: 0 }], cancel: 0 });
       return;
     }
     const bought = await pick(forSale, {
@@ -253,7 +253,7 @@ async function ongoingMenu(): Promise<Launch | null> {
     items: [
       { label: 'Kör nästa etapp', value: 'go' },
       { label: 'Avbryt mästerskapet', value: 'abort' },
-      { label: 'Tillbaka', value: 'back' },
+      { label: '← Tillbaka', value: 'back' },
     ],
     cancel: 'back',
   });
@@ -272,7 +272,7 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
     }. Skador följer med mellan etapperna; på servicen lagar du för egna pengar eller kör vidare. Omstart finns inte.</div>`,
     items: [
       { label: 'Välj bil och starta', value: 'go' },
-      { label: 'Tillbaka', value: 'back' },
+      { label: '← Tillbaka', value: 'back' },
     ],
     cancel: 'back',
   });

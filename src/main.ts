@@ -102,7 +102,7 @@ async function main() {
         items: [
           { label: 'Kopiera nyckeln', value: 'copy' },
           { label: 'Återställ med nyckel', value: 'restore' },
-          { label: 'Tillbaka', value: 'back' },
+          { label: '← Tillbaka', value: 'back' },
         ],
         cancel: 'back',
       });
@@ -141,7 +141,7 @@ async function main() {
   };
 
   const showControls = (solid: boolean) =>
-    showMenu({ title: 'Kontroller', body: CONTROLS_HTML, items: [{ label: 'Tillbaka', value: 0 }], cancel: 0, solid });
+    showMenu({ title: 'Kontroller', body: CONTROLS_HTML, items: [{ label: '← Tillbaka', value: 0 }], cancel: 0, solid });
 
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
   type MainChoice = 'stage' | 'test' | 'controls' | 'account' | 'career';

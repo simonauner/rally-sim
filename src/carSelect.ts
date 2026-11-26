@@ -231,7 +231,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
       body: bodyHtml(m),
       items: [
         { label: opts.action?.label ?? 'Kör', value: 'pick' },
-        { label: 'Tillbaka', value: 'back' },
+        { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
     });

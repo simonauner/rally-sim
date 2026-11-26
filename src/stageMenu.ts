@@ -14,7 +14,7 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
         const detail = [best ? `bästa ${formatTime(best.time)}` : '', extra?.(s) ?? ''].filter(Boolean).join(' · ');
         return { label: s.name, detail: detail || undefined, value: s.name };
       }),
-      { label: 'Tillbaka', value: '' },
+      { label: '← Tillbaka', value: '' },
     ],
     cancel: '',
   });
