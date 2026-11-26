@@ -37,11 +37,40 @@ export interface MenuOptions<T> {
 const root = () => document.getElementById('menu')!;
 
 let blipCtx: AudioContext | null = null;
-/** Kort klick: hög ton för val, mellanton för att flytta, låg för att backa. */
-function blip(freq: number, length: number, delay = 0) {
-  if (!settings.sound || !settings.menuSound) return;
+let clickNoise: AudioBuffer | null = null;
+const menuAudio = () => {
+  if (!settings.sound || !settings.menuSound) return null;
   // Skapas vid första klicket, som är en användargest, så webbläsaren tillåter ljudet.
-  const ctx = (blipCtx ??= new AudioContext());
+  return (blipCtx ??= new AudioContext());
+};
+
+/** Lätt klick: en kort brusstöt, ljusare för val. */
+function click(freq: number, delay = 0) {
+  const ctx = menuAudio();
+  if (!ctx) return;
+  if (!clickNoise) {
+    clickNoise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.02), ctx.sampleRate);
+    const d = clickNoise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t = ctx.currentTime + delay;
+  const src = ctx.createBufferSource();
+  src.buffer = clickNoise;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = freq;
+  bp.Q.value = 1.5;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.25, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
+  src.connect(bp).connect(g).connect(ctx.destination);
+  src.start(t);
+}
+
+/** Ton som faller, för när ett val inte går. */
+function blip(freq: number, length: number, delay = 0) {
+  const ctx = menuAudio();
+  if (!ctx) return;
   const t = ctx.currentTime + delay;
   const osc = ctx.createOscillator();
   osc.type = 'triangle';
@@ -88,7 +117,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const buttons = [...el.querySelectorAll('button')];
   let sel = 0;
   const select = (i: number) => {
-    if ((i + buttons.length) % buttons.length !== sel) blip(660, 0.04);
+    if ((i + buttons.length) % buttons.length !== sel) click(3000);
     sel = (i + buttons.length) % buttons.length;
     buttons.forEach((b, j) => b.classList.toggle('selected', j === sel));
     buttons[sel]?.scrollIntoView({ block: 'nearest' });
@@ -104,7 +133,11 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       if (item?.denied?.()) {
         blip(220, 0.14);
         blip(165, 0.22, 0.17);
-      } else blip(value === opts.cancel ? 330 : 880, 0.09);
+      } else if (value === opts.cancel) {
+        // Tillbaka: två klick som faller, så det skiljer sig från ett vanligt val.
+        click(2600);
+        click(1400, 0.06);
+      } else click(4500);
       opts.input?.onDone(input?.value ?? '');
       removeEventListener('keydown', onKey, true);
       el.style.display = 'none';
