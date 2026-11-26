@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { Sound } from './audio';
 import { createGui } from './gui';
 import { Hud } from './hud';
 import { Controls } from './input';
@@ -63,6 +64,7 @@ async function main() {
 
   const controls = new Controls();
   const hud = new Hud();
+  const sound = new Sound();
 
   let spawn = { x: 0, z: 0, heading: 0, speed: 0 };
   const spawns: Record<string, typeof spawn> = {
@@ -164,6 +166,7 @@ async function main() {
     if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
     if (controls.wasPressed('F3')) debug.lines.visible = !debug.lines.visible;
     if (controls.wasPressed('KeyH')) hud.toggleHelp();
+    if (controls.wasPressed('KeyN')) sound.toggleMute();
     if (controls.wasPressed('KeyM')) car.drivetrain.autoShift = !car.drivetrain.autoShift;
     const dtn = car.drivetrain;
     if (!dtn.autoShift) {
@@ -187,11 +190,13 @@ async function main() {
 
     if (car.damageEvents.length) {
       carMesh.applyDamage(car.damageEvents);
+      sound.impact(car.damageEvents);
       car.damageEvents.length = 0;
     }
     // Hamnar bilen i ett omöjligt läge (ner genom världen) startar vi om.
     if (!Number.isFinite(car.pos.y) || car.pos.y < -20) place(spawn, true);
 
+    sound.update(car, input.throttle);
     carMesh.update();
     debug.update(car);
     updateCamera(frameDt);
