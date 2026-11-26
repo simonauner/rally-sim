@@ -29,6 +29,8 @@ const MERGE_GAP = 12;
 const LONG = 70;
 const CREST_SPAN = 15;
 const CREST_DROP = 0.5;
+/** Så nära (m) ett underlagsbyte en korsande väg måste ansluta för att det ska vara en korsning. */
+const JUNCTION_GAP = 15;
 
 const GRADE_WORDS = ['', 'ett', 'två', 'tre', 'fyra', 'fem', 'sex'];
 const SURFACE_WORDS: Record<SurfaceId, string> = { gravel: 'grus', asphalt: 'asfalt', mud: 'lera', snow: 'snö' };
@@ -43,7 +45,7 @@ const DISTANCE_WORDS: Record<number, string> = {
 
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
-/** Räknar fram noter ur etappens geometri: kurvor, krön, underlagsbyten och mål. */
+/** Räknar fram noter ur etappens geometri: kurvor, krön, underlagsbyten, korsningar och mål. */
 export function generateNotes(stage: Stage, startS: number, finishS: number): PaceNote[] {
   // Etappen samplas en gång per meter, så sampelindex är samma sak som sträcka.
   const n = stage.xs.length;
@@ -96,10 +98,19 @@ export function generateNotes(stage: Stage, startS: number, finishS: number): Pa
     }
   }
 
+  // Underlagsbyten; där en korsande väg ansluter leds etappen in på en ny väg i en korsning.
+  const junctions = stage.spurs.map((sp) => stage.project(sp.points[0]!.x, sp.points[0]!.z).s);
   for (let i = 1; i < n; i++) {
     if (stage.surfaces[i] === stage.surfaces[i - 1] || i < startS || i > finishS) continue;
     const word = SURFACE_WORDS[stage.surfaces[i]!];
-    notes.push({ kind: 'surface', s: i, end: i, speech: word, label: word });
+    const atJunction = junctions.some((js) => Math.abs(js - i) < JUNCTION_GAP);
+    notes.push({
+      kind: 'surface',
+      s: i,
+      end: i,
+      speech: atJunction ? `korsning, ${word}` : word,
+      label: atJunction ? `korsning ${word}` : word,
+    });
   }
 
   notes.push({ kind: 'finish', s: finishS, end: finishS, speech: 'mål', label: 'mål' });

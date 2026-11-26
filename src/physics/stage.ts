@@ -274,10 +274,10 @@ export const STAGE_SKOGSBERG: StageDef = {
     { x: 304, z: 358, y: 5.3, width: 8, surface: 'asphalt' },
     { x: 320, z: 400, y: 4, width: 8, surface: 'asphalt' },
     { x: 330, z: 520, y: 2, width: 8, surface: 'asphalt' },
-    // Korsning: asfaltsvägen fortsätter, etappen viker av höger på en grusväg
+    // Korsning: asfaltsvägen fortsätter, etappen viker av vänster på en grusväg
     { x: 262, z: 598, y: 1, width: 7, surface: 'gravel' },
     { x: 285, z: 680, y: 3, width: 6.5, surface: 'gravel' },
-    // Korsning: grusvägen fortsätter, etappen svänger höger in på en lerig skogsväg
+    // Korsning: grusvägen fortsätter, etappen svänger vänster in på en lerig skogsväg
     { x: 340, z: 820, y: 7, width: 6, surface: 'mud' },
     { x: 460, z: 830, y: 9, width: 6, surface: 'mud' },
     // Skogsvägen mynnar i en grusväg som kommer söderifrån
