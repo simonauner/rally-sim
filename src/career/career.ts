@@ -14,6 +14,7 @@ export const STARTER_CAR = 'Kvarn 240 GL';
 export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 GL': 6000,
   'Kvarn 240 Turbo': 15000,
+  'Ljung 1600 S': 9000,
 };
 
 export type UpgradeGroup = 'Motor' | 'Drivlina' | 'Bromsar' | 'Fjädring' | 'Däck';

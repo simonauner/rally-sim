@@ -140,10 +140,84 @@ export function kvarn240Turbo(): CarParams {
   };
 }
 
+/**
+ * En fiktiv liten framhjulsdriven halvkombi från 80-talet med 1,6-liters förgasarmotor:
+ * billig, lätt och kvick. Amatörernas instegsbil, som understyr in i kurvan och vill
+ * lyfta inre bakhjulet, men går att vrida med handbromsen eller lyft av gasen.
+ */
+export function ljung1600(): CarParams {
+  const mass = 880;
+  const R = 0.29;
+  const cg = 0.5;
+  const wheelbase = 2.4;
+  // Tung front: motorn sitter tvärs framför framaxeln.
+  const zF = wheelbase * 0.38;
+  const zR = -wheelbase * 0.62;
+  const yMount = R - cg + 0.125;
+  return {
+    name: 'Ljung 1600 S',
+    mass,
+    inertia: boxInertia(mass, 3.85, 1.65, 1.38, 0.8),
+    cgHeight: cg,
+    wheelRadius: R,
+    wheelInertia: 1.0,
+    wheelbase,
+    trackFront: 1.4,
+    wheels: [
+      { mount: [0.7, yMount, zF], front: true, left: true },
+      { mount: [-0.7, yMount, zF], front: true, left: false },
+      { mount: [0.69, yMount, zR], front: false, left: true },
+      { mount: [-0.69, yMount, zR], front: false, left: false },
+    ],
+    body: { halfX: 0.82, halfZ: 1.9, bottomY: -0.3, topY: 0.86 },
+    susp: {
+      kFront: 22000,
+      kRear: 17000,
+      bump: 1700,
+      rebound: 2800,
+      arbFront: 8000,
+      // Styv bakaxel, så bakvagnen hjälper till att vrida bilen.
+      arbRear: 10000,
+      freeLen: 0.24,
+      minLen: 0,
+      maxLen: 0.24,
+      bumpStopK: 250000,
+    },
+    brake: { total: 3400, bias: 0.7, handbrake: 2800 },
+    steer: { maxAngle: 0.55, speedRef: 20, rate: 2.0, centerRate: 3.4 },
+    aero: { cdA: 0.7, rho: 1.2 },
+    diff: { lock: 0.1, preload: 20 },
+    frontShare: 1,
+    engine: {
+      idleRpm: 900,
+      limiterRpm: 6600,
+      curveRpm: [900, 1500, 2500, 3500, 4500, 5500, 6200, 6900],
+      curveNm: [80, 102, 122, 134, 135, 128, 116, 92],
+      engineBrakeNm: 45,
+      inertia: 0.15,
+      clutchLockRpm: 2400,
+      launchRpm: 4000,
+    },
+    gearbox: {
+      ratios: [3.45, 1.94, 1.37, 1.03, 0.84],
+      reverse: 3.17,
+      final: 4.25,
+      efficiency: 0.92,
+      upshiftRpm: 6100,
+      downshiftRpm: 3000,
+      shiftTime: 0.18,
+    },
+    tyre: 'gravel',
+    gripScale: 1,
+    // Varvräknaren går till 8 000, så smidda kolvar (+500 rpm) ryms på skalan.
+    gauges: { rpmMax: 8000, rpmRed: 6600, speedMin: 20, speedMax: 200 },
+  };
+}
+
 export interface CarModel {
   make: () => CarParams;
   /** Karossform för renderingen. */
-  body: 'sedan';
+  body: 'sedan' | 'hatch';
   /** En rad om bilen i bilväljaren. */
   blurb: string;
   /** Lackfärg. */
@@ -158,5 +232,11 @@ export const CARS: CarModel[] = [
     body: 'sedan',
     paint: 0x24365c,
     blurb: 'Samma kaross med turbo. Seg under 3 000 rpm, sedan kommer allt på en gång.',
+  },
+  {
+    make: ljung1600,
+    body: 'hatch',
+    paint: 0xd9b22e,
+    blurb: 'Liten och lätt framhjulsdriven halvkombi. Billig, kvick och understyr, men vrids runt med handbromsen.',
   },
 ];
