@@ -13,9 +13,20 @@ export interface StagePoint {
   surface: SurfaceId;
 }
 
+/**
+ * En korsande väg som etappen inte kör på, avspärrad vid etappen. Ligger plant på etappens
+ * höjd vid första punkten och tar slut i skogen.
+ */
+export interface Spur {
+  points: { x: number; z: number }[];
+  width: number;
+  surface: SurfaceId;
+}
+
 export interface StageDef {
   name: string;
   points: StagePoint[];
+  spurs?: Spur[];
 }
 
 /** Resultat av att projicera en punkt på vägens mittlinje. */
@@ -56,6 +67,7 @@ export class Stage extends World {
   readonly widths: Float64Array;
   readonly surfaces: SurfaceId[];
   readonly length: number;
+  readonly spurs: (Spur & { y: number })[];
   private grid = new Map<number, number[]>();
   private hit: StageHit = { s: 0, d: 0, roadY: 0, width: 0, surface: 'gravel' };
 
@@ -122,6 +134,7 @@ export class Stage extends World {
       if (!list) this.grid.set(key, (list = []));
       list.push(i);
     }
+    this.spurs = (def.spurs ?? []).map((sp) => ({ ...sp, y: this.project(sp.points[0]!.x, sp.points[0]!.z).roadY }));
   }
 
   private key(cx: number, cz: number) {
@@ -199,8 +212,34 @@ export class Stage extends World {
     return h;
   }
 
+  /**
+   * Som project, men närmaste väg av etappen och de korsande vägarna. För en korsande väg
+   * gäller d, roadY, width och surface; s är fortfarande etappens.
+   */
+  roadAt(x: number, z: number, maxD = Infinity): StageHit {
+    const h = this.project(x, z, maxD);
+    for (const sp of this.spurs) {
+      const p = sp.points;
+      for (let i = 0; i + 1 < p.length; i++) {
+        const ax = p[i]!.x;
+        const az = p[i]!.z;
+        const ex = p[i + 1]!.x - ax;
+        const ez = p[i + 1]!.z - az;
+        const t = Math.min(1, Math.max(0, ((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez)));
+        const d = Math.hypot(ax + ex * t - x, az + ez * t - z);
+        if (d < h.d) {
+          h.d = d;
+          h.roadY = sp.y;
+          h.width = sp.width;
+          h.surface = sp.surface;
+        }
+      }
+    }
+    return h;
+  }
+
   override heightAt(x: number, z: number): number {
-    const { d, roadY, width } = this.project(x, z);
+    const { d, roadY, width } = this.roadAt(x, z);
     const hw = width / 2;
     const ditch = -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
     const bank = smooth(hw + 2.5, hw + 8, d) * 0.12 * (d - hw - 2.5);
@@ -209,14 +248,17 @@ export class Stage extends World {
   }
 
   override surfaceAt(x: number, z: number): SurfaceId {
-    const { d, width, surface } = this.project(x, z);
+    const { d, width, surface } = this.roadAt(x, z);
     if (d <= width / 2 + 0.3) return surface;
     // Vägkanten: lös jord, eller snö om vägen är snöig.
     return surface === 'snow' ? 'snow' : 'mud';
   }
 }
 
-/** Första etappen: fiktiv skogsetapp, ca 1,8 km. Grus, en asfaltsbit och en lerig skogsdel. */
+/**
+ * Första etappen: fiktiv skogsetapp, ca 1,8 km. Underlaget byter bara i korsningar, där etappen
+ * leds in på en annan väg och de vägar den lämnar är avspärrade.
+ */
 export const STAGE_SKOGSBERG: StageDef = {
   name: 'Skogsberg',
   points: [
@@ -226,16 +268,19 @@ export const STAGE_SKOGSBERG: StageDef = {
     { x: 40, z: 250, y: 3, width: 6.5, surface: 'gravel' },
     { x: 130, z: 320, y: 5, width: 6.5, surface: 'gravel' },
     { x: 240, z: 330, y: 6, width: 6.5, surface: 'gravel' },
-    // Snäv kurva in mot asfalten
-    { x: 285, z: 334, y: 6, width: 6.5, surface: 'gravel' },
-    { x: 302, z: 346, y: 5.5, width: 6.5, surface: 'gravel' },
-    { x: 309, z: 368, y: 5, width: 7, surface: 'gravel' },
+    // Korsning: grusvägen fortsätter rakt fram, etappen svänger snävt höger ut på asfaltsvägen
+    { x: 284, z: 338, y: 6, width: 6.5, surface: 'gravel' },
+    { x: 300, z: 340, y: 5.8, width: 8, surface: 'asphalt' },
+    { x: 304, z: 358, y: 5.3, width: 8, surface: 'asphalt' },
     { x: 320, z: 400, y: 4, width: 8, surface: 'asphalt' },
     { x: 330, z: 520, y: 2, width: 8, surface: 'asphalt' },
-    { x: 260, z: 600, y: 1, width: 8, surface: 'asphalt' },
-    { x: 250, z: 720, y: 3, width: 6.5, surface: 'gravel' },
+    // Korsning: asfaltsvägen fortsätter, etappen viker av höger på en grusväg
+    { x: 262, z: 598, y: 1, width: 7, surface: 'gravel' },
+    { x: 285, z: 680, y: 3, width: 6.5, surface: 'gravel' },
+    // Korsning: grusvägen fortsätter, etappen svänger höger in på en lerig skogsväg
     { x: 340, z: 820, y: 7, width: 6, surface: 'mud' },
     { x: 460, z: 830, y: 9, width: 6, surface: 'mud' },
+    // Skogsvägen mynnar i en grusväg som kommer söderifrån
     { x: 520, z: 850, y: 9, width: 6.5, surface: 'gravel' },
     // Krön och snäv vänster
     { x: 542, z: 872, y: 9, width: 6.5, surface: 'gravel' },
@@ -244,5 +289,13 @@ export const STAGE_SKOGSBERG: StageDef = {
     { x: 440, z: 1110, y: 4, width: 7, surface: 'gravel' },
     { x: 420, z: 1240, y: 3, width: 7, surface: 'gravel' },
     { x: 420, z: 1280, y: 3, width: 7, surface: 'gravel' },
+  ],
+  spurs: [
+    // Grusvägen rakt fram och asfaltsvägen söderut från första korsningen
+    { points: [{ x: 308, z: 341 }, { x: 350, z: 346 }], width: 6.5, surface: 'gravel' },
+    { points: [{ x: 300, z: 340 }, { x: 281, z: 283 }], width: 8, surface: 'asphalt' },
+    { points: [{ x: 262, z: 598 }, { x: 229, z: 636 }], width: 8, surface: 'asphalt' },
+    { points: [{ x: 340, z: 820 }, { x: 358, z: 866 }], width: 6.5, surface: 'gravel' },
+    { points: [{ x: 520, z: 850 }, { x: 520, z: 800 }], width: 6.5, surface: 'gravel' },
   ],
 };

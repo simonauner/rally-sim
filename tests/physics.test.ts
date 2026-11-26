@@ -192,6 +192,13 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const lz = -Math.sin(p.heading);
   const verge = stage.surfaceAt(p.x + lx * 6, p.z + lz * 6);
   check('etapp: vägkant är lera', verge === 'mud', verge);
+  const sideRoads = STAGE_SKOGSBERG.spurs!.every((sp) => {
+    const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
+    const mx = (a.x + b.x) / 2;
+    const mz = (a.z + b.z) / 2;
+    return stage.surfaceAt(mx, mz) === sp.surface && stage.project(mx, mz).d > sp.width;
+  });
+  check('etapp: korsande vägar har eget underlag', sideRoads, `${STAGE_SKOGSBERG.spurs!.length} vägar`);
   let minSep = Infinity;
   for (let i = 0; i < stage.xs.length; i += 2)
     for (let j = i + 150; j < stage.xs.length; j += 2)
