@@ -6,6 +6,8 @@ import { CONTROLS_HTML, formatTime, Hud, resultHtml } from './hud';
 import { CoDriver } from './codriver';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
+import { account, recordChanged, restore, startSync, syncAvailable, syncStatus } from './account/sync';
+import { recoveryKey, secretFromKey } from './account/recoveryKey';
 import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
@@ -72,13 +74,72 @@ async function main() {
   sun.shadow.bias = -0.0004;
   scene.add(sun, sun.target);
 
+  // Kontot skapas vid första besöket; rekord synkas om en synkserver är inställd.
+  startSync();
+
+  const showAccount = async () => {
+    for (;;) {
+      const key = recoveryKey(account().secret);
+      const { phase, syncedAt } = syncStatus();
+      const status = !syncAvailable
+        ? 'Ingen synkserver är inställd, så kontot finns bara i den här webbläsaren.'
+        : phase === 'failed'
+          ? 'Senaste synken misslyckades; den försöker igen om en stund.'
+          : syncedAt
+            ? `Synkat ${new Date(syncedAt).toLocaleTimeString('sv-SE')}.`
+            : 'Synkar…';
+      const c = await showMenu<'copy' | 'restore' | 'back'>({
+        title: 'Konto',
+        solid: true,
+        body: `Ditt konto skapades automatiskt i den här webbläsaren. Spara återställningsnyckeln: med den får du tillbaka dina rekord på en annan enhet, eller om webbläsarens data rensas.<div class="recovery">${key}</div>${status}`,
+        items: [
+          { label: 'Kopiera nyckeln', value: 'copy' },
+          { label: 'Återställ med nyckel', value: 'restore' },
+          { label: 'Tillbaka', value: 'back' },
+        ],
+        cancel: 'back',
+      });
+      if (c === 'back') return;
+      if (c === 'copy') await navigator.clipboard?.writeText(key).catch(() => {});
+      if (c === 'restore') await showRestore();
+    }
+  };
+
+  const showRestore = async () => {
+    let wrong = false;
+    for (;;) {
+      let typed = '';
+      const c = await showMenu<'ok' | 'cancel'>({
+        title: 'Återställ konto',
+        solid: true,
+        body: `Skriv in återställningsnyckeln. Rekorden i den här webbläsaren följer med till det återställda kontot.${
+          wrong ? '<div class="behind">Nyckeln stämmer inte. Kontrollera att alla 28 tecken är rätt.</div>' : ''
+        }`,
+        input: { placeholder: 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX', onDone: (v) => (typed = v) },
+        items: [
+          { label: 'Återställ', value: 'ok' },
+          { label: 'Avbryt', value: 'cancel' },
+        ],
+        cancel: 'cancel',
+      });
+      if (c === 'cancel') return;
+      const secret = secretFromKey(typed);
+      if (!secret) {
+        wrong = true;
+        continue;
+      }
+      await restore(secret);
+      return;
+    }
+  };
+
   const showControls = (solid: boolean) =>
     showMenu({ title: 'Kontroller', body: CONTROLS_HTML, items: [{ label: 'Tillbaka', value: 0 }], cancel: 0, solid });
 
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
-  type MainChoice = 'stage' | 'test' | 'controls';
+  type MainChoice = 'stage' | 'test' | 'controls' | 'account';
   let choice: MainChoice = query.has('testbana') ? 'test' : 'controls';
-  while (choice === 'controls') {
+  while (choice === 'controls' || choice === 'account') {
     const best = loadRecord(STAGE_SKOGSBERG);
     choice = await showMenu<MainChoice>({
       title: 'RALLY',
@@ -88,9 +149,11 @@ async function main() {
         { label: `Kör etapp: ${STAGE_SKOGSBERG.name}`, detail: best ? `bästa ${formatTime(best.time)}` : undefined, value: 'stage' },
         { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
         { label: 'Kontroller', value: 'controls' },
+        { label: 'Konto', value: 'account' },
       ],
     });
     if (choice === 'controls') await showControls(true);
+    if (choice === 'account') await showAccount();
   }
   // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
   let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : STAGE_SKOGSBERG.name);
@@ -261,6 +324,8 @@ async function main() {
 
   const restart = () => {
     if (!stage) return;
+    // Ett bättre rekord kan ha kommit från en annan enhet sedan förra åket.
+    best = loadRecord(stage.def);
     repair();
     place(spawns.start!, true);
   };
@@ -368,6 +433,7 @@ async function main() {
       if (!best || timer.time < best.time) {
         best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
         saveRecord(stage.def, best);
+        recordChanged();
       }
     }
     if (finished && !finishShown) {

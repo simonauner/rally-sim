@@ -17,6 +17,8 @@ export interface MenuOptions<T> {
   solid?: boolean;
   /** Bredare panel, t.ex. för målskärmens karta. */
   wide?: boolean;
+  /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
+  input?: { placeholder: string; onDone: (value: string) => void };
 }
 
 const root = () => document.getElementById('menu')!;
@@ -34,6 +36,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       <h1>${opts.title}</h1>
       ${opts.subtitle ? `<div class="subtitle">${opts.subtitle}</div>` : ''}
       ${opts.body ? `<div class="body">${opts.body}</div>` : ''}
+      ${opts.input ? `<input type="text" autocomplete="off" spellcheck="false" placeholder="${opts.input.placeholder}" />` : ''}
       <div class="items">${opts.items
         .map((it, i) => `<button data-i="${i}"><span>${it.label}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
         .join('')}</div>
@@ -46,9 +49,12 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     buttons.forEach((b, j) => b.classList.toggle('selected', j === sel));
   };
   select(0);
+  const input = el.querySelector('input');
+  input?.focus();
 
   return new Promise<T>((resolve) => {
     const done = (value: T) => {
+      opts.input?.onDone(input?.value ?? '');
       removeEventListener('keydown', onKey, true);
       el.style.display = 'none';
       el.innerHTML = '';
@@ -56,6 +62,8 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     };
     const onKey = (e: KeyboardEvent) => {
       e.stopImmediatePropagation();
+      // I textfältet skrivs tangenterna som vanligt; bara Enter och Esc styr menyn.
+      if (e.target === input && e.code !== 'Enter' && e.code !== 'Escape') return;
       e.preventDefault();
       if (e.repeat && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) return;
       if (e.code === 'ArrowUp' || e.code === 'KeyW') select(sel - 1);

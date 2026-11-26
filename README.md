@@ -78,6 +78,8 @@ src/physics/   ren TypeScript, ingen webbläsarkod (körs även i Node)
   params.ts      bilen "Kvarn 240 GL" (fiktiv)
   world.ts       testbanans höjd, underlag och hinder
   stage.ts       etapp som spline med höjd, bredd och underlag per stödpunkt
+src/account/   konto: protokoll (delas med sync/), återställningsnyckel, synk i webbläsaren
+sync/          synkservern (Cloudflare Worker, Durable Objects)
 src/render/    Three.js (WebGPU), clay-look, deformerbar kaross, terräng, damm per underlag, debug
 src/main.ts    spelloop: fast fysiksteg 240 Hz, rendering frikopplad
 tests/         fysiktester med förväntade intervall
@@ -110,8 +112,24 @@ Det som återstår är att köra och känna.
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
 2. Fas 1: kamera (spline-etapp, ljud och dammpartiklar är klara).
 3. Fas 2: tidtagning, ghost, pacenotes.
-4. Konto och sparning, upplägget från season-o-meter:
-   128-bitars hemlighet skapas automatiskt i webbläsaren, listans id = SHA-256 av hemligheten,
-   servern (Cloudflare Worker med Durable Objects) lagrar bara id, återställningsnyckel i
-   Crockford base32 med checksumma, parkoppling med kod. Skillnaden här är att kontot skapas
-   automatiskt vid första besöket.
+4. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
+5. Driftsätta synkservern och spelet; sätt `ALLOWED_ORIGINS` i `sync/wrangler.jsonc` och
+   `VITE_SYNC_URL` vid bygget.
+
+## Konto och synk
+
+Upplägget kommer från season-o-meter. Kontot skapas automatiskt vid första besöket: en
+128-bitars hemlighet i webbläsaren. Servern (`sync/`, Cloudflare Worker med en Durable Object
+per konto) lagrar kontot under SHA-256 av hemligheten och ser aldrig själva hemligheten.
+Under Konto i huvudmenyn finns återställningsnyckeln (Crockford base32 med checksumma, så en
+felskriven nyckel avvisas) och "Återställ med nyckel", som byter konto och tar med rekorden.
+
+Det som synkas är bästa tid, mellantider och ghost per bana. Nyckeln innehåller banans
+versionsepok, och servern behåller alltid lägsta tiden, så ett rekord skrivs aldrig över av ett
+sämre åk från en annan enhet. Utan `VITE_SYNC_URL` finns kontot bara lokalt.
+
+```sh
+cd sync && npm install
+npm run dev                                        # synkservern på :8787, tillåter :5173
+VITE_SYNC_URL=http://localhost:8787 npm run dev    # spelet mot den lokala servern (i roten)
+```

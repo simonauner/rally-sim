@@ -10,10 +10,12 @@ npm install
 npm run dev           # Vite på :5173
 npm run typecheck
 npm run test:physics  # körs i Node, ska alltid vara grön
+npm run test:account  # konto: nyckel, sanering, sammanslagning
+(cd sync && npm run typecheck)  # synkservern; kör `npm run types` efter ändrad wrangler.jsonc
 npm run build:single  # en HTML-fil i dist-single/
 ```
 
-Kör `typecheck` och `test:physics` innan commit. Ändrar du fysiken, kontrollera att
+Kör `typecheck`, `test:physics` och `test:account` innan commit (och synkserverns typecheck om `sync/` eller `src/account/protocol.ts` ändrats). Ändrar du fysiken, kontrollera att
 testernas intervall (0–100, bromssträcka, sidgrepp, krasch) fortfarande stämmer, och justera
 dem bara medvetet.
 
@@ -34,4 +36,4 @@ dem bara medvetet.
 ## Nästa steg (fas 1)
 
 Fas 1 är klar: spline-etappen (`src/physics/stage.ts`), tidtagningen (`src/physics/timing.ts`), ghosten (`src/physics/ghost.ts`), dammet (`src/render/dust.ts`), pacenotes (`src/physics/pacenotes.ts`) och motorljudet.
-Huvud- och pausmeny finns (`src/menu.ts`). Nästa: konto/sparning enligt README (modell: season-o-meter).
+Huvud- och pausmeny finns (`src/menu.ts`). Konto och synk av rekord finns (`src/account/`, `sync/`). Nästa: parkoppling med kod, se README.
