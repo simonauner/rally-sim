@@ -20,7 +20,7 @@ export class Hud {
       '<b>W/S</b> gas/broms (S bakåt vid stopp) · <b>A/D</b> styr',
       '<b>Mellanslag</b> handbroms · <b>R</b> tillbaka på vägen · <b>T</b> starta om',
       '<b>C</b> kamera · <b>M</b> manuell låda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
-      '<b>H</b> visa/dölj panelen · <b>N</b> ljud av/på',
+      '<b>H</b> visa/dölj panelen · <b>N</b> ljud av/på · <b>G</b> ghost av/på',
     ].join('<br/>');
   }
 

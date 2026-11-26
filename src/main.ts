@@ -7,11 +7,13 @@ import { Controls } from './input';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
+import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { StageTimer } from './physics/timing';
 import { loadRecord, saveRecord, type StageRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { DebugVectors } from './render/debug';
+import { buildGhostMesh } from './render/ghostMesh';
 import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
 
@@ -113,6 +115,10 @@ async function main() {
   /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
   let previousBest: StageRecord | null = null;
   let resultSaved = false;
+  const recorder = new GhostRecorder();
+  const ghostMesh = buildGhostMesh(car.params);
+  scene.add(ghostMesh);
+  let showGhost = true;
   /** false = kameran hoppar direkt till bilen nästa bildruta i stället för att glida dit. */
   let camInit = false;
   const place = (s: Spawn, keepDamage: boolean) => {
@@ -120,6 +126,7 @@ async function main() {
     spawn = s;
     car.reset(s.x, s.z, s.heading, s.speed, keepDamage);
     timer?.reset();
+    recorder.reset();
     resultSaved = false;
   };
   // På etappen ställer R tillbaka bilen på vägen där den är, och klockan fortsätter.
@@ -220,6 +227,7 @@ async function main() {
     if (controls.wasPressed('F3')) debug.lines.visible = !debug.lines.visible;
     if (controls.wasPressed('KeyH')) hud.toggleHelp();
     if (controls.wasPressed('KeyN')) sound.toggleMute();
+    if (controls.wasPressed('KeyG')) showGhost = !showGhost;
     if (controls.wasPressed('KeyM')) car.drivetrain.autoShift = !car.drivetrain.autoShift;
     const dtn = car.drivetrain;
     if (!dtn.autoShift) {
@@ -237,14 +245,17 @@ async function main() {
     acc += frameDt;
     while (acc >= DT) {
       car.step(DT, input);
-      if (stage && timer) timer.update(stage.project(car.pos.x, car.pos.z).s, DT);
+      if (stage && timer) {
+        timer.update(stage.project(car.pos.x, car.pos.z).s, DT);
+        if (timer.state === 'running') recorder.record(timer.time, car.pos, car.quat);
+      }
       acc -= DT;
     }
     if (stage && timer?.state === 'finished' && !resultSaved) {
       resultSaved = true;
       previousBest = best;
       if (!best || timer.time < best.time) {
-        best = { time: timer.time, splits: [...timer.splits] };
+        best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
         saveRecord(stage.def.name, best);
       }
     }
@@ -260,6 +271,13 @@ async function main() {
 
     sound.update(car, input.throttle);
     carMesh.update();
+    // Ghosten väntar vid startlinjen före start och försvinner när du gått i mål.
+    ghostMesh.visible =
+      showGhost &&
+      !!timer &&
+      !!best?.ghost &&
+      timer.state !== 'finished' &&
+      sampleGhost(best.ghost, timer.state === 'running' ? timer.time : 0, ghostMesh.position, ghostMesh.quaternion);
     debug.update(car);
     updateCamera(frameDt);
     sun.position.set(car.pos.x + 40, car.pos.y + 70, car.pos.z - 30);

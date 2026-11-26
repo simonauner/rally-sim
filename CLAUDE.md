@@ -33,5 +33,5 @@ dem bara medvetet.
 
 ## Nästa steg (fas 1)
 
-Dammpartiklar, ghost, pacenotes. Spline-etappen (`src/physics/stage.ts`), tidtagningen (`src/physics/timing.ts`) och motorljudet är klara.
+Dammpartiklar, pacenotes. Spline-etappen (`src/physics/stage.ts`), tidtagningen (`src/physics/timing.ts`), ghosten (`src/physics/ghost.ts`) och motorljudet är klara.
 Därefter konto/sparning enligt README (modell: season-o-meter).

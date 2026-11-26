@@ -26,6 +26,7 @@ Kräver WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM-Mac) eller Safari 26.
 | Mellanslag | Handbroms |
 | R | Tillbaka på vägen där bilen är (klockan går vidare; på testbanan: till startplatsen) |
 | T | Starta om etappen (reparerar bilen) |
+| G | Ghost av/på |
 | C | Byt kamera (bakifrån, förarvy, uppifrån, sidovy för skador) |
 | M, E / Q | Manuell växellåda |
 | F3 | Kraftvektorer av/på (röd = däckkraft, blå = hjullast, grön = färdriktning) |
@@ -40,7 +41,8 @@ Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och un
 (underlaget gäller fram till nästa punkt). Utanför vägen kommer ett dike och sedan lera.
 
 Klockan startar när bilen passerar startportalen och stannar vid målportalen, med två mellantider.
-Bästa tiden sparas i webbläsaren (localStorage) tills konto och sparning finns.
+Bästa tiden sparas i webbläsaren (localStorage) tills konto och sparning finns, tillsammans med
+en ghost: bästa åket inspelat i 20 Hz, som körs som en genomskinlig bil bredvid dig.
 
 ## Testbanan (`?testbana`)
 
