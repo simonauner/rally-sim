@@ -142,6 +142,8 @@ export function kvarn240Turbo(): CarParams {
 
 export interface CarModel {
   make: () => CarParams;
+  /** Karossform för renderingen. */
+  body: 'sedan';
   /** En rad om bilen i bilväljaren. */
   blurb: string;
   /** Lackfärg. */
@@ -150,9 +152,10 @@ export interface CarModel {
 
 /** Bilarna man kan välja före en etapp. */
 export const CARS: CarModel[] = [
-  { make: kvarn240, paint: 0xc4553a, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
+  { make: kvarn240, body: 'sedan', paint: 0xc4553a, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
   {
     make: kvarn240Turbo,
+    body: 'sedan',
     paint: 0x24365c,
     blurb: 'Samma kaross med turbo. Seg under 3 000 rpm, sedan kommer allt på en gång.',
   },

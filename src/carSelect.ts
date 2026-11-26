@@ -112,7 +112,7 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
     }
     settle(car);
     holder.clear();
-    mesh = new CarMesh(car, m.paint);
+    mesh = new CarMesh(car, m);
     mesh.addTo(holder);
     if (damage) mesh.dentFrom(damage.body);
     mesh.update();
