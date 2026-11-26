@@ -37,7 +37,11 @@ export interface StageDef {
   spurs?: Spur[];
   /** Vinteretapp: snö utanför vägen och i skogen, även där vägen är plogad till grus. */
   winter?: boolean;
+  /** Tid på dygnet; dag om inget anges. Påverkar bara grafiken. */
+  light?: Light;
 }
+
+export type Light = 'day' | 'dawn' | 'dusk' | 'night';
 
 /** Resultat av att projicera en punkt på vägens mittlinje. */
 export interface StageHit {
@@ -460,6 +464,122 @@ export const STAGE_FROSTBERGA: StageDef = {
   ],
 };
 
+/** Skymningsetapp: fiktiv, ca 1,9 km snabbt tallmogrus med en asfaltsbit på mitten. */
+export const STAGE_TALLMON: StageDef = {
+  name: 'Tallmon',
+  version: '1.0.0',
+  recordsSince: '1.0.0',
+  light: 'dusk',
+  points: [
+    { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
+    { x: 0, z: 0, y: 0, width: 7, surface: 'gravel' },
+    { x: 0, z: 80, y: 0, width: 7, surface: 'gravel' },
+    { x: -40, z: 170, y: 1, width: 7, surface: 'gravel' },
+    { x: -20, z: 260, y: 2, width: 7, surface: 'gravel' },
+    { x: 60, z: 320, y: 3, width: 6.5, surface: 'gravel' },
+    { x: 170, z: 330, y: 4, width: 6.5, surface: 'gravel' },
+    { x: 260, z: 380, y: 6, width: 6.5, surface: 'gravel' },
+    { x: 290, z: 480, y: 7, width: 6.5, surface: 'gravel' },
+    { x: 250, z: 580, y: 8, width: 6.5, surface: 'gravel' },
+    { x: 170, z: 640, y: 7, width: 6.5, surface: 'gravel' },
+    { x: 110, z: 720, y: 6, width: 7, surface: 'gravel' },
+    // Korsning: grusvägen fortsätter, etappen svänger vänster ut på asfaltsvägen
+    { x: 120, z: 820, y: 5, width: 8, surface: 'asphalt' },
+    { x: 190, z: 890, y: 5, width: 8, surface: 'asphalt' },
+    { x: 300, z: 900, y: 4, width: 8, surface: 'asphalt' },
+    // Korsning: asfaltsvägen fortsätter, etappen svänger höger in på grus mot mål
+    { x: 400, z: 880, y: 4, width: 7, surface: 'gravel' },
+    { x: 470, z: 930, y: 4, width: 7, surface: 'gravel' },
+    { x: 520, z: 1030, y: 5, width: 7, surface: 'gravel' },
+    { x: 500, z: 1140, y: 5, width: 7, surface: 'gravel' },
+    { x: 540, z: 1240, y: 4, width: 7, surface: 'gravel' },
+    { x: 540, z: 1290, y: 4, width: 7, surface: 'gravel' },
+    // Utrullning efter mål
+    { x: 540, z: 1350, y: 4, width: 7, surface: 'gravel' },
+  ],
+  spurs: [
+    { points: [{ x: 120, z: 820 }, { x: 108, z: 905 }], width: 7, surface: 'gravel' },
+    { points: [{ x: 400, z: 880 }, { x: 485, z: 868 }], width: 8, surface: 'asphalt' },
+  ],
+};
+
+/** Gryningsetapp: fiktiv, ca 1,9 km över kala ljunghedar med två krön och en lerig sänka. */
+export const STAGE_LJUNGHEDEN: StageDef = {
+  name: 'Ljungheden',
+  version: '1.0.0',
+  recordsSince: '1.0.0',
+  light: 'dawn',
+  points: [
+    { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
+    { x: 0, z: 0, y: 0, width: 7, surface: 'gravel' },
+    { x: 0, z: 90, y: 0, width: 7, surface: 'gravel' },
+    { x: 30, z: 190, y: 2, width: 7, surface: 'gravel' },
+    { x: 10, z: 290, y: 5, width: 6.5, surface: 'gravel' },
+    { x: -60, z: 360, y: 8, width: 6.5, surface: 'gravel' },
+    // Krön
+    { x: -170, z: 380, y: 10, width: 6.5, surface: 'gravel' },
+    { x: -270, z: 350, y: 9, width: 6.5, surface: 'gravel' },
+    { x: -360, z: 380, y: 7, width: 6.5, surface: 'gravel' },
+    // Korsning: grusvägen fortsätter, etappen svänger höger ner i den leriga sänkan
+    { x: -410, z: 470, y: 5, width: 6, surface: 'mud' },
+    { x: -400, z: 560, y: 4, width: 6, surface: 'mud' },
+    { x: -340, z: 640, y: 4, width: 6, surface: 'mud' },
+    // Ut på en grusväg som kommer österifrån och klättrar mot nästa krön
+    { x: -330, z: 740, y: 5, width: 6.5, surface: 'gravel' },
+    { x: -390, z: 830, y: 8, width: 6.5, surface: 'gravel' },
+    { x: -470, z: 880, y: 11, width: 6.5, surface: 'gravel' },
+    { x: -560, z: 950, y: 13, width: 6.5, surface: 'gravel' },
+    { x: -590, z: 1060, y: 11, width: 7, surface: 'gravel' },
+    { x: -560, z: 1160, y: 8, width: 7, surface: 'gravel' },
+    { x: -560, z: 1210, y: 8, width: 7, surface: 'gravel' },
+    // Utrullning efter mål
+    { x: -560, z: 1270, y: 8, width: 7, surface: 'gravel' },
+  ],
+  spurs: [
+    { points: [{ x: -410, z: 470 }, { x: -485, z: 515 }], width: 6.5, surface: 'gravel' },
+    { points: [{ x: -330, z: 740 }, { x: -245, z: 760 }], width: 6.5, surface: 'gravel' },
+  ],
+};
+
+/** Nattetapp på vintern: fiktiv, ca 1,6 km snö med en plogad grusbit, bara i strålkastarljus. */
+export const STAGE_ISVALLEN: StageDef = {
+  name: 'Isvallen',
+  version: '1.0.0',
+  recordsSince: '1.0.0',
+  winter: true,
+  light: 'night',
+  points: [
+    { x: 0, z: -20, y: 0, width: 6.5, surface: 'snow' },
+    { x: 0, z: 0, y: 0, width: 6.5, surface: 'snow' },
+    { x: 0, z: 90, y: 1, width: 6.5, surface: 'snow' },
+    { x: 50, z: 170, y: 2, width: 6.5, surface: 'snow' },
+    { x: 150, z: 200, y: 3, width: 6.5, surface: 'snow' },
+    { x: 250, z: 180, y: 4, width: 6.5, surface: 'snow' },
+    { x: 330, z: 230, y: 6, width: 6.5, surface: 'snow' },
+    { x: 360, z: 330, y: 8, width: 6.5, surface: 'snow' },
+    { x: 320, z: 430, y: 9, width: 6.5, surface: 'snow' },
+    { x: 330, z: 540, y: 8, width: 6.5, surface: 'snow' },
+    // Korsning: snövägen fortsätter, etappen svänger höger ut på den plogade grusvägen
+    { x: 380, z: 620, y: 7, width: 7, surface: 'gravel' },
+    { x: 470, z: 660, y: 6, width: 7, surface: 'gravel' },
+    // Korsning: grusvägen fortsätter, etappen svänger vänster in på snön igen
+    { x: 570, z: 650, y: 6, width: 6, surface: 'snow' },
+    { x: 650, z: 700, y: 7, width: 6, surface: 'snow' },
+    { x: 690, z: 800, y: 9, width: 6, surface: 'snow' },
+    { x: 660, z: 900, y: 10, width: 6, surface: 'snow' },
+    { x: 690, z: 1000, y: 8, width: 6.5, surface: 'snow' },
+    { x: 760, z: 1060, y: 7, width: 6.5, surface: 'snow' },
+    { x: 780, z: 1140, y: 6, width: 6.5, surface: 'snow' },
+    { x: 780, z: 1180, y: 6, width: 6.5, surface: 'snow' },
+    // Utrullning efter mål
+    { x: 780, z: 1240, y: 6, width: 6.5, surface: 'snow' },
+  ],
+  spurs: [
+    { points: [{ x: 380, z: 620 }, { x: 392, z: 708 }], width: 6.5, surface: 'snow' },
+    { points: [{ x: 570, z: 650 }, { x: 660, z: 636 }], width: 7, surface: 'gravel' },
+  ],
+};
+
 /**
  * Samma väg körd åt andra hållet. Underlaget gäller från en punkt fram till nästa, så varje
  * vänd punkt får underlaget från segmentet som nu ligger framför den. Den gamla utrullningen
@@ -480,7 +600,17 @@ export const STAGE_MYRKULLA_BACK = reversed(STAGE_MYRKULLA, 'Myrkulla baklänges
 export const STAGE_FROSTBERGA_BACK = reversed(STAGE_FROSTBERGA, 'Frostberga baklänges');
 
 /** Alla etapper, i den ordning menyerna visar dem. */
-export const STAGES: StageDef[] = [STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK, STAGE_MYRKULLA, STAGE_MYRKULLA_BACK, STAGE_FROSTBERGA, STAGE_FROSTBERGA_BACK];
+export const STAGES: StageDef[] = [
+  STAGE_SKOGSBERG,
+  STAGE_SKOGSBERG_BACK,
+  STAGE_TALLMON,
+  STAGE_LJUNGHEDEN,
+  STAGE_MYRKULLA,
+  STAGE_MYRKULLA_BACK,
+  STAGE_FROSTBERGA,
+  STAGE_FROSTBERGA_BACK,
+  STAGE_ISVALLEN,
+];
 
 /** Andel av etappen per underlag, mätt längs raka linjer mellan stödpunkterna. */
 export function surfaceShares(def: StageDef): Partial<Record<SurfaceId, number>> {

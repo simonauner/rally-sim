@@ -15,9 +15,9 @@ export interface ChampionshipDef {
 }
 
 export const CHAMPIONSHIPS: ChampionshipDef[] = [
-  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges'] },
-  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Myrkulla', 'Myrkulla baklänges'] },
-  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges'] },
+  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges', 'Tallmon'] },
+  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'] },
+  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges', 'Isvallen'] },
 ];
 
 /** Det som följer med bilen mellan etapperna. */
@@ -27,6 +27,8 @@ export interface CarDamage {
   wheels: number[];
   /** Motorns kvarvarande effekt, 0..1. */
   powerFactor: number;
+  /** Strålkastarnas skada [vänster, höger], 0..1. Saknas i framsteg sparade före lyktorna. */
+  lamps?: number[];
 }
 
 export interface ChampionshipProgress {
@@ -40,13 +42,16 @@ export interface ChampionshipProgress {
   damage: CarDamage | null;
 }
 
-/** Prispengar för hela mästerskapet: betydligt mer än för enstaka etapper. */
-export const CHAMPIONSHIP_MEDALS = [
+/** Prispengar för ett mästerskap med två etapper: betydligt mer än för enstaka etapper. */
+const CHAMPIONSHIP_MEDALS = [
   { name: 'guld', prize: 6000 },
   { name: 'silver', prize: 4000 },
   { name: 'brons', prize: 2500 },
 ] as const;
 export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
+
+/** Medaljerna med prispengar som växer med antalet etapper. */
+export const championshipMedals = (def: ChampionshipDef) => CHAMPIONSHIP_MEDALS.map((m) => ({ name: m.name, prize: (m.prize * def.legs.length) / 2 }));
 
 export const championshipById = (id: string) => CHAMPIONSHIPS.find((c) => c.id === id) ?? null;
 
@@ -60,15 +65,17 @@ export function championshipTargets(def: ChampionshipDef): [number, number, numb
 export function championshipPrize(def: ChampionshipDef, total: number): { medal: string | null; prize: number } {
   const targets = championshipTargets(def);
   const i = targets ? targets.findIndex((t) => total <= t) : -1;
-  return i >= 0 ? { medal: CHAMPIONSHIP_MEDALS[i]!.name, prize: CHAMPIONSHIP_MEDALS[i]!.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE };
+  const medal = i >= 0 ? championshipMedals(def)[i]! : null;
+  return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE };
 }
 
-/** Vad det kostar att laga allt: kaross, hjul och motor. Avrundat till 50 kr. */
+/** Vad det kostar att laga allt: kaross, hjul, motor och strålkastare. Avrundat till 50 kr. */
 export function repairCost(d: CarDamage): number {
   const body = d.body.front + d.body.rear + d.body.left + d.body.right + d.body.roof;
   const wheels = d.wheels.reduce((a, b) => a + b, 0);
   const engine = 1 - d.powerFactor;
-  return Math.round((body * 1500 + wheels * 800 + engine * 4000) / 50) * 50;
+  const lamps = (d.lamps ?? []).reduce((a, b) => a + b, 0);
+  return Math.round((body * 1500 + wheels * 800 + engine * 4000 + lamps * 600) / 50) * 50;
 }
 
 export const hasDamage = (d: CarDamage | null) => !!d && repairCost(d) > 0;
@@ -87,5 +94,6 @@ export function isProgress(value: unknown): value is ChampionshipProgress {
   if (p.damage === null) return true;
   const d = p.damage;
   const parts = d && d.body ? [d.body.front, d.body.rear, d.body.left, d.body.right, d.body.roof] : [];
-  return parts.length === 5 && [...parts, ...(Array.isArray(d.wheels) ? d.wheels : [NaN]), d.powerFactor].every((x) => Number.isFinite(x) && x >= 0 && x <= 1);
+  const lamps = d.lamps === undefined ? [] : Array.isArray(d.lamps) && d.lamps.length === 2 ? d.lamps : [NaN];
+  return parts.length === 5 && [...parts, ...(Array.isArray(d.wheels) ? d.wheels : [NaN]), d.powerFactor, ...lamps].every((x) => Number.isFinite(x) && x >= 0 && x <= 1);
 }

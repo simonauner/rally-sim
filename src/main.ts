@@ -34,6 +34,7 @@ import { buildBarriers } from './render/barriers';
 import { buildGhostMesh } from './render/ghostMesh';
 import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
+import { applyLight, Headlights, LIGHTS } from './render/lighting';
 
 const DT = 1 / 240;
 const CAMERAS = ['bakifrån nära', 'bakifrån långt', 'motorhuv', 'förarvy', 'uppifrån', 'sidovy (skador)'] as const;
@@ -84,7 +85,8 @@ async function main() {
   // Cel-shading: toon-material plus mörka konturer runt allt med toon-material.
   const pipeline = new THREE.RenderPipeline(renderer, toonOutlinePass(scene, camera, new THREE.Color(0x1c1c24), 0.003));
 
-  scene.add(new THREE.HemisphereLight(0xe8f3ff, 0x8a7a5a, 1.1));
+  const hemi = new THREE.HemisphereLight(0xe8f3ff, 0x8a7a5a, 1.1);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -233,6 +235,8 @@ async function main() {
   const stage = choice === 'test' ? null : new Stage(stageDef);
   const world = stage ?? new World();
   scene.add(stage ? buildStage(stage) : buildTerrain(world));
+  const light = LIGHTS[stage?.def.light ?? 'day'];
+  applyLight(scene, hemi, sun, light);
   const barriers = stage ? new Barriers(stage) : null;
   const barrierMeshes = barriers ? buildBarriers(barriers) : null;
   if (barrierMeshes) scene.add(barrierMeshes.group);
@@ -241,6 +245,8 @@ async function main() {
   if (tyre) car.params.tyre = tyre;
   const carMesh = new CarMesh(car, model);
   carMesh.addTo(scene);
+  const headlights = light.headlights ? new Headlights() : null;
+  if (headlights) scene.add(headlights.group);
   const dust = new Dust();
   scene.add(dust.mesh);
   const debug = new DebugVectors();
@@ -328,15 +334,17 @@ async function main() {
     for (const k of Object.keys(car.damage) as (keyof typeof car.damage)[]) car.damage[k] = 0;
     car.wheels.forEach((w) => (w.damage = 0));
     car.drivetrain.powerFactor = 1;
+    car.lamps = [0, 0];
     carMesh.repair();
   };
   place(spawn, false);
   // Mästerskapets skador följer med från förra etappen; bucklorna ritas från siffrorna.
-  const readDamage = (): CarDamage => ({ body: { ...car.damage }, wheels: car.wheels.map((w) => w.damage), powerFactor: car.drivetrain.powerFactor });
+  const readDamage = (): CarDamage => ({ body: { ...car.damage }, wheels: car.wheels.map((w) => w.damage), powerFactor: car.drivetrain.powerFactor, lamps: [...car.lamps] });
   if (champ?.damage) {
     Object.assign(car.damage, champ.damage.body);
     car.wheels.forEach((w, i) => (w.damage = champ!.damage!.wheels[i] ?? 0));
     car.drivetrain.powerFactor = champ.damage.powerFactor;
+    if (champ.damage.lamps) car.lamps = [...champ.damage.lamps];
     carMesh.dentFrom(champ.damage.body);
   }
   createGui(car, places, {
@@ -617,7 +625,9 @@ async function main() {
     debug.lines.visible = showVectors && document.body.classList.contains('debug');
     debug.update(car);
     updateCamera(frameDt);
-    sun.position.set(car.pos.x + 40, car.pos.y + 70, car.pos.z - 30);
+    sun.position.set(car.pos.x + light.sunOffset[0], car.pos.y + light.sunOffset[1], car.pos.z + light.sunOffset[2]);
+    headlights?.update(car);
+    carMesh.setLamps(!!headlights, car.lamps, input.brake > 0.05);
     sun.target.position.copy(car.pos);
     hud.update(car, input, CAMERAS[camMode]!);
     hud.showGauges(!finishShown);

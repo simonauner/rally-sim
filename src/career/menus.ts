@@ -29,13 +29,13 @@ import {
   championshipById,
   championshipPrize,
   championshipTargets,
-  CHAMPIONSHIP_MEDALS,
+  championshipMedals,
   repairCost,
   type CarDamage,
   type ChampionshipDef,
   type ChampionshipProgress,
 } from './championship';
-import { formatTime } from '../hud';
+import { formatTime, lampStatus } from '../hud';
 import { loadCareer, loadChampionship, saveCareer, saveChampionship } from './store';
 
 const nameOf = (m: CarModel) => m.make().name;
@@ -127,7 +127,7 @@ export async function careerMenu(pick: Pick, gained = 0): Promise<Launch | null>
             { label: 'Enstaka etapp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
             ...(ongoing
               ? [{ label: `Fortsätt mästerskap: ${championshipById(ongoing.id)?.name}`, detail: `etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'ongoing' }]
-              : CHAMPIONSHIPS.map((ch) => ({ label: `Mästerskap: ${ch.name}`, detail: `${ch.legs.length} etapper, upp till ${formatMoney(CHAMPIONSHIP_MEDALS[0].prize)}`, value: `champ:${ch.id}` }))),
+              : CHAMPIONSHIPS.map((ch) => ({ label: `Mästerskap: ${ch.name}`, detail: `${ch.legs.length} etapper, upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: `champ:${ch.id}` }))),
             { label: 'Garage', detail: Object.keys(career.garage).length === 1 ? '1 bil' : `${Object.keys(career.garage).length} bilar`, value: 'garage' },
             { label: 'Bilhandlare', value: 'dealer' },
             { label: '← Tillbaka', value: 'back' },
@@ -321,7 +321,7 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
     title: def.name,
     solid: true,
     body: `<div>Etapper: ${def.legs.join(', ')}.</div><div>Totaltiden avgör: ${
-      targets ? CHAMPIONSHIP_MEDALS.map((m, i) => `${m.name} under ${targets[i]} s ger ${formatMoney(m.prize)}`).join(', ') : ''
+      targets ? championshipMedals(def).map((m, i) => `${m.name} under ${targets[i]} s ger ${formatMoney(m.prize)}`).join(', ') : ''
     }. Skador följer med mellan etapperna; på servicen lagar du för egna pengar eller kör vidare. Omstart finns inte.</div>`,
     items: [
       { label: 'Välj bil och starta', value: 'go' },
@@ -347,6 +347,7 @@ function damageHtml(d: CarDamage) {
     <tr><th>Kaross</th><td>fram ${pct(b.front)} · bak ${pct(b.rear)} · vänster ${pct(b.left)} · höger ${pct(b.right)} · tak ${pct(b.roof)}</td></tr>
     <tr><th>Hjul</th><td>${worstWheel > 0 ? `värsta hjulet ${pct(worstWheel)} skadat` : 'hela'}</td></tr>
     <tr><th>Motor</th><td>${pct(d.powerFactor)} effekt</td></tr>
+    <tr><th>Strålkastare</th><td>${lampStatus(d.lamps ?? [0, 0])}</td></tr>
   </table>`;
 }
 

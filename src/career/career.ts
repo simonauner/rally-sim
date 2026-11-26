@@ -262,6 +262,11 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   // Med vinterdäck tar testföraren cirka 122 s åt båda hållen.
   Frostberga: [123, 136, 156],
   'Frostberga baklänges': [123, 136, 156],
+  // Testföraren: Tallmon 94 s, Ljungheden 87 s och Isvallen 108 s. Gränserna är lite
+  // generösare i dåligt ljus, mest i mörker.
+  Tallmon: [96, 107, 122],
+  Ljungheden: [88, 98, 112],
+  Isvallen: [112, 124, 142],
 };
 
 /** Prispengarna för ett enstaka åk. */

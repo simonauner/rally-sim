@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { abs, attribute, color, fract, positionGeometry, select, vec3 } from 'three/tsl';
-import type { Car, DamageState } from '../physics/car';
+import { abs, attribute, color, fract, positionGeometry, select, uniform, vec3 } from 'three/tsl';
+import { LAMP_BROKEN, type Car, type DamageState } from '../physics/car';
 import type { DamageEvent } from '../physics/collision';
 import type { CarModel } from '../physics/params';
 
@@ -240,7 +240,7 @@ function zoneHits(b: BodyShape): Record<keyof DamageState, Hit[]> {
 }
 
 /** Karossen med lyktor, grill, lister och hjulhus över hjulen i `wheelZ`. */
-function buildBody(b: BodyShape, wheelZ: Range, paint: THREE.Color): DeformablePart {
+function buildBody(b: BodyShape, wheelZ: Range, paint: THREE.Color, lampGlow: LampGlow, tailGlow: FloatUniform): DeformablePart {
   const { bottom, nose, tail, belt, crease, screen, backlight, archY, archR } = b;
   const g = roundedBox(2 * b.halfX, belt - bottom, nose - tail, [14, 14, Math.round((nose - tail) * 21)], 0.05, [
     0,
@@ -340,11 +340,11 @@ function buildBody(b: BodyShape, wheelZ: Range, paint: THREE.Color): DeformableP
       ),
     ),
   );
-  // Lyktorna lyser lite själva, så de inte blir mörka i skugga.
+  // Lyktorna lyser lite själva, så de inte blir mörka i skugga, och starkt när strålkastarna är på.
   mat.emissiveNode = select(
     lamp,
-    color(LAMP).mul(0.5),
-    select(indicator, color(AMBER).mul(0.3), select(tailZone, tailColor.mul(0.6), vec3(0))),
+    color(LAMP).mul(select(p.x.greaterThan(0), lampGlow[0], lampGlow[1])),
+    select(indicator, color(AMBER).mul(0.3), select(tailZone, select(tailAmber.or(tailReverse), tailColor.mul(0.6), tailColor.mul(tailGlow)), vec3(0))),
   );
   return new DeformablePart(g, mat);
 }
@@ -459,8 +459,15 @@ function buildWheel(radius: number): THREE.Group {
   return g;
 }
 
+/** Lyktglasets självlysning [vänster, höger]; lokalt x > 0 är vänster. */
+type FloatUniform = THREE.UniformNode<'float', number>;
+type LampGlow = [FloatUniform, FloatUniform];
+
 export class CarMesh {
   readonly group = new THREE.Group();
+  private lampGlow: LampGlow = [uniform(0.5), uniform(0.5)];
+  /** Baklyktornas röda sken: alltid tänt, starkare med strålkastarna och mycket starkare vid inbromsning. */
+  private tailGlow: FloatUniform = uniform(0.9);
   readonly wheels: THREE.Group[] = [];
   private parts: DeformablePart[];
   private hits: Record<keyof DamageState, Hit[]>;
@@ -481,7 +488,7 @@ export class CarMesh {
     // Främre stötfångaren går bak till hjulhuset, den bakre en bit runt hörnen.
     const front = b.nose + 0.1 - (wheelZ[0] + b.archR[0] + 0.04);
     this.parts = [
-      buildBody(b, wheelZ, c),
+      buildBody(b, wheelZ, c, this.lampGlow, this.tailGlow),
       buildCabin(b, c),
       buildBumper(b.halfX, b.nose + 0.1 - front / 2, b.bumperY[0], front),
       buildBumper(b.halfX, b.tail - 0.09 + b.rearBumperDepth / 2, b.bumperY[1], b.rearBumperDepth),
@@ -510,6 +517,12 @@ export class CarMesh {
 
   repair() {
     for (const p of this.parts) p.reset();
+  }
+
+  /** Lyktglaset: svagt sken på dagen, starkt med strålkastarna på, släckt när lyktan är trasig. Baklyktorna lyser alltid. */
+  setLamps(on: boolean, lamps: number[], braking: boolean) {
+    lamps.forEach((l, i) => (this.lampGlow[i]!.value = l >= LAMP_BROKEN ? 0 : on ? 2.4 * (1 - 0.6 * l) : 0.5));
+    this.tailGlow.value = braking ? 3 : on ? 1.4 : 0.9;
   }
 
   /**

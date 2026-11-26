@@ -77,16 +77,17 @@ const CAR = 'Kvarn 240 GL';
   const def = CHAMPIONSHIPS[0]!;
   const legsExist = CHAMPIONSHIPS.every((c) => c.legs.every((name) => STAGES.some((s) => s.name === name)) && !!championshipTargets(c));
   const targets = championshipTargets(def);
-  check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 183, `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
-  const prizes = [180, 200, 230, 300].map((t) => championshipPrize(def, t));
-  check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize > 1200 * 2, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
+  check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 279 && def.legs.length === 3 && STAGES.every((s) => CHAMPIONSHIPS.some((c) => c.legs.includes(s.name))), `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
+  const prizes = [275, 300, 350, 400].map((t) => championshipPrize(def, t));
+  check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize === 9000, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
   const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };
   const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
-  check('mästerskap: reparationskostnad', repairCost(none) === 0 && repairCost(crashed) === 2400, `${repairCost(crashed)} kr`);
+  const noLamp: CarDamage = { ...crashed, lamps: [0.6, 0] };
+  check('mästerskap: reparationskostnad', repairCost(none) === 0 && repairCost(crashed) === 2400 && repairCost(noLamp) === 2750, `${repairCost(crashed)} kr, med trasig lykta ${repairCost(noLamp)} kr`);
   const start = { id: def.id, car: 'Kvarn 240 GL', leg: 0, times: [], damage: null };
   const next = afterLeg(start, 91.2, crashed, false);
   const fixed = afterLeg(start, 91.2, crashed, true);
-  check('mästerskap: framsteg', isProgress(start) && isProgress(next) && next.leg === 1 && next.damage === crashed && fixed.damage === null && !isProgress({ ...next, leg: 2, times: [1, 2] }) && !isProgress({ ...start, id: 'okänt' }), `etapp ${next.leg + 1}, tider ${next.times.join()}`);
+  check('mästerskap: framsteg', isProgress(start) && isProgress(next) && next.leg === 1 && next.damage === crashed && fixed.damage === null && !isProgress({ ...next, leg: 3, times: [1, 2, 3] }) && isProgress(afterLeg(start, 91.2, noLamp, false)) && !isProgress(afterLeg(start, 91.2, { ...noLamp, lamps: [2, 0] }, false)) && !isProgress({ ...start, id: 'okänt' }), `etapp ${next.leg + 1}, tider ${next.times.join()}`);
 }
 
 if (failures) {
