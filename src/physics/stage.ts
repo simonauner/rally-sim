@@ -353,6 +353,62 @@ export const STAGE_SKOGSBERG: StageDef = {
 };
 
 /**
+ * Andra etappen: fiktiv, ca 2,6 km. Snabbt grus, en lerig väg över myren, en lång stigning med
+ * krön, en asfaltsbit och grus in i mål.
+ */
+export const STAGE_MYRKULLA: StageDef = {
+  name: 'Myrkulla',
+  version: '1.0.0',
+  recordsSince: '1.0.0',
+  points: [
+    { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
+    { x: 0, z: 0, y: 0, width: 7, surface: 'gravel' },
+    { x: 0, z: 100, y: 1, width: 7, surface: 'gravel' },
+    { x: -30, z: 200, y: 2, width: 7, surface: 'gravel' },
+    { x: -110, z: 260, y: 4, width: 7, surface: 'gravel' },
+    { x: -220, z: 280, y: 5, width: 6.5, surface: 'gravel' },
+    { x: -300, z: 340, y: 6, width: 6.5, surface: 'gravel' },
+    { x: -320, z: 450, y: 8, width: 6.5, surface: 'gravel' },
+    // Korsning: grusvägen fortsätter, etappen svänger höger ut på myren
+    { x: -330, z: 525, y: 8, width: 6.5, surface: 'gravel' },
+    { x: -350, z: 545, y: 7.5, width: 5.5, surface: 'mud' },
+    { x: -400, z: 550, y: 6, width: 5.5, surface: 'mud' },
+    { x: -520, z: 545, y: 5, width: 5.5, surface: 'mud' },
+    { x: -600, z: 570, y: 4, width: 5.5, surface: 'mud' },
+    { x: -660, z: 620, y: 4, width: 5.5, surface: 'mud' },
+    // Myrvägen mynnar i en grusväg som stiger upp mot kullen
+    { x: -690, z: 700, y: 6, width: 6.5, surface: 'gravel' },
+    { x: -680, z: 800, y: 12, width: 6.5, surface: 'gravel' },
+    { x: -640, z: 880, y: 17, width: 6.5, surface: 'gravel' },
+    // Krön på kullen
+    { x: -560, z: 940, y: 21, width: 6.5, surface: 'gravel' },
+    { x: -470, z: 960, y: 20, width: 6.5, surface: 'gravel' },
+    { x: -380, z: 1010, y: 17, width: 6.5, surface: 'gravel' },
+    { x: -350, z: 1080, y: 15, width: 6.5, surface: 'gravel' },
+    { x: -400, z: 1160, y: 13, width: 7, surface: 'gravel' },
+    { x: -420, z: 1280, y: 10, width: 7, surface: 'gravel' },
+    // Korsning: etappen svänger höger ut på asfaltsvägen
+    { x: -380, z: 1400, y: 7, width: 7, surface: 'gravel' },
+    { x: -370, z: 1420, y: 6, width: 8, surface: 'asphalt' },
+    { x: -300, z: 1500, y: 5, width: 8, surface: 'asphalt' },
+    // Korsning: asfaltsvägen fortsätter, etappen viker av vänster på grus mot mål
+    { x: -180, z: 1530, y: 4, width: 8, surface: 'asphalt' },
+    { x: -140, z: 1550, y: 4, width: 7, surface: 'gravel' },
+    { x: -100, z: 1620, y: 3, width: 7, surface: 'gravel' },
+    { x: -90, z: 1720, y: 3, width: 7, surface: 'gravel' },
+    { x: -90, z: 1760, y: 3, width: 7, surface: 'gravel' },
+    // Utrullning efter mål
+    { x: -90, z: 1820, y: 3, width: 7, surface: 'gravel' },
+  ],
+  spurs: [
+    { points: [{ x: -330, z: 525 }, { x: -338, z: 610 }], width: 6.5, surface: 'gravel' },
+    { points: [{ x: -690, z: 700 }, { x: -770, z: 705 }], width: 6.5, surface: 'gravel' },
+    { points: [{ x: -370, z: 1420 }, { x: -440, z: 1445 }], width: 8, surface: 'asphalt' },
+    { points: [{ x: -180, z: 1530 }, { x: -70, z: 1515 }], width: 8, surface: 'asphalt' },
+  ],
+};
+
+/**
  * Samma väg körd åt andra hållet. Underlaget gäller från en punkt fram till nästa, så varje
  * vänd punkt får underlaget från segmentet som nu ligger framför den. Den gamla utrullningen
  * blir startraka och den gamla startraka blir utrullning efter mål.
@@ -368,6 +424,7 @@ export function reversed(def: StageDef, name: string): StageDef {
 }
 
 export const STAGE_SKOGSBERG_BACK = reversed(STAGE_SKOGSBERG, 'Skogsberg baklänges');
+export const STAGE_MYRKULLA_BACK = reversed(STAGE_MYRKULLA, 'Myrkulla baklänges');
 
 /** Alla etapper, i den ordning menyerna visar dem. */
-export const STAGES: StageDef[] = [STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK];
+export const STAGES: StageDef[] = [STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK, STAGE_MYRKULLA, STAGE_MYRKULLA_BACK];

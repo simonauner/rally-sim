@@ -2,7 +2,7 @@ import { Quaternion, Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
 import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
-import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK } from '../src/physics/stage';
+import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import type { TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
@@ -201,18 +201,6 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const lz = -Math.sin(p.heading);
   const verge = stage.surfaceAt(p.x + lx * 6, p.z + lz * 6);
   check('etapp: vägkant är lera', verge === 'mud', verge);
-  const sideRoads = STAGE_SKOGSBERG.spurs!.every((sp) => {
-    const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
-    const mx = (a.x + b.x) / 2;
-    const mz = (a.z + b.z) / 2;
-    return stage.surfaceAt(mx, mz) === sp.surface && stage.project(mx, mz).d > sp.width;
-  });
-  check('etapp: korsande vägar har eget underlag', sideRoads, `${STAGE_SKOGSBERG.spurs!.length} vägar`);
-  let minSep = Infinity;
-  for (let i = 0; i < stage.xs.length; i += 2)
-    for (let j = i + 150; j < stage.xs.length; j += 2)
-      minSep = Math.min(minSep, Math.hypot(stage.xs[i]! - stage.xs[j]!, stage.zs[i]! - stage.zs[j]!));
-  check('etapp: vägen korsar inte sig själv', minSep > 2 * STAGE_CORRIDOR, `minsta avstånd ${minSep.toFixed(0)} m (krav > ${2 * STAGE_CORRIDOR})`);
 }
 
 // 8b. Avspärrningarna ger efter: bilen tappar lite fart, tar en liten smäll och delarna flyger iväg.
@@ -372,22 +360,40 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   check('rekord: banversion', wrong.length === 0, wrong.length ? `fel för ${wrong.map(([v]) => v).join(', ')}` : `${cases.length} fall`);
 }
 
-// 13. Skogsberg baklänges: samma väg åt andra hållet går att köra hela vägen.
-{
-  const stage = new Stage(STAGE_SKOGSBERG_BACK);
-  const fwd = new Stage(STAGE_SKOGSBERG);
-  // Var underlaget byter, och till vad: baklänges ska bytena ligga speglat (inom några meter).
-  const changes = (st: Stage) => st.surfaces.flatMap((x, i) => (i > 0 && x !== st.surfaces[i - 1] ? [[i, st.surfaces[i - 1]!, x] as const] : []));
-  const back = changes(stage);
-  const ahead = changes(fwd).reverse();
-  const mirrored = back.length === ahead.length && back.every(([i, from, to], k) => Math.abs(i - (fwd.length - ahead[k]![0])) < 4 && from === ahead[k]![2] && to === ahead[k]![1]);
+// 13. Varje etapp: vägen korsar inte sig själv och en enkel förare når målet på vägen.
+// Baklänges ska underlaget byta speglat (inom några meter) mot framlänges.
+const surfaceChanges = (st: Stage) => st.surfaces.flatMap((x, i) => (i > 0 && x !== st.surfaces[i - 1] ? [[i, st.surfaces[i - 1]!, x] as const] : []));
+for (const def of STAGES) {
+  const stage = new Stage(def);
+  let minSep = Infinity;
+  for (let i = 0; i < stage.xs.length; i += 2)
+    for (let j = i + 150; j < stage.xs.length; j += 2)
+      minSep = Math.min(minSep, Math.hypot(stage.xs[i]! - stage.xs[j]!, stage.zs[i]! - stage.zs[j]!));
+  check(`${def.name}: vägen korsar inte sig själv`, minSep > 2 * STAGE_CORRIDOR, `${stage.length} m lång, minsta avstånd ${minSep.toFixed(0)} m`);
+  const sideRoads = (def.spurs ?? []).every((sp) => {
+    const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
+    const mx = (a.x + b.x) / 2;
+    const mz = (a.z + b.z) / 2;
+    return stage.surfaceAt(mx, mz) === sp.surface && stage.project(mx, mz).d > sp.width;
+  });
+  check(`${def.name}: korsande vägar har eget underlag`, sideRoads, `${def.spurs?.length ?? 0} vägar`);
+
+  const fwdDef = STAGES.find((x) => def.name === `${x.name} baklänges`);
+  if (fwdDef) {
+    const fwd = new Stage(fwdDef);
+    const back = surfaceChanges(stage);
+    const ahead = surfaceChanges(fwd).reverse();
+    const mirrored = back.length === ahead.length && back.every(([i, from, to], k) => Math.abs(i - (fwd.length - ahead[k]![0])) < 4 && from === ahead[k]![2] && to === ahead[k]![1]);
+    check(`${def.name}: underlaget speglat`, mirrored, back.map(([i, , to]) => `${to}@${i}`).join(' '));
+  }
+
   const car = makeCar(stage, 'gravel');
   const p0 = stage.poseAt(START_S - 8);
   car.reset(p0.x, p0.z, p0.heading, 0);
   const finish = stage.length - FINISH_MARGIN;
   let maxOver = 0;
   let time = NaN;
-  run(car, 200, (t, c) => {
+  run(car, 250, (t, c) => {
     const hit = stage.project(c.pos.x, c.pos.z);
     if (Number.isNaN(time) && hit.s >= finish) time = t;
     if (!Number.isNaN(time)) return brakeAlongRoad(stage, c);
@@ -405,8 +411,7 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
       brake: c.forwardSpeed > target + 2 ? 0.6 : 0,
     };
   });
-  check('baklänges: underlaget speglat', mirrored, back.map(([i, , to]) => `${to}@${i}`).join(' '));
-  check('baklänges: förare når målet på vägen', time > 60 && time < 150 && maxOver < 1, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
+  check(`${def.name}: förare når målet på vägen`, time > 60 && time < 200 && maxOver < 1, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
 }
 
 if (failures) {
