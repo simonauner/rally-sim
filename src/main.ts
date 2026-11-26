@@ -34,9 +34,20 @@ import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
 
 const DT = 1 / 240;
-const CAMERAS = ['bakifrån', 'förarvy', 'uppifrån', 'sidovy (skador)'];
+const CAMERAS = ['bakifrån nära', 'bakifrån långt', 'motorhuv', 'förarvy', 'uppifrån', 'sidovy (skador)'] as const;
+/** Jaktkamerorna: avstånd bakom bilen och höjd över den (m). */
+const CHASE: Record<string, { back: number; up: number }> = { 'bakifrån nära': { back: 5.6, up: 2.0 }, 'bakifrån långt': { back: 7.6, up: 2.8 } };
+const CAMERA_KEY = 'rally.camera';
 /** Sätts vid bygget i vite.config.ts. */
 const VERSION = `version ${import.meta.env.VITE_COMMIT} · byggd ${new Date(import.meta.env.VITE_BUILT_AT).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' })}`;
+
+function readCamera() {
+  try {
+    return localStorage.getItem(CAMERA_KEY);
+  } catch {
+    return null;
+  }
+}
 
 async function main() {
   // ?webgl är bara till för felsökning i miljöer utan riktig WebGPU.
@@ -318,13 +329,15 @@ async function main() {
     toggleDebug: (on) => (showVectors = on),
   });
 
-  let camMode = 0;
+  let camMode = Math.max(0, CAMERAS.indexOf(readCamera() as (typeof CAMERAS)[number]));
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const tmpDir = new THREE.Vector3();
   const tmpV = new THREE.Vector3();
 
   const updateCamera = (dt: number) => {
+    const mode = CAMERAS[camMode]!;
+    const chase = CHASE[mode];
     const fwd = tmpDir.set(0, 0, 1).applyQuaternion(car.quat);
     fwd.y = 0;
     fwd.normalize();
@@ -345,7 +358,7 @@ async function main() {
       const right = tmpDir.subVectors(camLook, camPos).cross(camera.up).normalize();
       camera.lookAt(tmpV.copy(camLook).addScaledVector(right, 2.2));
       camera.fov = 50;
-    } else if (camMode === 0) {
+    } else if (chase) {
       // Blanda bilens riktning med färdriktningen så sladdar syns tydligt.
       if (car.speed > 6) {
         tmpV.copy(car.vel);
@@ -353,35 +366,38 @@ async function main() {
         tmpV.normalize();
         fwd.lerp(tmpV, 0.45).normalize();
       }
-      const wantPos = new THREE.Vector3().copy(car.pos).addScaledVector(fwd, -7.2);
-      wantPos.y = car.pos.y + 2.6;
-      const wantLook = new THREE.Vector3().copy(car.pos).addScaledVector(fwd, 5);
-      wantLook.y = car.pos.y + 0.5;
+      // I fart drar kameran sig bakåt och vidgar bilden lite, så farten känns.
+      const fast = Math.min(1, car.speed / 40);
+      const wantPos = tmpV.copy(car.pos).addScaledVector(fwd, -(chase.back + fast * 1.2));
+      // Aldrig under marken bakom bilen, t.ex. i en svacka eller på väg upp mot ett krön.
+      wantPos.y = Math.max(car.pos.y + chase.up, world.heightAt(wantPos.x, wantPos.z) + 0.9);
+      const lookX = car.pos.x + fwd.x * 5;
+      const lookZ = car.pos.z + fwd.z * 5;
       if (!camInit) {
         camPos.copy(wantPos);
-        camLook.copy(wantLook);
+        camLook.set(lookX, car.pos.y + 0.5, lookZ);
         camInit = true;
       }
-      const k = 1 - Math.exp(-dt * 5);
-      camPos.lerp(wantPos, k);
-      camLook.lerp(wantLook, 1 - Math.exp(-dt * 9));
+      camPos.lerp(wantPos, 1 - Math.exp(-dt * 5));
+      camLook.lerp(tmpV.set(lookX, car.pos.y + 0.5, lookZ), 1 - Math.exp(-dt * 9));
       camera.position.copy(camPos);
       camera.up.set(0, 1, 0);
       camera.lookAt(camLook);
-      camera.fov = 60;
-    } else if (camMode === 1) {
-      const p = new THREE.Vector3(0, 0.62, 0.35).applyQuaternion(car.quat).add(car.pos);
-      camera.position.copy(p);
-      const look = new THREE.Vector3(0, 0.55, 12).applyQuaternion(car.quat).add(car.pos);
+      camera.fov = 58 + fast * 10;
+    } else if (mode === 'motorhuv') {
+      camera.position.copy(tmpV.set(0, 0.55, 1.5).applyQuaternion(car.quat).add(car.pos));
+      camera.up.set(0, 1, 0).applyQuaternion(car.quat);
+      camera.lookAt(tmpV.set(0, 0.5, 12).applyQuaternion(car.quat).add(car.pos));
+      camera.fov = 70;
+    } else if (mode === 'förarvy') {
+      camera.position.copy(tmpV.set(0, 0.62, 0.35).applyQuaternion(car.quat).add(car.pos));
       camera.up.set(0, 1, 0);
-      camera.lookAt(look);
+      camera.lookAt(tmpV.set(0, 0.55, 12).applyQuaternion(car.quat).add(car.pos));
       camera.fov = 75;
-    } else if (camMode === 3) {
-      const p = new THREE.Vector3(5.0, 1.5, 0.8).applyQuaternion(car.quat).add(car.pos);
-      camera.position.copy(p);
+    } else if (mode === 'sidovy (skador)') {
+      camera.position.copy(tmpV.set(5.0, 1.5, 0.8).applyQuaternion(car.quat).add(car.pos));
       camera.up.set(0, 1, 0);
-      const look = new THREE.Vector3(0, 0.1, 1.0).applyQuaternion(car.quat).add(car.pos);
-      camera.lookAt(look);
+      camera.lookAt(tmpV.set(0, 0.1, 1.0).applyQuaternion(car.quat).add(car.pos));
       camera.fov = 55;
     } else {
       camera.position.set(car.pos.x, car.pos.y + 32, car.pos.z - 0.01);
@@ -480,7 +496,15 @@ async function main() {
 
     if (controls.wasPressed('KeyR') && !finished) recover();
     if (controls.wasPressed('KeyT') && !champ) restart();
-    if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
+    if (controls.wasPressed('KeyC')) {
+      camMode = (camMode + 1) % CAMERAS.length;
+      camInit = false;
+      try {
+        localStorage.setItem(CAMERA_KEY, CAMERAS[camMode]!);
+      } catch {
+        // Privat läge: valet gäller bara den här sessionen.
+      }
+    }
     if (controls.wasPressed('F1')) document.body.classList.toggle('debug');
     if (controls.wasPressed('F3')) showVectors = !showVectors;
     if (controls.wasPressed('KeyH')) hud.toggleHelp();

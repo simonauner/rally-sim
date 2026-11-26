@@ -28,7 +28,7 @@ Kräver WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM-Mac) eller Safari 26.
 | T | Starta om etappen (reparerar bilen) |
 | G | Ghost av/på |
 | Esc | Pausmeny (fortsätt, starta om, kontroller, huvudmeny) |
-| C | Byt kamera (bakifrån, förarvy, uppifrån, sidovy för skador) |
+| C | Byt kamera (bakifrån nära och långt, motorhuv, förarvy, uppifrån, sidovy för skador); valet sparas |
 | M, E / Q | Manuell växellåda |
 | F1 | Felsökning av/på: telemetri, skador, g-kraft och trimningspanelen (dolda från start) |
 | F3 | Kraftvektorer av/på (röd = däckkraft, blå = hjullast, grön = färdriktning) |
@@ -112,10 +112,8 @@ Det som återstår är att köra och känna.
 ## Nästa steg
 
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
-2. Fas 1: kamera (spline-etapp, ljud och dammpartiklar är klara).
-3. Fas 2: tidtagning, ghost, pacenotes.
-4. Fler etapper och mästerskap, gärna med snö (`STAGES` i `src/physics/stage.ts`, `CHAMPIONSHIPS` i `src/career/championship.ts`).
-5. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
+2. Fler etapper och mästerskap, gärna med snö (`STAGES` i `src/physics/stage.ts`, `CHAMPIONSHIPS` i `src/career/championship.ts`).
+3. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
 
 ## Karriär
 
