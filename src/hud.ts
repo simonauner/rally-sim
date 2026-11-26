@@ -27,6 +27,8 @@ export class Hud {
   private gctx = this.gauges.getContext('2d')!;
   /** Urtavlorna ritas en gång per bil, bara nålarna varje bildruta. */
   private faces: { params: CarParams; canvas: HTMLCanvasElement } | null = null;
+  /** Var växelspakens kula är ritad just nu; glider mot vald växel. */
+  private lever: { x: number; y: number } | null = null;
   private trail: [number, number][] = [];
   private frame = 0;
 
@@ -47,7 +49,6 @@ export class Hud {
     this.frame++;
     const dtn = car.drivetrain;
     const kmh = Math.abs(car.forwardSpeed) * 3.6;
-    const gear = dtn.gear < 0 ? 'R' : dtn.gear === 0 ? 'N' : String(dtn.gear);
 
     if (this.frame % 3 === 0) {
       const rows = car.wheels
@@ -74,15 +75,16 @@ export class Hud {
     }
 
     this.drawGG(car);
-    this.drawGauges(car.params, dtn.rpm, kmh, gear);
+    this.drawGauges(car.params, dtn.rpm, kmh, dtn.gear);
   }
 
-  private drawGauges(params: CarParams, rpm: number, kmh: number, gear: string) {
+  private drawGauges(params: CarParams, rpm: number, kmh: number, gearNo: number) {
     const g = params.gauges;
     const h = this.gauges.height;
     const r = h * 0.47;
     const tacho = { x: h / 2, y: h / 2, r, min: 0, max: g.rpmMax, a0: 150, a1: 390 };
     const speedo = { x: h * 1.5, y: h / 2, r, min: g.speedMin, max: g.speedMax, a0: 125, a1: 415 };
+    const shift = shiftPattern(params.gearbox.ratios.length, h * 2.45, h / 2, h * 0.36);
     if (this.faces?.params !== params) {
       const canvas = document.createElement('canvas');
       canvas.width = this.gauges.width;
@@ -90,19 +92,25 @@ export class Hud {
       const c = canvas.getContext('2d')!;
       drawFace(c, tacho, 500, 1000, (v) => String(v / 1000), g.rpmRed, '1/min x1000');
       drawFace(c, speedo, 10, 20, String, null, 'km/h');
+      drawKnob(c, shift, '#eee', null);
       this.faces = { params, canvas };
     }
     const ctx = this.gctx;
     ctx.clearRect(0, 0, this.gauges.width, h);
     ctx.drawImage(this.faces.canvas, 0, 0);
     drawNeedle(ctx, tacho, rpm);
-    // Växeln i ett litet fönster där den riktiga mätaren har trippmätaren.
-    ctx.fillStyle = '#eee';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `bold ${Math.round(r * 0.22)}px Helvetica, Arial, sans-serif`;
-    ctx.fillText(gear, speedo.x, speedo.y + r * 0.4);
     drawNeedle(ctx, speedo, kmh);
+
+    // Spakens kula glider till vald växel och växelns siffra lyser.
+    const at = shift.slot(gearNo);
+    this.lever ??= { ...at };
+    this.lever.x += (at.x - this.lever.x) * 0.35;
+    this.lever.y += (at.y - this.lever.y) * 0.35;
+    drawKnob(ctx, shift, null, gearNo);
+    ctx.fillStyle = NEEDLE;
+    ctx.beginPath();
+    ctx.arc(this.lever.x, this.lever.y, shift.R * 0.13, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   /** Klocka, mellantider och resultat. best är rekordet nu, previousBest rekordet före senaste åket. */
@@ -219,6 +227,70 @@ function drawFace(ctx: CanvasRenderingContext2D, d: Dial, minor: number, major: 
   }
   ctx.font = `${Math.round(r * 0.1)}px Helvetica, Arial, sans-serif`;
   ctx.fillText(caption, x, y + r * 0.62);
+}
+
+/**
+ * Växelmönstret på spakknoppen: R uppe till vänster, sedan 1/2, 3/4 och så vidare,
+ * udda växlar uppe och jämna nere, som på 240:s knopp.
+ */
+function shiftPattern(gears: number, cx: number, cy: number, R: number) {
+  const gates = 1 + Math.ceil(gears / 2);
+  const gateX = (i: number) => cx + (i / (gates - 1) - 0.5) * R * 1.3;
+  const up = cy - R * 0.45;
+  const down = cy + R * 0.45;
+  return {
+    cx,
+    cy,
+    R,
+    gears,
+    gateX,
+    up,
+    down,
+    /** Spakens läge för en växel; 0 = friläge i 3/4-gaten (eller närmaste). */
+    slot(gear: number) {
+      if (gear < 0) return { x: gateX(0), y: up };
+      if (gear === 0) return { x: gateX(Math.min(2, gates - 1)), y: cy };
+      return { x: gateX(Math.ceil(gear / 2)), y: gear % 2 ? up : down };
+    },
+  };
+}
+
+/** Knoppen med mönstret (color satt), eller bara den valda växelns siffra i orange (active satt). */
+function drawKnob(ctx: CanvasRenderingContext2D, p: ReturnType<typeof shiftPattern>, color: string | null, active: number | null) {
+  const { cx, cy, R, up, down, gateX } = p;
+  const labels: [string, number, number, number][] = [['R', -1, gateX(0), up - R * 0.2]];
+  for (let g = 1; g <= p.gears; g++) labels.push([String(g), g, gateX(Math.ceil(g / 2)), g % 2 ? up - R * 0.2 : down + R * 0.2]);
+  ctx.font = `bold ${Math.round(R * 0.3)}px Helvetica, Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  if (color) {
+    ctx.fillStyle = '#111';
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = R * 0.05;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = ctx.fillStyle = color;
+    ctx.lineWidth = R * 0.07;
+    ctx.lineCap = 'square';
+    ctx.beginPath();
+    ctx.moveTo(gateX(0), cy);
+    ctx.lineTo(gateX(Math.ceil(p.gears / 2)), cy);
+    ctx.moveTo(gateX(0), cy);
+    ctx.lineTo(gateX(0), up);
+    for (let g = 1; g <= p.gears; g++) {
+      ctx.moveTo(gateX(Math.ceil(g / 2)), cy);
+      ctx.lineTo(gateX(Math.ceil(g / 2)), g % 2 ? up : down);
+    }
+    ctx.stroke();
+    for (const [text, , x, y] of labels) ctx.fillText(text, x, y);
+  } else {
+    const l = labels.find(([, g]) => g === active);
+    if (!l) return;
+    ctx.fillStyle = NEEDLE;
+    ctx.fillText(l[0], l[2], l[3]);
+  }
 }
 
 function drawNeedle(ctx: CanvasRenderingContext2D, d: Dial, v: number) {
