@@ -4,6 +4,7 @@ import { kvarn240 } from '../src/physics/params';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
 import type { SurfaceId, TyreType } from '../src/physics/surfaces';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
+import { generateNotes, NoteCaller, type PaceNote } from '../src/physics/pacenotes';
 import { StageTimer } from '../src/physics/timing';
 import { World } from '../src/physics/world';
 
@@ -207,6 +208,9 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const finish = stage.length - FINISH_MARGIN;
   const timer = new StageTimer(START_S, finish);
   const recorder = new GhostRecorder();
+  const caller = new NoteCaller(generateNotes(stage, START_S, finish));
+  caller.seek(START_S - 8);
+  const calls: [PaceNote, number][] = [];
   const checkpoints: [number, Vector3, Quaternion][] = [];
   let startT = NaN;
   let s = START_S - 8;
@@ -231,6 +235,7 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
     };
   }, (t) => {
     timer.update(stage.project(car.pos.x, car.pos.z).s, DT);
+    for (const n of caller.update(stage.project(car.pos.x, car.pos.z).s, car.speed)) calls.push([n, stage.project(car.pos.x, car.pos.z).s]);
     if (Number.isNaN(startT) && timer.state === 'running') startT = t;
     if (timer.state === 'running') {
       recorder.record(timer.time, car.pos, car.quat);
@@ -256,6 +261,9 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const ended = !sampleGhost(ghost, timer.time + 1, gp, gq);
   const kb = JSON.stringify(ghost).length / 1024;
   check('ghost: följer bilen', checkpoints.length > 8 && worstPos < 0.25 && worstAng < 0.02 && ended, `${checkpoints.length} punkter, max ${(worstPos * 100).toFixed(1)} cm / ${((worstAng * 180) / Math.PI).toFixed(2)}°, slut efter målet ${ended}`);
+  const inOrder = calls.every(([n], i) => n === caller.notes[i]);
+  const early = Math.min(...calls.map(([n, at]) => n.s - at));
+  check('pacenotes: läses upp en gång i ordning, före kurvan', calls.length === caller.notes.length && inOrder && early > 20, `${calls.length}/${caller.notes.length} noter, minst ${early.toFixed(0)} m i förväg`);
   check('ghost: sparstorlek', kb < 200, `${kb.toFixed(0)} kB för ${timer.time.toFixed(0)} s`);
   check('tidtagning: mellantider', timer.splits.length === 2 && timer.splits[0]! < timer.splits[1]! && timer.splits[1]! < timer.time, timer.splits.map((x) => x.toFixed(1)).join(', '));
 }
@@ -271,6 +279,23 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const frozen = timer.time;
   timer.update(1011, DT);
   check('tidtagning: teleport och mål', teleportIgnored && timer.state === 'finished' && timer.time === frozen, `teleport ignorerad ${teleportIgnored}, ${timer.state} ${frozen.toFixed(2)} s`);
+}
+
+// 11. Pacenotes ur geometrin.
+{
+  const stage = new Stage(STAGE_SKOGSBERG);
+  const notes = generateNotes(stage, START_S, stage.length - FINISH_MARGIN);
+  const corners = notes.filter((n) => n.kind === 'corner');
+  const sorted = notes.every((n, i) => i === 0 || notes[i - 1]!.s <= n.s);
+  // Den snäva kurvan in mot asfalten (stödpunkterna 285,334 → 309,368) svänger höger.
+  const tight = corners.find((n) => n.grade! <= 2 && n.dir === -1 && n.s < 700);
+  check('pacenotes: kurvor och ordning', sorted && corners.length >= 8 && !!tight, `${corners.length} kurvor, snäv: ${tight?.label ?? 'saknas'}`);
+  const surfaces = notes.filter((n) => n.kind === 'surface').map((n) => n.speech.split(',')[0]);
+  check('pacenotes: underlagsbyten och mål', surfaces.join(' ') === 'asfalt grus lera grus' && notes[notes.length - 1]!.kind === 'finish', surfaces.join(' '));
+  const caller = new NoteCaller(notes);
+  caller.seek(1000);
+  const firstAfter = caller.update(1000, 50)[0];
+  check('pacenotes: hoppar fram vid teleport', !!firstAfter && firstAfter.s > 1000, `första ${firstAfter?.s.toFixed(0)} m`);
 }
 
 if (failures) {
