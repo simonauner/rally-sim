@@ -52,6 +52,46 @@ function blip(freq: number, length: number) {
   osc.stop(t + length);
 }
 
+/** Lågmälda applåder när ett mästerskap är klart, med jubel på pallen. Syntetiserat ur brus. */
+export function applause(cheer: boolean) {
+  if (!settings.sound || !settings.menuSound) return;
+  const ctx = (blipCtx ??= new AudioContext());
+  const t = ctx.currentTime;
+  const len = 3.5;
+  const rate = ctx.sampleRate;
+  const play = (data: (d: Float32Array) => void, filter: BiquadFilterNode, gain: GainNode) => {
+    const buf = ctx.createBuffer(1, Math.floor(rate * len), rate);
+    data(buf.getChannelData(0));
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t);
+  };
+  // Applåder: hundratals korta brusknäppar, tätast i början och glesare mot slutet.
+  const clapFilter = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 1800, Q: 0.7 });
+  play((d) => {
+    const n = Math.floor(rate * 0.012);
+    for (let k = 0; k < 600; k++) {
+      const at = Math.random() ** 1.6 * (len - 0.05);
+      const start = Math.floor(at * rate);
+      const amp = (0.3 + Math.random() * 0.7) * (1 - at / len);
+      for (let i = 0; i < n; i++) d[start + i]! += (Math.random() * 2 - 1) * amp * Math.exp(-i / (n / 5));
+    }
+  }, clapFilter, new GainNode(ctx, { gain: 0.1 }));
+  if (!cheer) return;
+  // Jubel: brus genom ett smalt band som vandrar runt en vokal, som ett avlägset "jaaa".
+  const voice = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 850, Q: 3 });
+  voice.frequency.setValueAtTime(700, t);
+  voice.frequency.linearRampToValueAtTime(1000, t + 0.4);
+  voice.frequency.linearRampToValueAtTime(750, t + len);
+  const g = new GainNode(ctx, { gain: 0 });
+  g.gain.linearRampToValueAtTime(0.09, t + 0.3);
+  g.gain.exponentialRampToValueAtTime(0.001, t + len);
+  play((d) => {
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }, voice, g);
+}
+
 /**
  * Visar en meny och väntar på ett val. Styrs med piltangenter/W/S och Enter, eller musen.
  * Menyn fångar tangenttryck så att spelet inte ser dem; släppta tangenter går igenom,

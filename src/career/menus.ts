@@ -3,7 +3,7 @@
 import type { CareerState } from '../account/protocol';
 import { localChanged } from '../account/sync';
 import type { PickOptions, Showroom } from '../carSelect';
-import { showMenu } from '../menu';
+import { applause, showMenu } from '../menu';
 import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
 import { pickStage, stagePreviewHtml } from '../stageMenu';
@@ -365,17 +365,37 @@ function damageHtml(d: CarDamage) {
  * nästa etapp ska laddas, annars prispengarna (0 om spelaren avbryter) på väg till karriären. På servicen står bilen med sina skador på
  * vridbordet från showCar.
  */
-/** Ställningen: placering, namn, totaltid, lucka till ledaren och tid på senaste etappen. */
+const MEDAL_COLORS = [
+  ['#fff6b0', '#f2c200', '#a87b00'],
+  ['#ffffff', '#c9ced6', '#7d848f'],
+  ['#ffd9b0', '#d4884a', '#8a4f1f'],
+];
+
+/** Glänsande pokal i guld, silver eller brons för plats 1–3, annars bara siffran. */
+function trophy(place: number) {
+  const c = MEDAL_COLORS[place - 1];
+  if (!c) return `<span class="trophy">${place}.</span>`;
+  const id = `trophy${place}`;
+  return `<svg class="trophy" viewBox="0 0 24 24" role="img" aria-label="${place}:a"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c[0]}"/><stop offset=".45" stop-color="${c[1]}"/><stop offset="1" stop-color="${c[2]}"/></linearGradient></defs><path d="M6 5H3.5v1.5A3.5 3.5 0 0 0 7 10M18 5h2.5v1.5A3.5 3.5 0 0 1 17 10" fill="none" stroke="url(#${id})" stroke-width="1.6"/><path d="M6 3h12v4a6 6 0 0 1-4.5 5.8V16h2.5v2.5H8V16h2.5v-3.2A6 6 0 0 1 6 7zM6.5 19.5h11v2h-11z" fill="url(#${id})" stroke="${c[2]}" stroke-width=".6"/><path d="M8.3 4.5v2.5a4 4 0 0 0 1.6 3.2" fill="none" stroke="#fff" stroke-opacity=".8" stroke-linecap="round"/></svg>`;
+}
+
+/** Placering på en etapp som en rund bricka, i guld, silver och brons för 1–3. */
+const posBadge = (place: number) => `<span class="pos p${place}">${place}</span>`;
+/** Placeringen för tiden `t` bland `all` (som inkluderar t). */
+const rankOf = (t: number, all: number[]) => 1 + all.filter((x) => x < t).length;
+
+/** Ställningen: placering, namn, totaltid, lucka till ledaren och tid och placering på senaste etappen. */
 function standingsHtml(table: Standing[]) {
   const lead = table[0]!.total;
+  const lasts = table.map((s) => s.last);
   const rows = table
     .map((s, i) => {
       const name = s.player ? `<b>${s.name}</b>` : s.name;
       const gap = i === 0 ? formatTime(s.total) : `+${(s.total - lead).toFixed(2)}`;
-      return `<tr${s.player ? ' class="ahead"' : ''}><th>${i + 1}. ${name}</th><td>${gap}</td><td>${formatTime(s.last)}</td></tr>`;
+      return `<tr${s.player ? ' class="ahead"' : ''}><th>${trophy(i + 1)}${name}</th><td>${gap}</td><td>${formatTime(s.last)}${posBadge(rankOf(s.last, lasts))}</td></tr>`;
     })
     .join('');
-  return `<table class="specs"><tr><th></th><td>totalt</td><td>etappen</td></tr>${rows}</table>`;
+  return `<table class="specs standings"><tr><th></th><td>totalt</td><td>etappen</td></tr>${rows}</table>`;
 }
 
 export async function championshipLegDone(
@@ -388,8 +408,10 @@ export async function championshipLegDone(
   const def = championshipById(p.id)!;
   const times = [...p.times, time];
   const total = times.reduce((a, b) => a + b, 0);
-  const legRows = times.map((t, i) => `<tr><th>${def.legs[i]}</th><td>${formatTime(t)}</td></tr>`).join('');
   p = raceRivals(p, time);
+  const legRows = times
+    .map((t, i) => `<tr><th>${def.legs[i]}</th><td>${formatTime(t)}${posBadge(rankOf(t, [t, ...p.rivals!.map((v) => v.times[i]!)]))}</td></tr>`)
+    .join('');
   const table = standings(p.rivals!, times);
   const place = table.findIndex((s) => s.player) + 1;
 
@@ -398,11 +420,12 @@ export async function championshipLegDone(
     const career = loadCareer().career;
     commit({ ...career, money: career.money + prize });
     saveChampionship(null);
+    applause(place <= 3);
     await showMenu({
       title: `${def.name}: klart`,
       side: true,
       body: `<div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ''}</div><div>Bilen lagas och står hel i garaget.</div>`,
-      items: [{ label: 'Till karriären', value: 0 }],
+      items: [{ label: 'Avsluta mästerskapet', value: 0 }],
     });
     return { prize };
   }
