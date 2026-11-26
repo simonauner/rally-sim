@@ -101,8 +101,8 @@ function playClip(url: string, volume: number) {
   a.play().catch(() => {});
 }
 
-/** Lågmälda applåder och jubel när ett mästerskap är klart. */
-export const applause = () => playClip(applauseUrl, 0.4);
+/** Applåder och jubel när ett mästerskap är klart. */
+export const applause = () => playClip(applauseUrl, 0.6);
 
 /** Mynt som faller ner i en börs när man betalar för något. */
 export const coins = () => playClip(coinsUrl, 0.6);
