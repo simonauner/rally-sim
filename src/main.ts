@@ -198,6 +198,7 @@ async function main() {
   scene.add(dust.mesh);
   const debug = new DebugVectors();
   scene.add(debug.lines);
+  let showVectors = true; // F3/GUI-valet; syns bara när F1-debugläget är på
 
   const controls = new Controls();
   const hud = new Hud();
@@ -286,7 +287,7 @@ async function main() {
   createGui(car, places, {
     teleport: (name) => place(spawns[name]!, true),
     repair,
-    toggleDebug: (on) => (debug.lines.visible = on),
+    toggleDebug: (on) => (showVectors = on),
   });
 
   let camMode = 0;
@@ -443,7 +444,7 @@ async function main() {
     if (controls.wasPressed('KeyT')) restart();
     if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
     if (controls.wasPressed('F1')) document.body.classList.toggle('debug');
-    if (controls.wasPressed('F3')) debug.lines.visible = !debug.lines.visible;
+    if (controls.wasPressed('F3')) showVectors = !showVectors;
     if (controls.wasPressed('KeyH')) hud.toggleHelp();
     if (controls.wasPressed('KeyN')) sound.toggleMute();
     if (controls.wasPressed('KeyG')) showGhost = !showGhost;
@@ -509,6 +510,7 @@ async function main() {
       !!best?.ghost &&
       timer.state !== 'finished' &&
       sampleGhost(best.ghost, timer.state === 'running' ? timer.time : 0, ghostMesh.position, ghostMesh.quaternion);
+    debug.lines.visible = showVectors && document.body.classList.contains('debug');
     debug.update(car);
     updateCamera(frameDt);
     sun.position.set(car.pos.x + 40, car.pos.y + 70, car.pos.z - 30);
