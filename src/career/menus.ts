@@ -251,14 +251,14 @@ async function history(career: CareerState) {
   });
 }
 
-/** Räknar upp kassan i menyns underrubrik under 1,5 s, snabbt först och långsamt mot slutet. */
-function countUp(from: number, to: number) {
+/** Räknar kassan i menyns underrubrik upp eller ner under 1,5 s, snabbt först och långsamt mot slutet. */
+function countUp(from: number, to: number, prefix = 'Kassa: ') {
   const el = document.querySelector('#menu .subtitle');
   const start = performance.now();
   const tick = (now: number) => {
     if (!el?.isConnected) return;
     const t = Math.min(1, (now - start) / 1500);
-    el.textContent = `Kassa: ${formatMoney(Math.round(from + (to - from) * (1 - (1 - t) ** 3)))}`;
+    el.textContent = `${prefix}${formatMoney(Math.round(from + (to - from) * (1 - (1 - t) ** 3)))}`;
     if (t < 1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -298,11 +298,12 @@ async function upgrades(car: string) {
 async function parts(car: string, group: string) {
   const parts = UPGRADES.filter((u) => u.group === group);
   let message = '';
+  let countFrom = loadCareer().career.money;
   for (;;) {
     const career = loadCareer().career;
-    const id = await showMenu<string>({
+    const menu = showMenu<string>({
       title: group,
-      subtitle: `${car} · Kassa: ${formatMoney(career.money)}`,
+      subtitle: `${car} · Kassa: ${formatMoney(countFrom)}`,
       side: true,
       body: message,
       items: [
@@ -311,6 +312,9 @@ async function parts(car: string, group: string) {
       ],
       cancel: '',
     });
+    if (countFrom !== career.money) countUp(countFrom, career.money, `${car} · Kassa: `);
+    countFrom = career.money;
+    const id = await menu;
     if (!id) return;
     const u = parts.find((x) => x.id === id)!;
     const result = buyUpgrade(career, car, id);
