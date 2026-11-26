@@ -127,7 +127,7 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
       body: `${message ? `<div>${message}</div>` : ''}${
         firstCar
           ? '<div>Du har ingen bil än. Köp din första hos bilhandlaren; det som blir över räcker till delar.</div>'
-          : `${lastRace(career)}<div>Enstaka etapp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`
+          : `${lastRace(career)}<div>Enstaka lopp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`
       }`,
       items: firstCar
         ? [
@@ -135,7 +135,7 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
             { label: '← Tillbaka', value: 'back' },
           ]
         : [
-            { label: 'Enstaka etapp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
+            { label: 'Enstaka lopp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
             ongoing
               ? { label: 'Mästerskap', detail: `pågår: ${championshipById(ongoing.id)?.name}, etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'champ' }
               : { label: 'Mästerskap', detail: `upp till ${formatMoney(Math.max(...CHAMPIONSHIPS.map((ch) => championshipMedals(ch)[0]!.prize)))}`, value: 'champ' },
@@ -152,7 +152,7 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
     message = '';
     if (c === 'back') return null;
     if (c === 'stage') {
-      const stage = await pickStage('Enstaka etapp', (s) => {
+      const stage = await pickStage('Enstaka lopp', (s) => {
         const t = STAGE_TARGETS[s.name];
         return t ? `guld under ${t[0]} s` : '';
       });
