@@ -151,6 +151,37 @@ export function buildStage(stage: Stage): THREE.Group {
   trunks.castShadow = true;
   crowns.castShadow = true;
   group.add(trunks, crowns);
+
+  // Buskar, tuvor och stenar nära vägkanten som susar förbi (bara grafik, ingen kollision).
+  const snowy = stage.surfaces.includes('snow');
+  const kinds = [
+    { geo: new THREE.IcosahedronGeometry(0.7, 0), color: snowy ? 0x8a9a86 : 0x5c7a3e, every: 3, near: 1.0, far: 6.5, size: [0.6, 1.4] },
+    { geo: new THREE.ConeGeometry(0.25, 0.6, 5), color: snowy ? 0xb8b6a0 : 0x8f9a4c, every: 1.6, near: 0.5, far: 3.5, size: [0.6, 1.3] },
+    { geo: new THREE.DodecahedronGeometry(0.35, 0), color: 0x8a857c, every: 7, near: 0.6, far: 4, size: [0.4, 1.2] },
+  ];
+  const r = rng(23);
+  for (const k of kinds) {
+    const n = Math.floor(stage.length / k.every) * 2;
+    const inst = new THREE.InstancedMesh(k.geo, new THREE.MeshToonMaterial({ color: k.color }), n);
+    let ki = 0;
+    for (let s = 0; s < stage.length && ki < n - 1; s += k.every) {
+      const p = sideOf(s + r() * k.every);
+      const hw = stage.project(p.x, p.z).width / 2;
+      for (const side of [-1, 1]) {
+        const off = (hw + k.near + r() * (k.far - k.near)) * side;
+        const x = p.x + p.lx * off;
+        const z = p.z + p.lz * off;
+        if (stage.roadAt(x, z).d < hw + k.near - 0.1) continue; // inte på en korsande väg
+        scale.set(1, 0.6 + r() * 0.5, 1).multiplyScalar(k.size[0]! + r() * (k.size[1]! - k.size[0]!));
+        q.setFromAxisAngle(pos.set(0, 1, 0), r() * Math.PI * 2);
+        pos.set(x, stage.heightAt(x, z) + 0.1 * scale.y, z);
+        inst.setMatrixAt(ki++, mat.compose(pos, q, scale));
+      }
+    }
+    inst.count = ki;
+    inst.castShadow = k.every > 2;
+    group.add(inst);
+  }
   return group;
 }
 
