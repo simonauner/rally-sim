@@ -1,6 +1,9 @@
 import type { Stage } from './stage';
 import type { SurfaceId } from './surfaces';
 
+/** Svenska, eller engelska när webbläsaren saknar svensk röst. */
+export type Lang = 'sv' | 'en';
+
 export type NoteKind = 'corner' | 'crest' | 'surface' | 'finish';
 
 export interface PaceNote {
@@ -8,8 +11,8 @@ export interface PaceNote {
   /** Där noten börjar och slutar längs etappen (m). */
   s: number;
   end: number;
-  /** Uppläst text, t.ex. "vänster fyra lång, hundra". */
-  speech: string;
+  /** Uppläst text per språk, t.ex. "vänster fyra lång, hundra". */
+  speech: Record<Lang, string>;
   /** Kort text för skärmen, t.ex. "V4 lång · 100". */
   label: string;
   /** 1 = vänster, -1 = höger (bara kurvor). */
@@ -32,16 +35,32 @@ const CREST_DROP = 0.5;
 /** Så nära (m) ett underlagsbyte en korsande väg måste ansluta för att det ska vara en korsning. */
 const JUNCTION_GAP = 15;
 
-const GRADE_WORDS = ['', 'ett', 'två', 'tre', 'fyra', 'fem', 'sex'];
-const SURFACE_WORDS: Record<SurfaceId, string> = { gravel: 'grus', asphalt: 'asfalt', mud: 'lera', snow: 'snö', snowbank: 'snövall' };
-const DISTANCE_WORDS: Record<number, string> = {
-  50: 'femtio',
-  100: 'hundra',
-  150: 'hundrafemtio',
-  200: 'tvåhundra',
-  250: 'tvåhundrafemtio',
-  300: 'trehundra',
+const WORDS = {
+  sv: {
+    left: 'vänster',
+    right: 'höger',
+    grades: ['', 'ett', 'två', 'tre', 'fyra', 'fem', 'sex'],
+    long: 'lång',
+    crest: 'krön',
+    junction: 'korsning',
+    finish: 'mål',
+    surfaces: { gravel: 'grus', asphalt: 'asfalt', mud: 'lera', snow: 'snö' } as Record<SurfaceId, string>,
+    distances: { 50: 'femtio', 100: 'hundra', 150: 'hundrafemtio', 200: 'tvåhundra', 250: 'tvåhundrafemtio', 300: 'trehundra' } as Record<number, string>,
+  },
+  en: {
+    left: 'left',
+    right: 'right',
+    grades: ['', 'one', 'two', 'three', 'four', 'five', 'six'],
+    long: 'long',
+    crest: 'crest',
+    junction: 'junction',
+    finish: 'finish',
+    surfaces: { gravel: 'gravel', asphalt: 'tarmac', mud: 'mud', snow: 'snow' } as Record<SurfaceId, string>,
+    distances: { 50: 'fifty', 100: 'one hundred', 150: 'one fifty', 200: 'two hundred', 250: 'two fifty', 300: 'three hundred' } as Record<number, string>,
+  },
 };
+/** Samma not på båda språken. */
+const speak = (f: (w: (typeof WORDS)['sv']) => string): Record<Lang, string> => ({ sv: f(WORDS.sv), en: f(WORDS.en) });
 
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -83,7 +102,7 @@ export function generateNotes(stage: Stage, startS: number, finishS: number): Pa
       end: b,
       dir,
       grade,
-      speech: `${dir > 0 ? 'vänster' : 'höger'} ${GRADE_WORDS[grade]}${long ? ' lång' : ''}`,
+      speech: speak((w) => `${dir > 0 ? w.left : w.right} ${w.grades[grade]}${long ? ` ${w.long}` : ''}`),
       label: `${dir > 0 ? 'V' : 'H'}${grade}${long ? ' lång' : ''}`,
     });
   }
@@ -93,7 +112,7 @@ export function generateNotes(stage: Stage, startS: number, finishS: number): Pa
   for (let i = CREST_SPAN; i < n - CREST_SPAN; i++) {
     const drop = stage.ys[i - CREST_SPAN]! + stage.ys[i + CREST_SPAN]! - 2 * stage.ys[i]!;
     if (drop < -CREST_DROP && i - lastCrest > 40 && i > startS && i < finishS) {
-      notes.push({ kind: 'crest', s: i - 5, end: i + 5, speech: 'krön', label: 'krön' });
+      notes.push({ kind: 'crest', s: i - 5, end: i + 5, speech: speak((w) => w.crest), label: 'krön' });
       lastCrest = i;
     }
   }
@@ -102,18 +121,19 @@ export function generateNotes(stage: Stage, startS: number, finishS: number): Pa
   const junctions = stage.spurs.map((sp) => stage.project(sp.points[0]!.x, sp.points[0]!.z).s);
   for (let i = 1; i < n; i++) {
     if (stage.surfaces[i] === stage.surfaces[i - 1] || i < startS || i > finishS) continue;
-    const word = SURFACE_WORDS[stage.surfaces[i]!];
+    const surface = stage.surfaces[i]!;
+    const word = WORDS.sv.surfaces[surface];
     const atJunction = junctions.some((js) => Math.abs(js - i) < JUNCTION_GAP);
     notes.push({
       kind: 'surface',
       s: i,
       end: i,
-      speech: atJunction ? `korsning, ${word}` : word,
+      speech: speak((w) => (atJunction ? `${w.junction}, ${w.surfaces[surface]}` : w.surfaces[surface])),
       label: atJunction ? `korsning ${word}` : word,
     });
   }
 
-  notes.push({ kind: 'finish', s: finishS, end: finishS, speech: 'mål', label: 'mål' });
+  notes.push({ kind: 'finish', s: finishS, end: finishS, speech: speak((w) => w.finish), label: 'mål' });
   notes.sort((x, y) => x.s - y.s);
 
   // Avstånd från där allt hittills slutar till nästa not, avrundat nedåt till 50 m.
@@ -122,7 +142,7 @@ export function generateNotes(stage: Stage, startS: number, finishS: number): Pa
     end = Math.max(end, notes[i]!.end);
     const gap = Math.min(300, Math.floor((notes[i + 1]!.s - end) / 50) * 50);
     if (gap < 50) continue;
-    notes[i]!.speech += `, ${DISTANCE_WORDS[gap]}`;
+    for (const lang of ['sv', 'en'] as const) notes[i]!.speech[lang] += `, ${WORDS[lang].distances[gap]}`;
     notes[i]!.label += ` · ${gap}`;
   }
   return notes;

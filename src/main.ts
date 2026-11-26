@@ -617,7 +617,7 @@ async function main() {
     if (stage && caller) {
       const s = stage.project(car.pos.x, car.pos.z).s;
       const called = caller.update(s, car.speed);
-      if (called.length && !sound.muted) codriver.say(called.map((n) => n.speech).join(', '));
+      if (called.length && !sound.muted) codriver.say(called);
       hud.updateNotes(caller.active(s), codriver.missingVoice);
     }
     pipeline.render();

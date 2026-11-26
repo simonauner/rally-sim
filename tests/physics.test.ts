@@ -347,6 +347,8 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   check('pacenotes: kurvor och ordning', sorted && corners.length >= 8 && !!tight, `${corners.length} kurvor, snäv: ${tight?.label ?? 'saknas'}`);
   const surfaces = notes.filter((n) => n.kind === 'surface').map((n) => n.label.split(' · ')[0]);
   check('pacenotes: underlagsbyten i korsningar och mål', surfaces.join(', ') === 'korsning asfalt, korsning grus, korsning lera, korsning grus' && notes[notes.length - 1]!.kind === 'finish', surfaces.join(', '));
+  const english = notes.map((n) => n.speech.en).join(' | ');
+  check('pacenotes: engelska när svensk röst saknas', notes.every((n) => n.speech.sv && n.speech.en && !/undefined/.test(n.speech.sv + n.speech.en)) && /junction, tarmac/.test(english), notes[0]!.speech.en);
   const caller = new NoteCaller(notes);
   caller.seek(1000);
   const firstAfter = caller.update(1000, 50)[0];

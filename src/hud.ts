@@ -134,7 +134,7 @@ export class Hud {
     const html = notes
       .slice(0, 3)
       .map((n, i) => `<div class="${i === 0 ? 'now' : ''}"><span class="icon">${icon(n)}</span> ${n.label}</div>`)
-      .join('') + (missingVoice ? '<div class="hint">Ingen svensk röst i webbläsaren, noterna visas bara här</div>' : '');
+      .join('') + (missingVoice ? '<div class="hint">Ingen svensk eller engelsk röst i webbläsaren, noterna visas bara här</div>' : '');
     if (this.notes.innerHTML !== html) this.notes.innerHTML = html;
   }
 
