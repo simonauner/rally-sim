@@ -3,7 +3,8 @@ import { Car, type Input } from '../src/physics/car';
 import { kvarn240 } from '../src/physics/params';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
 import type { SurfaceId, TyreType } from '../src/physics/surfaces';
-import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
+import { brakeAlongRoad } from '../src/physics/autopilot';
+import { GhostRecorder, sampleGhost, sectionLosses, timeAlongStage } from '../src/physics/ghost';
 import { generateNotes, NoteCaller, type PaceNote } from '../src/physics/pacenotes';
 import { StageTimer } from '../src/physics/timing';
 import { World } from '../src/physics/world';
@@ -225,7 +226,7 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   let time = NaN;
   run(car, 200, (_t, c) => {
     const hit = stage.project(c.pos.x, c.pos.z);
-    if (!Number.isNaN(time)) return { ...idle, brake: 1 };
+    if (!Number.isNaN(time)) return brakeAlongRoad(stage, c);
     s = hit.s;
     maxOver = Math.max(maxOver, hit.d - hit.width / 2);
     const look = stage.poseAt(s + 6 + c.speed * 0.6);
@@ -253,6 +254,8 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   });
   check('etapp: förare når målet', time > 60 && time < 150, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, kom ${s.toFixed(0)} av ${finish.toFixed(0)} m`);
   check('etapp: håller sig på vägen', maxOver < 1, `som mest ${maxOver.toFixed(2)} m utanför kanten`);
+  const after = stage.project(car.pos.x, car.pos.z);
+  check('efter mål: bilen stannar på vägen', car.speed < 0.5 && after.d < after.width / 2 && after.s < stage.length - 5, `fart ${car.speed.toFixed(2)} m/s, ${(after.s - finish).toFixed(0)} m efter mål, ${after.d.toFixed(2)} m från mitten`);
   const expected = time - startT;
   check('tidtagning: start till mål', timer.state === 'finished' && Math.abs(timer.time - expected) < 0.05, `${timer.time.toFixed(2)} s (förare ${expected.toFixed(2)} s), tillstånd ${timer.state}`);
   const ghost = recorder.data();
@@ -271,6 +274,14 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const inOrder = calls.every(([n], i) => n === caller.notes[i]);
   const early = Math.min(...calls.map(([n, at]) => n.s - at));
   check('pacenotes: läses upp en gång i ordning, före kurvan', calls.length === caller.notes.length && inOrder && early > 20, `${calls.length}/${caller.notes.length} noter, minst ${early.toFixed(0)} m i förväg`);
+  const along = timeAlongStage(ghost, stage);
+  const lastTime = [...along].filter(Number.isFinite).pop() ?? NaN;
+  const monotonic = along.every((t, i) => i === 0 || Number.isNaN(t) || Number.isNaN(along[i - 1]!) || t >= along[i - 1]!);
+  const self = sectionLosses(along, along, START_S, finish);
+  // Jämför med en kopia där bilen är 0,5 s långsammare efter 1000 m: förlusten ska hamna i rätt sektion.
+  const slower = along.map((t, i) => (i >= 1010 ? t + 0.5 : t));
+  const lost = sectionLosses(slower, along, START_S, finish).filter((x) => Math.abs(x.loss) > 1e-9);
+  check('ghost: tid per meter', monotonic && Math.abs(lastTime - timer.time) < 0.1 && self.every((x) => x.loss === 0) && lost.length === 1 && lost[0]!.from < 1010 && lost[0]!.to >= 1010, `vid mål ${lastTime.toFixed(2)} s (klocka ${timer.time.toFixed(2)}), ${self.length} sektioner, förlust i ${lost.map((x) => `${x.from}–${x.to} m`).join(', ')}`);
   check('ghost: sparstorlek', kb < 200, `${kb.toFixed(0)} kB för ${timer.time.toFixed(0)} s`);
   check('tidtagning: mellantider', timer.splits.length === 2 && timer.splits[0]! < timer.splits[1]! && timer.splits[1]! < timer.time, timer.splits.map((x) => x.toFixed(1)).join(', '));
 }

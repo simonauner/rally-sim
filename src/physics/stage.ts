@@ -42,9 +42,9 @@ export interface StageHit {
 }
 
 const SAMPLE_STEP = 1;
-/** Start- och mållinjen ligger en bit in från splinens ändar, där vägen är rak. */
+/** Start- och mållinjen ligger en bit in från splinens ändar; efter mål finns 80 m att stanna på. */
 export const START_S = 20;
-export const FINISH_MARGIN = 20;
+export const FINISH_MARGIN = 80;
 const CELL = 20;
 /** Bortom detta avstånd från vägen är terrängen bara utfyllnad. */
 export const STAGE_CORRIDOR = 45;
@@ -289,6 +289,8 @@ export const STAGE_SKOGSBERG: StageDef = {
     { x: 440, z: 1110, y: 4, width: 7, surface: 'gravel' },
     { x: 420, z: 1240, y: 3, width: 7, surface: 'gravel' },
     { x: 420, z: 1280, y: 3, width: 7, surface: 'gravel' },
+    // Utrullning efter mål, så bilen hinner stanna på vägen.
+    { x: 420, z: 1340, y: 3, width: 7, surface: 'gravel' },
   ],
   spurs: [
     // Grusvägen rakt fram och asfaltsvägen söderut från första korsningen
