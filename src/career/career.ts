@@ -6,11 +6,13 @@
 import type { CareerState } from '../account/protocol';
 import type { CarParams } from '../physics/params';
 
-/** Pengar man börjar med. */
-export const START_MONEY = 2000;
+/**
+ * Pengar man börjar med, utan bil. Räcker till en av de billiga bilarna hos bilhandlaren:
+ * 240 GL med pengar över till delar, eller Ljungen och nästan inget mer.
+ */
+export const START_MONEY = 10000;
 export const DAILY_BONUS = 500;
-/** Bilen man börjar med, och vad de andra kostar hos bilhandlaren. */
-export const STARTER_CAR = 'Kvarn 240 GL';
+/** Vad bilarna kostar hos bilhandlaren. */
 export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 GL': 6000,
   'Kvarn 240 Turbo': 15000,
@@ -201,7 +203,7 @@ export function migrateCareer(career: CareerState): CareerState {
 }
 
 export function newCareer(): CareerState {
-  return { money: START_MONEY, garage: { [STARTER_CAR]: { upgrades: {} } } };
+  return { money: START_MONEY, garage: {} };
 }
 
 export const levelOf = (career: CareerState, car: string, upgrade: string) => career.garage[car]?.upgrades[upgrade] ?? 0;

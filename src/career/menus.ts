@@ -107,20 +107,31 @@ export async function careerMenu(pick: Pick, gained = 0): Promise<Launch | null>
   let countFrom = career.money - gained;
   for (;;) {
     const ongoing = loadChampionship();
+    // En ny karriär börjar utan bil: då finns bara bilhandlaren.
+    const firstCar = Object.keys(career.garage).length === 0;
     const menu = showMenu<string>({
       title: 'Karriär',
       subtitle: `Kassa: ${formatMoney(countFrom)}`,
       solid: true,
-      body: `${message ? `<div>${message}</div>` : ''}<div>Enstaka etapp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`,
-      items: [
-        { label: 'Enstaka etapp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
-        ...(ongoing
-          ? [{ label: `Fortsätt mästerskap: ${championshipById(ongoing.id)?.name}`, detail: `etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'ongoing' }]
-          : CHAMPIONSHIPS.map((ch) => ({ label: `Mästerskap: ${ch.name}`, detail: `${ch.legs.length} etapper, upp till ${formatMoney(CHAMPIONSHIP_MEDALS[0].prize)}`, value: `champ:${ch.id}` }))),
-        { label: 'Garage', detail: Object.keys(career.garage).length === 1 ? '1 bil' : `${Object.keys(career.garage).length} bilar`, value: 'garage' },
-        { label: 'Bilhandlare', value: 'dealer' },
-        { label: '← Tillbaka', value: 'back' },
-      ],
+      body: `${message ? `<div>${message}</div>` : ''}${
+        firstCar
+          ? '<div>Du har ingen bil än. Köp din första hos bilhandlaren; det som blir över räcker till delar.</div>'
+          : '<div>Enstaka etapp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>'
+      }`,
+      items: firstCar
+        ? [
+            { label: 'Bilhandlare: köp din första bil', value: 'dealer' },
+            { label: '← Tillbaka', value: 'back' },
+          ]
+        : [
+            { label: 'Enstaka etapp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
+            ...(ongoing
+              ? [{ label: `Fortsätt mästerskap: ${championshipById(ongoing.id)?.name}`, detail: `etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'ongoing' }]
+              : CHAMPIONSHIPS.map((ch) => ({ label: `Mästerskap: ${ch.name}`, detail: `${ch.legs.length} etapper, upp till ${formatMoney(CHAMPIONSHIP_MEDALS[0].prize)}`, value: `champ:${ch.id}` }))),
+            { label: 'Garage', detail: Object.keys(career.garage).length === 1 ? '1 bil' : `${Object.keys(career.garage).length} bilar`, value: 'garage' },
+            { label: 'Bilhandlare', value: 'dealer' },
+            { label: '← Tillbaka', value: 'back' },
+          ],
       cancel: 'back',
     });
     if (countFrom !== career.money) countUp(countFrom, career.money);
@@ -241,6 +252,7 @@ const confirmPart = (u: Upgrade, money: number) =>
 async function dealer(pick: Pick) {
   for (;;) {
     const career = loadCareer().career;
+    const first = Object.keys(career.garage).length === 0;
     const forSale = CARS.filter((m) => !career.garage[nameOf(m)]);
     if (!forSale.length) {
       await showMenu({ title: 'Bilhandlare', solid: true, body: 'Du äger redan alla bilar.', items: [{ label: '← Tillbaka', value: 0 }], cancel: 0 });
@@ -268,8 +280,8 @@ async function dealer(pick: Pick) {
         },
       },
     });
-    // Efter ett köp visas handlaren igen utan den köpta bilen.
-    if (!bought) return;
+    // Efter ett köp visas handlaren igen utan den köpta bilen; efter den första tillbaka till karriären.
+    if (!bought || first) return;
   }
 }
 
