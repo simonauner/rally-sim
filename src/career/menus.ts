@@ -494,7 +494,7 @@ export async function championshipLegDone(
     const career = loadCareer().career;
     commit(logged({ ...career, money: career.money + prize }, { kind: 'championship', name: def.name, car: p.car, place, of: table.length, time: total, amount: prize }));
     saveChampionship(null);
-    applause(place <= 3);
+    applause();
     await showMenu({
       title: `${def.name}: klart`,
       side: true,
