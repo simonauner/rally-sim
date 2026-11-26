@@ -68,13 +68,13 @@ export function buildStage(stage: Stage): THREE.Group {
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  const ground = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ vertexColors: true }));
   ground.receiveShadow = true;
   group.add(ground);
 
   const outer = new THREE.Mesh(
     new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: FOREST, roughness: 1 }),
+    new THREE.MeshToonMaterial({ color: FOREST }),
   );
   outer.position.set((minX + maxX) / 2, minY - 3, (minZ + maxZ) / 2);
   outer.receiveShadow = true;
@@ -89,7 +89,7 @@ export function buildStage(stage: Stage): THREE.Group {
   const mat = new THREE.Matrix4();
   const poleGeo = new THREE.CylinderGeometry(0.07, 0.07, 1.1, 6);
   const nPoles = Math.floor(stage.length / 25) * 2;
-  const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshStandardMaterial({ color: 0xffffff }), nPoles);
+  const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshToonMaterial({ color: 0xffffff }), nPoles);
   let pi = 0;
   for (let s = 0; s < stage.length && pi < nPoles - 1; s += 25) {
     const p = sideOf(s);
@@ -105,9 +105,9 @@ export function buildStage(stage: Stage): THREE.Group {
   group.add(poles);
 
   // Start- och målportal (bara grafik, ingen kollision)
-  const postMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 1 });
-  const bannerMats = [0x2e7d32, 0xc62828].map((color) => new THREE.MeshStandardMaterial({ color, roughness: 1 }));
-  const lineMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 1 });
+  const postMat = new THREE.MeshToonMaterial({ color: 0x2b2b2b });
+  const bannerMats = [0x2e7d32, 0xc62828].map((color) => new THREE.MeshToonMaterial({ color }));
+  const lineMat = new THREE.MeshToonMaterial({ color: 0xf5f5f5 });
   [START_S, stage.length - FINISH_MARGIN].forEach((s, n) => {
     const p = sideOf(s);
     const hw = stage.project(p.x, p.z).width / 2 + 0.8;
@@ -135,8 +135,8 @@ export function buildStage(stage: Stage): THREE.Group {
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
   const crownGeo = new THREE.ConeGeometry(1.6, 4.5, 9);
   const N = 2500;
-  const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x6b4a32, roughness: 1 }), N);
-  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshStandardMaterial({ color: 0x4f7a4a, roughness: 1 }), N);
+  const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshToonMaterial({ color: 0x6b4a32 }), N);
+  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshToonMaterial({ color: 0x4f7a4a }), N);
   const scale = new THREE.Vector3();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
