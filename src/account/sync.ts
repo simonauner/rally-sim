@@ -77,7 +77,8 @@ function importData(changes: AccountData) {
     const incoming = changes[recordKey(stage)];
     const local = loadRecord(stage);
     const record = recordOf(incoming);
-    if (incoming && record && replaces(incoming, local ? [JSON.stringify(local), 0] : undefined)) saveRecord(stage, record);
+    const key = recordKey(stage);
+    if (incoming && record && replaces(key, incoming, local ? [JSON.stringify(local), 0] : undefined)) saveRecord(stage, record);
   }
 }
 

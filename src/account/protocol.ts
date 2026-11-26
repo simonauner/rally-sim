@@ -87,6 +87,49 @@ function parseRecord(value: string): StageRecord | null {
   }
 }
 
+/** Karriären: pengar och garage. Delas med servern för validering. */
+export interface CareerState {
+  money: number;
+  /** Ägda bilar (bilens namn) och deras uppgraderingsnivåer per kategori. */
+  garage: Record<string, { upgrades: Record<string, number> }>;
+  /** Dagen (YYYY-MM-DD, lokal tid) då dagsbonusen senast hämtades. */
+  bonusDay?: string;
+}
+
+export const CAREER_KEY = 'career';
+const MAX_MONEY = 1e9;
+
+export function isCareerState(value: unknown): value is CareerState {
+  const c = value as CareerState;
+  if (typeof c !== 'object' || c === null) return false;
+  if (!(Number.isInteger(c.money) && c.money >= 0 && c.money <= MAX_MONEY)) return false;
+  if (c.bonusDay !== undefined && !(typeof c.bonusDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.bonusDay))) return false;
+  if (typeof c.garage !== 'object' || c.garage === null) return false;
+  const cars = Object.entries(c.garage);
+  if (cars.length > 50) return false;
+  return cars.every(
+    ([name, car]) =>
+      name.length > 0 &&
+      name.length <= 40 &&
+      typeof car?.upgrades === 'object' &&
+      car.upgrades !== null &&
+      Object.entries(car.upgrades).every(([id, level]) => id.length <= 20 && Number.isInteger(level) && level >= 0 && level <= 10),
+  );
+}
+
+function parseCareer(value: string): CareerState | null {
+  if (value.length > 100_000) return null;
+  try {
+    const c: unknown = JSON.parse(value);
+    return isCareerState(c) ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Parsar karriären ur sanerad data. */
+export const careerOf = (stamped: Stamped | undefined) => (stamped ? parseCareer(stamped[0]) : null);
+
 /** Behåller bara giltiga nycklar och värden; resten kastas tyst. */
 export function sanitize(input: unknown): AccountData {
   const out: AccountData = {};
@@ -95,7 +138,8 @@ export function sanitize(input: unknown): AccountData {
     if (!Array.isArray(stamped) || stamped.length !== 2) continue;
     const [value, updatedAt] = stamped as unknown[];
     if (typeof value !== 'string' || !Number.isInteger(updatedAt) || (updatedAt as number) < 0) continue;
-    if (!RECORD_KEY.test(key) || !parseRecord(value)) continue;
+    const valid = key === CAREER_KEY ? !!parseCareer(value) : RECORD_KEY.test(key) && !!parseRecord(value);
+    if (!valid) continue;
     out[key] = [value, updatedAt as number];
   }
   return out;
@@ -105,11 +149,15 @@ export function sanitize(input: unknown): AccountData {
 export const recordOf = (stamped: Stamped | undefined) => (stamped ? parseRecord(stamped[0]) : null);
 
 /**
- * Ska `incoming` ersätta `existing`? För rekord vinner lägsta tiden, oavsett vilken enhet
- * eller i vilken ordning de kommer, så ett rekord aldrig skrivs över av ett sämre åk.
+ * Ska `incoming` ersätta `existing` under `key`? För rekord vinner lägsta tiden, oavsett vilken
+ * enhet eller i vilken ordning de kommer, så ett rekord aldrig skrivs över av ett sämre åk.
+ * För karriären vinner senaste ändringen.
+ * shortcut: karriären slås inte ihop fält för fält; spelar två enheter samtidigt vinner den som
+ * sparar sist. Byt till sammanslagning per fält om det blir ett problem.
  */
-export function replaces(incoming: Stamped, existing: Stamped | undefined): boolean {
+export function replaces(key: string, incoming: Stamped, existing: Stamped | undefined): boolean {
   if (!existing) return true;
+  if (key === CAREER_KEY) return incoming[1] > existing[1];
   const a = recordOf(incoming);
   const b = recordOf(existing);
   if (!a) return false;

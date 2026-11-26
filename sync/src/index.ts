@@ -1,7 +1,7 @@
 /**
  * Synkserver för rally-sim. En Durable Object per konto håller kontots data i SQLite och slår
  * ihop ändringar från enheter enligt `replaces` i src/account/protocol.ts: för rekord vinner
- * lägsta tiden. Kontot lagras under SHA-256 av hemligheten, så servern ser aldrig hemligheten.
+ * lägsta tiden, för karriären senaste ändringen. Kontot lagras under SHA-256 av hemligheten, så servern ser aldrig hemligheten.
  * Upplägget kommer från season-o-meter (sync/ där).
  */
 
@@ -54,7 +54,7 @@ export class Account extends DurableObject<Env> {
       for (const [key, incoming] of Object.entries(changes)) {
         const [row] = this.sql.exec<Row>('SELECT key, value, updated_at FROM entries WHERE key = ?', key).toArray();
         const existing: Stamped | undefined = row ? [row.value, row.updated_at] : undefined;
-        if (!replaces(incoming, existing)) continue;
+        if (!replaces(key, incoming, existing)) continue;
         this.sql.exec(
           `INSERT INTO entries (key, value, updated_at, seq) VALUES (?, ?, ?, ?)
            ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, seq = excluded.seq`,

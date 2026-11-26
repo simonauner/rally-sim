@@ -32,7 +32,8 @@ function check(name: string, ok: boolean, detail: string) {
   const rec = (time: number, at: number): Stamped => [JSON.stringify({ time, splits: [time / 3, (2 * time) / 3] }), at];
   const fast = rec(88.5, 1);
   const slow = rec(91.2, 2);
-  check('lägsta tid vinner', replaces(fast, slow) && !replaces(slow, fast) && replaces(slow, undefined) && !replaces(fast, fast), 'snabbare ersätter långsammare, inte tvärtom');
+  const k = recordKey({ name: 'Skogsberg', version: '1.0.0', recordsSince: '1.0.0' });
+  check('lägsta tid vinner', replaces(k, fast, slow) && !replaces(k, slow, fast) && replaces(k, slow, undefined) && !replaces(k, fast, fast), 'snabbare ersätter långsammare, inte tvärtom');
   const key = recordKey({ name: 'Skogsberg', version: '1.2.3', recordsSince: '1.2.0' });
   const clean = sanitize({
     [key]: fast,
