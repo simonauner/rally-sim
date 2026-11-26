@@ -8,8 +8,9 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Account"] }],
   "vars": {
-    // Kommaseparerade origins som får anropa API:t (utan sökväg). Spelet ligger på GitHub Pages.
-    "ALLOWED_ORIGINS": "https://simonauner.github.io",
+    // Kommaseparerade origins som får anropa API:t (utan sökväg). Spelet ligger på GitHub Pages,
+    // som skickar vidare simonauner.github.io till den egna domänen www.auner.se.
+    "ALLOWED_ORIGINS": "https://www.auner.se,https://simonauner.github.io",
   },
   "observability": { "enabled": true },
 }

@@ -117,7 +117,7 @@ Det som återstår är att köra och känna.
 ## Driftsättning
 
 `.github/workflows/deploy.yml` bygger och testar vid varje push och pull request. Vid push till
-main driftsätts spelet på GitHub Pages (https://simonauner.github.io/rally-sim/) och synkservern
+main driftsätts spelet på GitHub Pages (https://www.auner.se/rally-sim/) och synkservern
 på Cloudflare Workers. Det kräver, en gång:
 
 - Settings → Pages → Source: GitHub Actions.
