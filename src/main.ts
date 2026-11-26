@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { toonOutlinePass } from 'three/tsl';
+import { toonOutlinePass, uniform } from 'three/tsl';
 import { Sound } from './audio';
 import { createGui } from './gui';
 import { CONTROLS_HTML, Hud, resultHtml } from './hud';
@@ -86,7 +86,11 @@ async function main() {
   scene.fog = new THREE.Fog(0xcfe3ee, 120, 520);
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1500);
   // Cel-shading: toon-material plus mörka konturer runt allt med toon-material.
-  const pipeline = new THREE.RenderPipeline(renderer, toonOutlinePass(scene, camera, new THREE.Color(0x1c1c24), 0.003));
+  const outlinePass = toonOutlinePass(scene, camera, undefined, 0.003);
+  // En uniform, så konturfärgen kan följa etappens ljus (svart på natten).
+  const outlineColor = uniform(new THREE.Color(0x1c1c24));
+  outlinePass.colorNode = outlineColor;
+  const pipeline = new THREE.RenderPipeline(renderer, outlinePass);
 
   const hemi = new THREE.HemisphereLight(0xe8f3ff, 0x8a7a5a, 1.1);
   scene.add(hemi);
@@ -263,6 +267,7 @@ async function main() {
   applyWeather(scene, hemi, sun, weather);
   const precipitation = weather === 'rain' || weather === 'snowfall' ? new Precipitation(weather) : null;
   if (precipitation) scene.add(precipitation.mesh);
+  outlineColor.value.setHex(light.outline);
   const barriers = stage ? new Barriers(stage) : null;
   const barrierMeshes = barriers ? buildBarriers(barriers) : null;
   if (barrierMeshes) scene.add(barrierMeshes.group);

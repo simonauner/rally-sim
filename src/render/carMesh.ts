@@ -341,10 +341,11 @@ function buildBody(b: BodyShape, wheelZ: Range, paint: THREE.Color, lampGlow: La
     ),
   );
   // Lyktorna lyser lite själva, så de inte blir mörka i skugga, och starkt när strålkastarna är på.
+  // Blinkers och backljus används inte och lyser därför aldrig.
   mat.emissiveNode = select(
     lamp,
     color(LAMP).mul(select(p.x.greaterThan(0), lampGlow[0], lampGlow[1])),
-    select(indicator, color(AMBER).mul(0.3), select(tailZone, select(tailAmber.or(tailReverse), tailColor.mul(0.6), tailColor.mul(tailGlow)), vec3(0))),
+    select(tailZone.and(tailAmber.or(tailReverse).not()), color(TAIL).mul(tailGlow), vec3(0)),
   );
   return new DeformablePart(g, mat);
 }
@@ -481,6 +482,10 @@ export class CarMesh {
   private lampGlow: LampGlow = [uniform(0.5), uniform(0.5)];
   /** Baklyktornas röda sken: alltid tänt, starkare med strålkastarna och mycket starkare vid inbromsning. */
   private tailGlow: FloatUniform = uniform(0.9);
+  /** Baklyktornas röda sken på marken bakom bilen, ett per lykta; riktat bakåt så det inte färgar karossen. */
+  private tailLights = [0, 1].map(() => new THREE.SpotLight(0xff1a0a, 0, 10, 1.2, 0.8, 2));
+  /** Smal kägla bakifrån mot stötfångaren under varje lykta, så ytan mellan lyktorna förblir mörk. */
+  private bumperLights = [0, 1].map(() => new THREE.SpotLight(0xff1a0a, 0, 1.2, 0.3, 0.5, 2));
   readonly wheels: THREE.Group[] = [];
   private parts: DeformablePart[];
   private hits: Record<keyof DamageState, Hit[]>;
@@ -520,6 +525,19 @@ export class CarMesh {
       vel: new THREE.Vector3(),
       spin: new THREE.Vector3(),
     }));
+    // Strax bakom bakpartiet, så karossen ligger bakom ljuskäglan.
+    // Ett par ljus per baklykta, mitt för lyktan ute vid hörnet.
+    const tailLightY = (b.tailY[0] + b.tailY[1]) / 2;
+    const tailLightX = (b.tailX + b.halfX) / 2;
+    [1, -1].forEach((s, i) => {
+      const spot = this.tailLights[i]!;
+      spot.position.set(s * tailLightX, tailLightY, b.tail - 0.25);
+      spot.target.position.set(s * tailLightX, tailLightY - 1.5, b.tail - 4);
+      const bumper = this.bumperLights[i]!;
+      bumper.position.set(s * tailLightX, b.bumperY[1], b.tail - 0.6);
+      bumper.target.position.set(s * tailLightX, b.bumperY[1], b.tail);
+      this.group.add(spot, spot.target, bumper, bumper.target);
+    });
     for (let i = 0; i < 4; i++) {
       const w = buildWheel(car.params.wheelRadius);
       this.wheels.push(w);
@@ -576,7 +594,12 @@ export class CarMesh {
   /** Lyktglaset: svagt sken på dagen, starkt med strålkastarna på, släckt när lyktan är trasig. Baklyktorna lyser alltid. */
   setLamps(on: boolean, lamps: number[], braking: boolean) {
     lamps.forEach((l, i) => (this.lampGlow[i]!.value = l >= LAMP_BROKEN ? 0 : on ? 2.4 * (1 - 0.6 * l) : 0.5));
-    this.tailGlow.value = braking ? 3 : on ? 1.4 : 0.9;
+    // Glaset lyser klart med strålkastarna på; vid inbromsning ännu starkare.
+    this.tailGlow.value = braking ? 4 : on ? 2.5 : 0.9;
+    // Skenet på stötfångaren, marken, rök och damm syns bara vid inbromsning i mörker (strålkastarna på).
+    const tail = on && braking ? 2 : 0;
+    this.tailLights.forEach((l) => (l.intensity = tail));
+    this.bumperLights.forEach((l) => (l.intensity = tail * 0.8));
   }
 
   /**

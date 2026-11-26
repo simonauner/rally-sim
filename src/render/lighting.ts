@@ -10,14 +10,16 @@ interface LightPreset {
   /** Solens läge relativt bilen; låg sol ger långa skuggor. */
   sunOffset: [number, number, number];
   headlights: boolean;
+  /** Cel-shadingens konturfärg; måste vara mörkare än scenen, annars syns den som ljusa linjer. */
+  outline: number;
 }
 
 /** Ljuset per tid på dygnet. Dag är det som alltid funnits; resten är mörkare med lägre sol. */
 export const LIGHTS: Record<Light, LightPreset> = {
-  day: { sky: 0xcfe3ee, fog: [120, 520], hemi: [0xe8f3ff, 0x8a7a5a, 1.1], sun: [0xfff1d6, 2.4], sunOffset: [40, 70, -30], headlights: false },
-  dawn: { sky: 0xe8c3a8, fog: [80, 380], hemi: [0xc4c8e4, 0x5a4c58, 0.7], sun: [0xffb47a, 1.7], sunOffset: [70, 16, 40], headlights: true },
-  dusk: { sky: 0x6a6a96, fog: [50, 260], hemi: [0x8088bc, 0x2e2838, 0.4], sun: [0xff8a5c, 0.6], sunOffset: [-70, 10, 30], headlights: true },
-  night: { sky: 0x0a0f1e, fog: [20, 140], hemi: [0x34406c, 0x0c0c14, 0.16], sun: [0x9fb3ff, 0.2], sunOffset: [30, 60, 40], headlights: true },
+  day: { sky: 0xcfe3ee, fog: [120, 520], hemi: [0xe8f3ff, 0x8a7a5a, 1.1], sun: [0xfff1d6, 2.4], sunOffset: [40, 70, -30], headlights: false, outline: 0x1c1c24 },
+  dawn: { sky: 0xe8c3a8, fog: [80, 380], hemi: [0xc4c8e4, 0x5a4c58, 0.7], sun: [0xffb47a, 1.7], sunOffset: [70, 16, 40], headlights: true, outline: 0x1c1c24 },
+  dusk: { sky: 0x6a6a96, fog: [50, 260], hemi: [0x8088bc, 0x2e2838, 0.4], sun: [0xff8a5c, 0.6], sunOffset: [-70, 10, 30], headlights: true, outline: 0x101018 },
+  night: { sky: 0x020306, fog: [20, 140], hemi: [0x34406c, 0x0c0c14, 0.008], sun: [0x9fb3ff, 0.01], sunOffset: [30, 60, 40], headlights: true, outline: 0x000000 },
 };
 
 export function applyLight(scene: THREE.Scene, hemi: THREE.HemisphereLight, sun: THREE.DirectionalLight, preset: LightPreset) {
