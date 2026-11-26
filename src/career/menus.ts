@@ -6,7 +6,7 @@ import type { PickOptions, Showroom } from '../carSelect';
 import { showMenu } from '../menu';
 import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
-import { pickStage } from '../stageMenu';
+import { pickStage, stagePreviewHtml } from '../stageMenu';
 import {
   applyUpgrades,
   buyCar,
@@ -352,7 +352,7 @@ function damageHtml(d: CarDamage) {
 }
 
 /**
- * Efter en etapp i mästerskapet. Mellan etapperna: service där spelaren lagar för egna pengar,
+ * Efter en etapp i mästerskapet. Mellan etapperna: förhandsvisning av nästa etapp och sedan service där spelaren lagar för egna pengar,
  * kör vidare skadad eller avbryter. Efter sista: totaltid och prispengar. Returnerar 'next' när
  * nästa etapp ska laddas, annars prispengarna (0 om spelaren avbryter) på väg till karriären. På servicen står bilen med sina skador på
  * vridbordet från showCar.
@@ -387,8 +387,26 @@ export async function championshipLegDone(
     title: `Etapp ${times.length} av ${def.legs.length}`,
     side: true,
     body: `${resultBody}<div>Totalt hittills: <b>${formatTime(total)}</b></div>`,
-    items: [{ label: 'Fortsätt, till service', value: 0 }],
+    items: [{ label: 'Fortsätt', value: 0 }],
   });
+
+  const nextName = def.legs[times.length]!;
+  const nextStage = STAGES.find((s) => s.name === nextName);
+  const first = await showMenu<'service' | 'go'>({
+    title: `Nästa: ${nextName}`,
+    subtitle: `Etapp ${times.length + 1} av ${def.legs.length}`,
+    side: true,
+    body: nextStage ? stagePreviewHtml(nextStage) : '',
+    items: [
+      { label: 'Till service', value: 'service' },
+      { label: 'Starta etappen', detail: repairCost(damage) > 0 ? 'utan att laga' : undefined, value: 'go' },
+    ],
+    cancel: 'service',
+  });
+  if (first === 'go') {
+    saveChampionship(afterLeg(p, time, damage, false));
+    return 'next';
+  }
 
   const room = showCar(damage);
   let message = '';
@@ -398,7 +416,7 @@ export async function championshipLegDone(
     const money = loadCareer().career.money;
     const c = await showMenu<'repair' | 'go' | 'abort'>({
       title: 'Service',
-      subtitle: `Kassa: ${formatMoney(money)} · nästa: ${def.legs[times.length]}`,
+      subtitle: `Kassa: ${formatMoney(money)} · nästa: ${nextName}`,
       side: true,
       body: `${message}${repaired ? '' : damageHtml(damage)}${cost > 0 ? `<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : '<div>Bilen är hel.</div>'}`,
       items: [
