@@ -120,3 +120,14 @@ export function kvarn240(): CarParams {
     gauges: { rpmMax: 7000, rpmRed: 6250, speedMin: 20, speedMax: 200 },
   };
 }
+
+export interface CarModel {
+  make: () => CarParams;
+  /** En rad om bilen i bilväljaren. */
+  blurb: string;
+}
+
+/** Bilarna man kan välja före en etapp. */
+export const CARS: CarModel[] = [
+  { make: kvarn240, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
+];

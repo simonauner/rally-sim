@@ -11,7 +11,7 @@ import { recoveryKey, secretFromKey } from './account/recoveryKey';
 import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
-import { kvarn240 } from './physics/params';
+import { CARS } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
@@ -20,6 +20,7 @@ import type { StageRecord } from './account/protocol';
 import { loadRecord, saveRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
+import { pickCar } from './carSelect';
 import { DebugVectors } from './render/debug';
 import { Dust } from './render/dust';
 import { buildBarriers } from './render/barriers';
@@ -138,21 +139,31 @@ async function main() {
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
   type MainChoice = 'stage' | 'test' | 'controls' | 'account';
   let choice: MainChoice = query.has('testbana') ? 'test' : 'controls';
-  while (choice === 'controls' || choice === 'account') {
-    const best = loadRecord(STAGE_SKOGSBERG);
-    choice = await showMenu<MainChoice>({
-      title: 'RALLY',
-      subtitle: 'Kvarn 240 GL · fysikprototyp',
-      solid: true,
-      items: [
-        { label: `Kör etapp: ${STAGE_SKOGSBERG.name}`, detail: best ? `bästa ${formatTime(best.time)}` : undefined, value: 'stage' },
-        { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
-        { label: 'Kontroller', value: 'controls' },
-        { label: 'Konto', value: 'account' },
-      ],
-    });
-    if (choice === 'controls') await showControls(true);
-    if (choice === 'account') await showAccount();
+  let model = CARS[0]!;
+  for (;;) {
+    while (choice === 'controls' || choice === 'account') {
+      const best = loadRecord(STAGE_SKOGSBERG);
+      choice = await showMenu<MainChoice>({
+        title: 'RALLY',
+        subtitle: 'Kvarn 240 GL · fysikprototyp',
+        solid: true,
+        items: [
+          { label: `Kör etapp: ${STAGE_SKOGSBERG.name}`, detail: best ? `bästa ${formatTime(best.time)}` : undefined, value: 'stage' },
+          { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
+          { label: 'Kontroller', value: 'controls' },
+          { label: 'Konto', value: 'account' },
+        ],
+      });
+      if (choice === 'controls') await showControls(true);
+      if (choice === 'account') await showAccount();
+    }
+    // Bilväljaren före varje start; Tillbaka går till huvudmenyn.
+    const picked = query.has('testbana') ? model : await pickCar(renderer, CARS);
+    if (picked) {
+      model = picked;
+      break;
+    }
+    choice = 'controls';
   }
   // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
   let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : STAGE_SKOGSBERG.name);
@@ -163,7 +174,7 @@ async function main() {
   const barrierMeshes = barriers ? buildBarriers(barriers) : null;
   if (barrierMeshes) scene.add(barrierMeshes.group);
 
-  const car = new Car(kvarn240(), world);
+  const car = new Car(model.make(), world);
   const carMesh = new CarMesh(car);
   carMesh.addTo(scene);
   const dust = new Dust();

@@ -3,12 +3,13 @@ import { Car, type Input } from '../src/physics/car';
 import { kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
-import type { SurfaceId, TyreType } from '../src/physics/surfaces';
+import type { TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
 import { generateNotes, NoteCaller, type PaceNote } from '../src/physics/pacenotes';
 import { StageTimer } from '../src/physics/timing';
 import { World } from '../src/physics/world';
+import { carSpecs, FlatWorld } from '../src/physics/specs';
 import { recordValid } from '../src/records';
 
 const DT = 1 / 240;
@@ -17,20 +18,6 @@ let failures = 0;
 function check(name: string, ok: boolean, detail: string) {
   console.log(`${ok ? 'OK  ' : 'FAIL'} ${name}: ${detail}`);
   if (!ok) failures++;
-}
-
-/** Plan testyta med ett enda underlag och inga hinder. */
-class FlatWorld extends World {
-  constructor(private surface: SurfaceId) {
-    super();
-    this.boxes.length = 0;
-  }
-  override heightAt() {
-    return 0;
-  }
-  override surfaceAt(): SurfaceId {
-    return this.surface;
-  }
 }
 
 const idle: Input = { throttle: 0, brake: 0, steer: 0, handbrake: 0 };
@@ -77,6 +64,19 @@ for (const [surface, tyre, lo, hi] of [
     if (Number.isNaN(t100) && car.forwardSpeed >= 100 / 3.6) t100 = t;
   });
   check(`0-100 ${surface}/${tyre}`, t100 >= lo && t100 <= hi, `${Number.isNaN(t100) ? 'nådde inte' : t100.toFixed(2) + ' s'} (förväntat ${lo}-${hi}), toppfart ${(car.forwardSpeed * 3.6).toFixed(0)} km/h, växel ${car.drivetrain.gear}`);
+}
+
+// 2b. Bildata i bilväljaren: rimliga värden för en tung 80-talssedan.
+{
+  const t0 = performance.now();
+  const s = carSpecs(kvarn240());
+  const ms = performance.now() - t0;
+  const hp = s.powerKw * 1.36;
+  check('data: effekt', hp > 90 && hp < 160, `${hp.toFixed(0)} hk vid ${s.powerRpm} rpm, ${s.torqueNm} Nm vid ${s.torqueRpm} rpm`);
+  check('data: 0-100 grus', s.zeroTo100 > 8 && s.zeroTo100 < 13, `${s.zeroTo100.toFixed(1)} s`);
+  check('data: toppfart', s.topSpeedKmh > 150 && s.topSpeedKmh < 200, `${s.topSpeedKmh.toFixed(0)} km/h`);
+  check('data: viktfördelning', Math.abs(s.frontWeight - 0.55) < 0.01, `${(s.frontWeight * 100).toFixed(0)} % fram`);
+  check('data: snabb nog för menyn', ms < 400, `${ms.toFixed(0)} ms`);
 }
 
 // 3. Bromssträcka 100 -> 0

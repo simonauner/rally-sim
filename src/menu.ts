@@ -19,6 +19,8 @@ export interface MenuOptions<T> {
   side?: boolean;
   /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
   input?: { placeholder: string; onDone: (value: string) => void };
+  /** Anropas när markeringen flyttas, även för första valet. */
+  onSelect?: (value: T) => void;
 }
 
 const root = () => document.getElementById('menu')!;
@@ -47,6 +49,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const select = (i: number) => {
     sel = (i + buttons.length) % buttons.length;
     buttons.forEach((b, j) => b.classList.toggle('selected', j === sel));
+    opts.onSelect?.(opts.items[sel]!.value);
   };
   select(0);
   const input = el.querySelector('input');

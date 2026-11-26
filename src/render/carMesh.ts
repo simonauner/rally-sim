@@ -293,7 +293,7 @@ export class CarMesh {
     }
   }
 
-  addTo(scene: THREE.Scene) {
+  addTo(scene: THREE.Object3D) {
     scene.add(this.group);
     this.wheels.forEach((w) => scene.add(w));
   }
