@@ -124,8 +124,9 @@ export class Sound {
     const half = dtn.rpm / 120;
     const thr = dtn.limiterCut ? 0 : throttle;
     // 0 vid tomgång, 1 vid begränsaren. Motorn trivs inte över ~4500 rpm, så den låter ansträngd där.
-    const rev = Math.min(1, Math.max(0, (dtn.rpm - 900) / 5700));
-    const strain = Math.max(0, (dtn.rpm - 4500) / 2100);
+    const { idleRpm, limiterRpm } = dtn.engine;
+    const rev = Math.min(1, Math.max(0, (dtn.rpm - idleRpm) / (limiterRpm - idleRpm)));
+    const strain = Math.max(0, (dtn.rpm - 4500) / (limiterRpm - 4500));
     // Liten slumpvis varvtalsvariation så tonen inte blir helt jämn.
     this.engOsc.frequency.setTargetAtTime(half * (1 + (Math.random() - 0.5) * 0.012), t, tau);
     this.engFilter.frequency.setTargetAtTime(180 + half * (14 + 30 * thr), t, tau);
