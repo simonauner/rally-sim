@@ -55,6 +55,12 @@ asfaltsbit), *Ljungheden* i gryning (ljunghedar med krön och en lerig sänka) o
 natten (snö). Då lyser bilens strålkastare. En hård smäll framifrån slår sönder lyktan på den
 sidan, och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
 inbromsning. I Fri körning väljer man först mästerskap och sedan etapp.
+
+Vädret slumpas per etapp (`src/physics/weather.ts`): oftast uppehåll, men ibland regn eller dimma,
+och på vinteretapper snöfall eller dimma. Regn gör asfalt, grus och lera halare och snöfall gör
+snön halare; dimma kortar sikten. Däckmenyn visar vädret och greppet med vädret inräknat, och
+mästerskapets motståndare kör långsammare i dåligt väder. `?vader=regn|dimma|snöfall` tvingar
+fram ett väder vid felsökning.
 Före varje start väljer man däck (grus, asfalt eller vinter); menyn visar etappens underlag och
 förväljer det däck som greppar bäst i snitt (`bestTyre` i `src/physics/stage.ts`).
 Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och underlag

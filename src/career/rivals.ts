@@ -53,10 +53,11 @@ function legTime(stage: string, pace: number, r: () => number): number {
  * fältet hittills (bästa takt över körda etapper) hittar en eller två av de snabbaste samma fart,
  * slumpat från lite långsammare till lite snabbare, så att ledningen inte blir gratis.
  */
-export function raceLeg(rivals: Rival[], legs: string[], leg: number, playerTimes: number[], seed: number): Rival[] {
+export function raceLeg(rivals: Rival[], legs: string[], leg: number, playerTimes: number[], seed: number, slowdown: number[] = []): Rival[] {
   const r = rng(seed + 7919 * (leg + 1));
-  const raced = rivals.map((v) => ({ ...v, times: [...v.times.slice(0, leg), legTime(legs[leg]!, v.pace, r)] }));
-  const playerPace = Math.min(...playerTimes.map((t, i) => t / goldTime(legs[i]!)));
+  // Vädret gör alla långsammare; spelarens takt räknas utan vädret, så ett regnigt åk inte ser långsamt ut.
+  const raced = rivals.map((v) => ({ ...v, times: [...v.times.slice(0, leg), legTime(legs[leg]!, v.pace * (slowdown[leg] ?? 1), r)] }));
+  const playerPace = Math.min(...playerTimes.map((t, i) => t / goldTime(legs[i]!) / (slowdown[i] ?? 1)));
   const best = Math.min(...raced.map((v) => v.pace));
   if (playerPace >= best) return raced;
   const top = [...raced].sort((a, b) => a.pace - b.pace).slice(0, 3);

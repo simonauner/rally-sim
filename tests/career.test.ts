@@ -1,7 +1,7 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY } from '../src/career/career';
-import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
-import { RIVAL_COUNT, standings } from '../src/career/rivals';
+import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { kvarn240 } from '../src/physics/params';
 import { STAGES } from '../src/physics/stage';
@@ -121,6 +121,11 @@ const CAR = 'Kvarn 240 GL';
   const slow = winRate(1.25);
   const ok = gold.valid && gold.wins > 0.05 && gold.wins < 0.5 && gold.podium > 0.4 && fast.wins > 0.5 && known.wins > 0.2 && known.wins < 0.85 && slow.wins < 0.02;
   check('motståndare: utmaning men går att vinna', ok, `vinst i guldfart ${(gold.wins * 100).toFixed(0)} % (pall ${(gold.podium * 100).toFixed(0)} %), 20 % snabbare ${(fast.wins * 100).toFixed(0)} %, dito med rekord ${(known.wins * 100).toFixed(0)} %, bronsfart ${(slow.wins * 100).toFixed(0)} %`);
+  // Väder: samma frö ger samma väder, och motståndarna kör långsammare i regn.
+  const same = def.legs.every((_, i) => legWeather(fresh, i) === legWeather({ ...fresh }, i));
+  const dryLeg = raceLeg(fresh.rivals!, def.legs, 0, [90], 7)[0]!.times[0]!;
+  const wetLeg = raceLeg(fresh.rivals!, def.legs, 0, [90], 7, [1.05])[0]!.times[0]!;
+  check('motståndare: väder', same && wetLeg > dryLeg * 1.03, `torrt ${dryLeg.toFixed(1)} s, regn ${wetLeg.toFixed(1)} s`);
   // Gammalt framsteg utan motståndare får ett fält i efterhand.
   const old = { id: def.id, car: 'Kvarn 240 GL', leg: 1, times: [91], damage: null };
   const caught = raceRivals(old, 94);

@@ -7,6 +7,9 @@
 import type { DamageState } from '../physics/car';
 import { STAGE_TARGETS } from './career';
 import { isRival, newRivals, raceLeg, type Rival } from './rivals';
+import { rng } from '../physics/rng';
+import { STAGES } from '../physics/stage';
+import { rollWeather, WEATHER_SLOWDOWN, type Weather } from '../physics/weather';
 
 export interface ChampionshipDef {
   id: string;
@@ -72,6 +75,13 @@ export function championshipPrize(def: ChampionshipDef, place: number): { medal:
   return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE };
 }
 
+/** Vädret på etappen som ska köras härnäst; samma frö ger samma väder efter en omladdning. */
+export function legWeather(p: ChampionshipProgress, leg = p.leg): Weather {
+  const def = championshipById(p.id)!;
+  const stage = STAGES.find((s) => s.name === def.legs[leg]);
+  return stage ? rollWeather(stage, rng((p.seed ?? 0) + 31 * (leg + 1))()) : 'clear';
+}
+
 /** Ett nytt mästerskap med ett slumpat fält motståndare. */
 export function newProgress(def: ChampionshipDef, car: string, seed: number, playerPace?: number): ChampionshipProgress {
   return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, playerPace) };
@@ -86,7 +96,8 @@ export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipP
   const seed = p.seed ?? p.times.length * 1000 + Math.round(time * 100);
   let rivals = p.rivals ?? newRivals(seed);
   const times = [...p.times, time];
-  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed);
+  const slowdown = def.legs.map((_, i) => WEATHER_SLOWDOWN[legWeather({ ...p, seed }, i)]);
+  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown);
   return { ...p, seed, rivals };
 }
 

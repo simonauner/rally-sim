@@ -8,6 +8,7 @@ import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
 import { pickStage, stagePreviewHtml } from '../stageMenu';
 import { loadRecord } from '../records';
+import { WEATHER_NAMES, type Weather } from '../physics/weather';
 import {
   applyUpgrades,
   buyCar,
@@ -30,6 +31,7 @@ import {
   CHAMPIONSHIPS,
   championshipById,
   championshipPrize,
+  legWeather,
   newProgress,
   raceRivals,
   championshipMedals,
@@ -403,14 +405,15 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
   if (!model || !stage) return null;
   // Samma förhandsvisning och service som mellan etapperna, med hel bil.
   const whole: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1, lamps: [0, 0] };
-  if (!(await beforeLeg(def, 0, whole, (d) => showCar(model, d)))) return null;
   // Spelarens bästa takt på mästerskapets etapper, från egna rekord, så fältet möter den.
   const paces = def.legs.flatMap((leg) => {
     const s = STAGES.find((x) => x.name === leg);
     const best = s && loadRecord(s);
     return best ? [best.time / goldTime(leg)] : [];
   });
+  // Framsteget skapas före förhandsvisningen, så första etappens väder går att visa; det sparas först vid start.
   const progress = newProgress(def, nameOf(model), Math.floor(Math.random() * 2 ** 31), paces.length ? Math.min(...paces) : undefined);
+  if (!(await beforeLeg(def, 0, whole, (d) => showCar(model, d), legWeather(progress, 0)))) return null;
   saveChampionship(progress);
   return { model, stage, championship: progress };
 }
@@ -508,7 +511,7 @@ export async function championshipLegDone(
     items: [{ label: 'Fortsätt', value: 0 }],
   });
 
-  const left = await beforeLeg(def, times.length, damage, showCar);
+  const left = await beforeLeg(def, times.length, damage, showCar, legWeather(p, times.length));
   if (!left) return { prize: 0 };
   saveChampionship(afterLeg(p, time, left, repairCost(left) === 0));
   return 'next';
@@ -518,7 +521,7 @@ export async function championshipLegDone(
  * Före etapp `leg` (0-baserad): förhandsvisning av etappen och service där spelaren lagar för egna pengar,
  * kör vidare skadad eller avbryter. Returnerar skadan bilen startar med, eller null om mästerskapet avbröts.
  */
-async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, showCar: (d: CarDamage) => Showroom): Promise<CarDamage | null> {
+async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, showCar: (d: CarDamage) => Showroom, weather: Weather): Promise<CarDamage | null> {
   const nextName = def.legs[leg]!;
   const nextStage = STAGES.find((s) => s.name === nextName);
   // Vridbordet öppnas vid första besöket på servicen och står kvar bakom förhandsvisningen.
@@ -532,7 +535,7 @@ async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, s
         title: `Nästa: ${nextName}`,
         subtitle: `Etapp ${leg + 1} av ${def.legs.length}`,
         side: true,
-        body: nextStage ? stagePreviewHtml(nextStage) : '',
+        body: `<div>Väder: ${WEATHER_NAMES[weather]}.</div>${nextStage ? stagePreviewHtml(nextStage) : ''}`,
         items: [
           { label: 'Till service', value: 'service' },
           { label: 'Starta etappen', detail: cost > 0 ? 'utan att laga' : undefined, value: 'go' },

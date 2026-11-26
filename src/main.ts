@@ -17,7 +17,7 @@ import { CARS, type CarModel } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
 import { pickTyre } from './tyreMenu';
-import type { CarDamage, ChampionshipProgress } from './career/championship';
+import { legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
@@ -36,6 +36,8 @@ import { buildGhostMesh } from './render/ghostMesh';
 import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
 import { applyLight, Headlights, LIGHTS } from './render/lighting';
+import { applyWeather, Precipitation } from './render/weather';
+import { rollWeather, WEATHER_NAMES, type Weather } from './physics/weather';
 
 const DT = 1 / 240;
 const CAMERAS = ['bakifrån nära', 'bakifrån långt', 'motorhuv', 'förarvy', 'uppifrån', 'sidovy (skador)'] as const;
@@ -244,15 +246,23 @@ async function main() {
     choice = 'controls';
   }
   backdrop?.dispose();
+  // Vädret slumpas per etapp; i mästerskap från dess frö, så en omladdning inte ger nytt väder.
+  // ?vader=regn|dimma|snöfall tvingar fram ett väder vid felsökning.
+  const forced = (Object.keys(WEATHER_NAMES) as Weather[]).find((w) => WEATHER_NAMES[w] === query.get('vader'));
+  const weather: Weather = choice === 'test' ? 'clear' : (forced ?? (champ ? legWeather(champ) : rollWeather(stageDef, Math.random())));
   // Däcken väljs före varje etapp, även mellan mästerskapets etapper.
-  const tyre = choice === 'test' ? null : await pickTyre(stageDef);
+  const tyre = choice === 'test' ? null : await pickTyre(stageDef, weather);
   // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
   let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : stageDef.name);
   const stage = choice === 'test' ? null : new Stage(stageDef);
   const world = stage ?? new World();
+  world.weather = weather;
   scene.add(stage ? buildStage(stage) : buildTerrain(world));
   const light = LIGHTS[stage?.def.light ?? 'day'];
   applyLight(scene, hemi, sun, light);
+  applyWeather(scene, hemi, sun, weather);
+  const precipitation = weather === 'rain' || weather === 'snowfall' ? new Precipitation(weather) : null;
+  if (precipitation) scene.add(precipitation.mesh);
   const barriers = stage ? new Barriers(stage) : null;
   const barrierMeshes = barriers ? buildBarriers(barriers) : null;
   if (barrierMeshes) scene.add(barrierMeshes.group);
@@ -626,6 +636,7 @@ async function main() {
     sound.update(car, input.throttle);
     carMesh.update();
     dust.update(car, world, frameDt);
+    precipitation?.update(frameDt, camera.position, now / 1000);
     barrierMeshes?.update();
     // Ghosten väntar vid startlinjen före start och försvinner när du gått i mål.
     ghostMesh.visible =
