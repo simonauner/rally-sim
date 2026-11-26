@@ -101,9 +101,10 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   let mesh: CarMesh | null = null;
   /** Sekunder kvar av en pågående lagning. */
   let healing = 0;
-  // Låt bilen sätta sig på fjädringen så hjulen hamnar rätt.
+  // Låt bilen sätta sig på fjädringen så hjulen hamnar rätt. Bara handbroms: broms vid stillastående lägger i backen,
+  // och en framhjulsdriven bil backar då iväg från vridbordet.
   const settle = (c: Car) => {
-    for (let i = 0; i < 480; i++) c.step(1 / 240, { throttle: 0, brake: 1, steer: 0, handbrake: 1 });
+    for (let i = 0; i < 480; i++) c.step(1 / 240, { throttle: 0, brake: 0, steer: 0, handbrake: 1 });
   };
   const show = (m: CarModel, damage?: CarDamage | null) => {
     car = new Car(m.make(), new FlatWorld('asphalt'));
