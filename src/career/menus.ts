@@ -433,7 +433,7 @@ export async function championshipLegDone(
       items: [
         ...(cost > 0 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'repair' as const }] : []),
         { label: cost > 0 ? 'Kör vidare utan att laga' : 'Kör nästa etapp', value: 'go' },
-        { label: '← Nästa etapp', value: 'back' },
+        { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
     });
