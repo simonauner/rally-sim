@@ -113,7 +113,6 @@ Det som återstår är att köra och känna.
 
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
 2. Fler etapper och mästerskap, gärna med snö (`STAGES` i `src/physics/stage.ts`, `CHAMPIONSHIPS` i `src/career/championship.ts`).
-3. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
 
 ## Karriär
 
