@@ -278,12 +278,11 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
 
   let pick: 'pick' | 'back';
   for (;;) {
-    const m = cars[current]!;
     pick = await showMenu<'pick' | 'back'>({
       title: opts.title ?? 'Välj bil',
       subtitle: opts.subtitle?.(),
       side: true,
-      body: bodyHtml(m),
+      body: bodyHtml(cars[current]!),
       items: [
         { label: opts.action?.label ?? 'Kör', value: 'pick' },
         { label: '← Tillbaka', value: 'back' },
@@ -291,6 +290,8 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
       cancel: 'back',
     });
     if (pick === 'back' || !opts.action) break;
+    // Bilen man har bläddrat fram, inte den som visades när menyn öppnades.
+    const m = cars[current]!;
     browsing = false;
     const close = await opts.action.run(m);
     browsing = true;
