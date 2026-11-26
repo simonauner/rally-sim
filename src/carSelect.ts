@@ -12,27 +12,58 @@ const num = (x: number, digits = 0) => x.toLocaleString('sv-SE', { minimumFracti
 const DRIVE = (p: CarParams) =>
   p.frontShare === 0 ? 'Bakhjulsdrift' : p.frontShare === 1 ? 'Framhjulsdrift' : 'Fyrhjulsdrift';
 
-function specsHtml(m: CarModel, p: CarParams, s: CarSpecs): string {
+interface Row {
+  k: string;
+  /** Lång text när bilen visas ensam, kort när den jämförs. */
+  full: string;
+  short: string;
+  /** Jämförbart tal och om högre är bättre; utan v färgas raden inte. */
+  v?: number;
+  more?: boolean;
+}
+
+function specRows(p: CarParams, s: CarSpecs): Row[] {
   const hp = s.powerKw * 1.36;
-  const rows: [string, string][] = [
-    ['Motoreffekt', `${num(hp)} hk (${num(s.powerKw)} kW) vid ${num(s.powerRpm)} rpm`],
-    ['Vridmoment', `${num(s.torqueNm)} Nm vid ${num(s.torqueRpm)} rpm`],
-    ['Vikt', `${num(p.mass)} kg · ${num(p.mass / hp, 1)} kg/hk`],
-    ['Viktfördelning', `${num(s.frontWeight * 100)}/${num(100 - s.frontWeight * 100)} fram/bak`],
-    ['Drivning', `${DRIVE(p)}, ${p.gearbox.ratios.length} växlar`],
-    ['Däck', `${TYRE_NAMES[p.tyre]}, Ø ${num(p.wheelRadius * 200)} cm`],
-    ['0–100 km/h', Number.isNaN(s.zeroTo100) ? 'når inte 100' : `${num(s.zeroTo100, 1)} s på grus`],
-    ['Toppfart', `${num(s.topSpeedKmh)} km/h`],
+  const z = s.zeroTo100;
+  return [
+    { k: 'Motoreffekt', full: `${num(hp)} hk (${num(s.powerKw)} kW) vid ${num(s.powerRpm)} rpm`, short: `${num(hp)} hk`, v: hp, more: true },
+    { k: 'Vridmoment', full: `${num(s.torqueNm)} Nm vid ${num(s.torqueRpm)} rpm`, short: `${num(s.torqueNm)} Nm`, v: s.torqueNm, more: true },
+    { k: 'Vikt', full: `${num(p.mass)} kg · ${num(p.mass / hp, 1)} kg/hk`, short: `${num(p.mass)} kg`, v: p.mass, more: false },
+    { k: 'Viktfördelning', full: `${num(s.frontWeight * 100)}/${num(100 - s.frontWeight * 100)} fram/bak`, short: `${num(s.frontWeight * 100)}/${num(100 - s.frontWeight * 100)}` },
+    { k: 'Drivning', full: `${DRIVE(p)}, ${p.gearbox.ratios.length} växlar`, short: DRIVE(p) },
+    { k: 'Däck', full: `${TYRE_NAMES[p.tyre]}, Ø ${num(p.wheelRadius * 200)} cm`, short: TYRE_NAMES[p.tyre] },
+    { k: '0–100 km/h', full: Number.isNaN(z) ? 'når inte 100' : `${num(z, 1)} s på grus`, short: Number.isNaN(z) ? '–' : `${num(z, 1)} s`, v: Number.isNaN(z) ? undefined : z, more: false },
+    { k: 'Toppfart', full: `${num(s.topSpeedKmh)} km/h`, short: `${num(s.topSpeedKmh)} km/h`, v: s.topSpeedKmh, more: true },
   ];
-  return `<div>${m.blurb}</div><table class="specs">${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>
-    <div class="hint">Dra för att snurra bilen.</div>`;
+}
+
+/** Grönt om bilen är bättre än den jämförda, rött om sämre; små skillnader räknas inte. */
+function verdict(a: Row, b: Row): string {
+  if (a.v === undefined || b.v === undefined || Math.abs(a.v - b.v) <= Math.abs(b.v) * 0.005) return '';
+  return a.v > b.v === a.more ? 'ahead' : 'behind';
+}
+
+export interface PickOptions {
+  title?: string;
+  /** Läses om varje gång menyn visas, t.ex. kassan som ändras efter ett köp. */
+  subtitle?: () => string;
+  /**
+   * Ersätter Kör: run öppnar en undermeny medan bilen står kvar på vridbordet, och sedan
+   * visas bilväljaren igen med bilen byggd på nytt (t.ex. med nya uppgraderingar).
+   * Returnerar run true stängs väljaren och bilen returneras.
+   */
+  action?: { label: string; run: (m: CarModel) => Promise<boolean | void> };
+  /** Liten text bredvid bilnamnet, t.ex. priset. */
+  detail?: (m: CarModel) => string;
+  /** Bilar att jämföra med (t.ex. de man äger); värdena visas i en kolumn bredvid. */
+  compare?: CarModel[];
 }
 
 /**
  * Bilväljaren: bilen står på ett vridbord bakom menyn och snurrar sakta, och går att
  * vrida med musen. Returnerar vald bil, eller null om spelaren backar.
  */
-export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[]): Promise<CarModel | null> {
+export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], opts: PickOptions = {}): Promise<CarModel | null> {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcfe3ee);
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
@@ -59,7 +90,52 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[]):
   addEventListener('resize', resize);
 
   let center = new THREE.Vector3();
-  const specs = new Map<CarModel, string>();
+  const cmp = opts.compare ?? [];
+  let current = 0;
+  let compared = 0;
+  // Bilnamnet med pilar; inga <button> eftersom showMenu gör alla knappar i menyn till menyval.
+  const navHtml = (m: CarModel) => {
+    const extra = [cars.length > 1 ? `${cars.indexOf(m) + 1}/${cars.length}` : '', opts.detail?.(m) ?? ''].filter(Boolean).join(' · ');
+    const name = `<b>${m.make().name}</b>${extra ? `<small>${extra}</small>` : ''}`;
+    return `<div class="car-nav">${cars.length > 1 ? `<span data-step="-1">‹</span>${name}<span data-step="1">›</span>` : name}</div>`;
+  };
+  // carSpecs kör en accelerationssimulering, så värdena sparas per bil.
+  const data = new Map<CarModel, { name: string; rows: Row[] }>();
+  const rowsOf = (m: CarModel) => {
+    if (!data.has(m)) {
+      const p = m.make();
+      data.set(m, { name: p.name, rows: specRows(p, carSpecs(p)) });
+    }
+    return data.get(m)!;
+  };
+  const bodyHtml = (m: CarModel) => {
+    const a = rowsOf(m).rows;
+    const other = cmp[compared];
+    const hints = [cars.length > 1 ? '← → byter bil.' : '', cmp.length > 1 ? 'Q E byter jämförelse.' : '', 'Dra för att snurra bilen.'];
+    let table: string;
+    let compareRow = '';
+    if (other) {
+      const b = rowsOf(other);
+      const name = `<b>${b.name}</b>`;
+      compareRow = `<div class="compare">Jämför med ${cmp.length > 1 ? `<span data-cmp="-1">‹</span>${name}<span data-cmp="1">›</span>` : name}</div>`;
+      table = a.map((r, i) => `<tr><th>${r.k}</th><td class="${verdict(r, b.rows[i]!)}">${r.short}</td><td>${b.rows[i]!.short}</td></tr>`).join('');
+    } else {
+      table = a.map((r) => `<tr><th>${r.k}</th><td>${r.full}</td></tr>`).join('');
+    }
+    return `${navHtml(m)}${compareRow}<div>${m.blurb}</div><table class="specs">${table}</table><div class="hint">${hints.filter(Boolean).join(' ')}</div>`;
+  };
+  /** Skriver om panelens text med en mjuk övergång till den nya höjden. */
+  const render = () => {
+    const body = document.querySelector('#menu .body');
+    const panel = body?.closest<HTMLElement>('.panel');
+    if (!body || !panel) return;
+    // Mäts mitt i en pågående animation om man bläddrar snabbt.
+    const from = panel.offsetHeight;
+    panel.getAnimations().forEach((a) => a.cancel());
+    body.innerHTML = bodyHtml(cars[current]!);
+    const to = panel.offsetHeight;
+    if (from !== to) panel.animate({ height: [`${from}px`, `${to}px`] }, { duration: 200, easing: 'ease-out' });
+  };
   let shown: CarModel | null = null;
   const show = (m: CarModel) => {
     if (m === shown) return;
@@ -76,9 +152,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[]):
     turntable.position.set(center.x, -0.05, center.z);
     sun.position.set(center.x + 5, center.y + 10, center.z + 6);
     sun.target.position.copy(center);
-    if (!specs.has(m)) specs.set(m, specsHtml(m, p, carSpecs(p)));
-    const body = document.querySelector('#menu .body');
-    if (body) body.innerHTML = specs.get(m)!;
+    render();
   };
   show(cars[0]!);
 
@@ -104,6 +178,32 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[]):
   menu.addEventListener('pointermove', move);
   menu.addEventListener('pointerup', up);
 
+  let browsing = true; // av medan en undermeny visas
+  const step = (d: number) => {
+    current = (current + d + cars.length) % cars.length;
+    show(cars[current]!);
+  };
+  const stepCompare = (d: number) => {
+    if (cmp.length < 2) return;
+    compared = (compared + d + cmp.length) % cmp.length;
+    render();
+  };
+  const click = (e: MouseEvent) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-step], [data-cmp]');
+    if (el?.dataset.step) step(Number(el.dataset.step));
+    if (el?.dataset.cmp) stepCompare(Number(el.dataset.cmp));
+  };
+  // Registreras före showMenu så att den hinner före menyns lyssnare, som stoppar tangenttrycket.
+  const key = (e: KeyboardEvent) => {
+    if (!browsing) return;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') step(-1);
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD') step(1);
+    else if (e.code === 'KeyQ') stepCompare(-1);
+    else if (e.code === 'KeyE') stepCompare(1);
+  };
+  menu.addEventListener('click', click);
+  addEventListener('keydown', key, true);
+
   let last = performance.now();
   renderer.setAnimationLoop((now: number) => {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
@@ -121,21 +221,37 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[]):
     pipeline.render();
   });
 
-  const BACK = -1;
-  const pick = await showMenu<number>({
-    title: 'Välj bil',
-    side: true,
-    body: specs.get(cars[0]!)!,
-    items: [...cars.map((m, i) => ({ label: m.make().name, value: i })), { label: 'Tillbaka', value: BACK }],
-    cancel: BACK,
-    onSelect: (i) => i !== BACK && show(cars[i]!),
-  });
+  let pick: 'pick' | 'back';
+  for (;;) {
+    const m = cars[current]!;
+    pick = await showMenu<'pick' | 'back'>({
+      title: opts.title ?? 'Välj bil',
+      subtitle: opts.subtitle?.(),
+      side: true,
+      body: bodyHtml(m),
+      items: [
+        { label: opts.action?.label ?? 'Kör', value: 'pick' },
+        { label: 'Tillbaka', value: 'back' },
+      ],
+      cancel: 'back',
+    });
+    if (pick === 'back' || !opts.action) break;
+    browsing = false;
+    const close = await opts.action.run(m);
+    browsing = true;
+    if (close) break;
+    data.clear();
+    shown = null;
+    show(m);
+  }
 
   renderer.setAnimationLoop(null);
   removeEventListener('resize', resize);
   menu.removeEventListener('pointerdown', down);
   menu.removeEventListener('pointermove', move);
   menu.removeEventListener('pointerup', up);
+  menu.removeEventListener('click', click);
+  removeEventListener('keydown', key, true);
   pipeline.dispose();
-  return pick === BACK ? null : cars[pick]!;
+  return pick === 'back' ? null : cars[current]!;
 }

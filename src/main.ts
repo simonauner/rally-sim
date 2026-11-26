@@ -176,7 +176,7 @@ async function main() {
       if (choice === 'account') await showAccount();
     }
     if (choice === 'career') {
-      const launch = await careerMenu((models) => pickCar(renderer, models));
+      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts));
       if (launch) {
         ({ model, stage: stageDef, championship: champ } = launch);
         careerMode = !champ;

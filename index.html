@@ -34,7 +34,9 @@
       #menu button { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font: inherit; font-size: 17px; text-align: left; padding: 10px 14px; border: 2px solid transparent; border-radius: 8px; background: #0000000d; color: inherit; cursor: pointer; }
       #menu button.selected { border-color: #1b1b1b; background: #fff; }
       #menu .result { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
-      #menu.side { justify-content: flex-end; padding: 0 max(16px, 4vw); background: none; }
+      #menu.side { justify-content: flex-end; align-items: flex-start; padding: 12vh max(16px, 4vw) 0; background: none; }
+      /* Fast bredd så panelen inte hoppar när innehållet byts; höjden animeras i carSelect.ts. */
+      #menu.side .panel { width: 460px; box-sizing: border-box; overflow: hidden; }
       #menu .recovery { margin: 12px 0; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; word-break: break-all; user-select: all; }
       #menu input { display: block; width: 100%; box-sizing: border-box; margin-top: 14px; padding: 10px 12px; font: inherit; font-size: 15px; border: 2px solid #1b1b1b33; border-radius: 8px; text-transform: uppercase; }
       #menu .loading { margin-top: 16px; display: flex; align-items: center; gap: 10px; font-size: 15px; }
@@ -43,6 +45,11 @@
       #menu .specs { margin-top: 10px; border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
       #menu .specs th { text-align: left; font-weight: 600; padding: 3px 14px 3px 0; white-space: nowrap; vertical-align: top; }
       #menu .specs td { padding: 3px 0; }
+      #menu .car-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 20px; }
+      #menu .car-nav b { flex: 1; text-align: center; }
+      #menu .car-nav small { font-size: 12px; opacity: 0.6; }
+      #menu .compare { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      #menu :is(.car-nav, .compare) span { padding: 2px 12px; border-radius: 8px; background: #0000000d; cursor: pointer; user-select: none; }
       #menu .prize { margin-top: 10px; font-size: 18px; font-weight: 700; }
       #menu .hint { margin-top: 8px; opacity: 0.6; font-size: 12px; }
       #menu .corner { position: fixed; right: 12px; bottom: 8px; font-size: 11px; opacity: 0.45; }

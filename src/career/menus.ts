@@ -2,6 +2,7 @@
 
 import type { CareerState } from '../account/protocol';
 import { localChanged } from '../account/sync';
+import type { PickOptions } from '../carSelect';
 import { showMenu } from '../menu';
 import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
@@ -44,13 +45,15 @@ export function commit(career: CareerState) {
   localChanged();
 }
 
-/** Ägda bilar, med karriärens uppgraderingar inbyggda. */
+/** Ägda bilar. Uppgraderingarna läses när bilen byggs, så köp i garaget syns direkt. */
 function ownedModels(career: CareerState): CarModel[] {
   return CARS.filter((m) => career.garage[nameOf(m)]).map((m) => ({
     ...m,
-    make: () => applyUpgrades(m.make(), career.garage[nameOf(m)]!.upgrades),
+    make: () => applyUpgrades(m.make(), loadCareer().career.garage[nameOf(m)]!.upgrades),
   }));
 }
+
+type Pick = (models: CarModel[], opts?: PickOptions) => Promise<CarModel | null>;
 
 const buyMessage = (result: BuyResult, price: number | undefined, done: string) =>
   result === 'poor' ? `<div class="behind">Du har inte råd: det kostar ${formatMoney(price ?? 0)}.</div>` : typeof result === 'object' ? done : '';
@@ -90,7 +93,7 @@ export async function confirmAbort(): Promise<boolean> {
  * Karriärens huvudmeny. Delar ut dagsbonusen första gången per dag. Returnerar vad som ska
  * köras, eller null om spelaren backar.
  */
-export async function careerMenu(pick: (models: CarModel[]) => Promise<CarModel | null>): Promise<Launch | null> {
+export async function careerMenu(pick: Pick): Promise<Launch | null> {
   let career = loadCareer().career;
   const bonus = claimDailyBonus(career, localDay());
   let message = '';
@@ -132,30 +135,19 @@ export async function careerMenu(pick: (models: CarModel[]) => Promise<CarModel 
       const launch = def ? await startChampionship(def, career, pick) : await ongoingMenu();
       if (launch) return launch;
     }
-    if (c === 'garage') await garage();
-    if (c === 'dealer') await dealer();
+    if (c === 'garage') await garage(pick);
+    if (c === 'dealer') await dealer(pick);
     career = loadCareer().career;
   }
 }
 
-async function garage() {
-  for (;;) {
-    const career = loadCareer().career;
-    const cars = Object.keys(career.garage);
-    const car =
-      cars.length === 1
-        ? cars[0]!
-        : await showMenu<string>({
-            title: 'Garage',
-            subtitle: `Kassa: ${formatMoney(career.money)}`,
-            solid: true,
-            items: [...cars.map((name) => ({ label: name, value: name })), { label: 'Tillbaka', value: '' }],
-            cancel: '',
-          });
-    if (!car) return;
-    await upgrades(car);
-    if (cars.length === 1) return;
-  }
+/** Garaget: samma vridbord som bilväljaren, med uppgraderingarna som undermeny. */
+async function garage(pick: Pick) {
+  await pick(ownedModels(loadCareer().career), {
+    title: 'Garage',
+    subtitle: () => `Kassa: ${formatMoney(loadCareer().career.money)}`,
+    action: { label: 'Uppgradera', run: (m) => upgrades(nameOf(m)) },
+  });
 }
 
 async function upgrades(car: string) {
@@ -165,7 +157,7 @@ async function upgrades(car: string) {
     const id = await showMenu<string>({
       title: car,
       subtitle: `Kassa: ${formatMoney(career.money)}`,
-      solid: true,
+      side: true,
       body: `${message}<table class="specs">${UPGRADES.map((u) => `<tr><th>${u.name}</th><td>${u.effect}</td></tr>`).join('')}</table>`,
       items: [
         ...UPGRADES.map((u) => {
@@ -189,23 +181,39 @@ async function upgrades(car: string) {
   }
 }
 
-async function dealer() {
-  let message = '';
+/** Bilhandlaren: samma vridbord som bilväljaren, med ägda bilar att jämföra med. */
+async function dealer(pick: Pick) {
   for (;;) {
     const career = loadCareer().career;
     const forSale = CARS.filter((m) => !career.garage[nameOf(m)]);
-    const name = await showMenu<string>({
+    if (!forSale.length) {
+      await showMenu({ title: 'Bilhandlare', solid: true, body: 'Du äger redan alla bilar.', items: [{ label: 'Tillbaka', value: 0 }], cancel: 0 });
+      return;
+    }
+    const bought = await pick(forSale, {
       title: 'Bilhandlare',
-      subtitle: `Kassa: ${formatMoney(career.money)}`,
-      solid: true,
-      body: `${message}${forSale.length ? forSale.map((m) => `<div><b>${nameOf(m)}</b>: ${m.blurb}</div>`).join('') : '<div>Du äger redan alla bilar.</div>'}`,
-      items: [...forSale.map((m) => ({ label: nameOf(m), detail: formatMoney(CAR_PRICES[nameOf(m)] ?? 0), value: nameOf(m) })), { label: 'Tillbaka', value: '' }],
-      cancel: '',
+      subtitle: () => `Kassa: ${formatMoney(loadCareer().career.money)}`,
+      detail: (m) => formatMoney(CAR_PRICES[nameOf(m)] ?? 0),
+      compare: ownedModels(career),
+      action: {
+        label: 'Köp',
+        run: async (m) => {
+          const name = nameOf(m);
+          const result = buyCar(loadCareer().career, name);
+          if (typeof result === 'object') commit(result);
+          await showMenu({
+            title: typeof result === 'object' ? 'Köpt' : 'Inget köp',
+            side: true,
+            body: buyMessage(result, CAR_PRICES[name], `<div class="ahead">${name} står nu i garaget.</div>`),
+            items: [{ label: 'OK', value: 0 }],
+            cancel: 0,
+          });
+          return typeof result === 'object';
+        },
+      },
     });
-    if (!name) return;
-    const result = buyCar(career, name);
-    if (typeof result === 'object') commit(result);
-    message = buyMessage(result, CAR_PRICES[name], `<div class="ahead">${name} står nu i garaget.</div>`);
+    // Efter ett köp visas handlaren igen utan den köpta bilen.
+    if (!bought) return;
   }
 }
 
@@ -239,7 +247,7 @@ async function ongoingMenu(): Promise<Launch | null> {
   return null;
 }
 
-async function startChampionship(def: ChampionshipDef, career: CareerState, pick: (models: CarModel[]) => Promise<CarModel | null>): Promise<Launch | null> {
+async function startChampionship(def: ChampionshipDef, career: CareerState, pick: Pick): Promise<Launch | null> {
   const targets = championshipTargets(def);
   const c = await showMenu<'go' | 'back'>({
     title: def.name,
