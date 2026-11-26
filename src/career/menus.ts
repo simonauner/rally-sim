@@ -252,13 +252,13 @@ async function history(career: CareerState) {
 }
 
 /** Räknar kassan i menyns underrubrik upp eller ner under 1,5 s, snabbt först och långsamt mot slutet. */
-function countUp(from: number, to: number, prefix = 'Kassa: ') {
+function countUp(from: number, to: number, text = (money: string) => `Kassa: ${money}`) {
   const el = document.querySelector('#menu .subtitle');
   const start = performance.now();
   const tick = (now: number) => {
     if (!el?.isConnected) return;
     const t = Math.min(1, (now - start) / 1500);
-    el.textContent = `${prefix}${formatMoney(Math.round(from + (to - from) * (1 - (1 - t) ** 3)))}`;
+    el.textContent = text(formatMoney(Math.round(from + (to - from) * (1 - (1 - t) ** 3))));
     if (t < 1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -312,7 +312,7 @@ async function parts(car: string, group: string) {
       ],
       cancel: '',
     });
-    if (countFrom !== career.money) countUp(countFrom, career.money, `${car} · Kassa: `);
+    if (countFrom !== career.money) countUp(countFrom, career.money, (m) => `${car} · Kassa: ${m}`);
     countFrom = career.money;
     const id = await menu;
     if (!id) return;
@@ -368,18 +368,22 @@ async function dealer(pick: Pick) {
         denied: (m) => buyCar(loadCareer().career, nameOf(m)) === 'poor',
         run: async (m) => {
           const name = nameOf(m);
+          const before = loadCareer().career.money;
           const result = buyCar(loadCareer().career, name);
           if (typeof result === 'object') {
             commit(result);
             coins();
           }
-          await showMenu({
+          const menu = showMenu({
             title: typeof result === 'object' ? 'Köpt' : 'Inget köp',
+            subtitle: `Kassa: ${formatMoney(before)}`,
             side: true,
             body: buyMessage(result, CAR_PRICES[name], `<div class="ahead">${name} står nu i garaget.</div>`),
             items: [{ label: 'OK', value: 0 }],
             cancel: 0,
           });
+          if (typeof result === 'object') countUp(before, result.money);
+          await menu;
           return typeof result === 'object';
         },
       },
@@ -577,6 +581,7 @@ async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, s
   let room: Showroom | null = null;
   let message = '';
   let atService = false;
+  let countFrom = loadCareer().career.money;
   for (;;) {
     const cost = repairCost(damage);
     if (!atService) {
@@ -608,9 +613,9 @@ async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, s
     const money = loadCareer().career.money;
     const parts = partCosts(damage);
     const broken = (Object.keys(parts) as RepairPart[]).filter((k) => parts[k] > 0);
-    const c = await showMenu<RepairPart | 'all' | 'go' | 'back'>({
+    const menu = showMenu<RepairPart | 'all' | 'go' | 'back'>({
       title: 'Service',
-      subtitle: `Kassa: ${formatMoney(money)} · nästa: ${nextName}`,
+      subtitle: `Kassa: ${formatMoney(countFrom)} · nästa: ${nextName}`,
       side: true,
       body: `${message}${cost > 0 ? `${damageHtml(damage)}<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : '<div>Bilen är hel.</div>'}`,
       items: [
@@ -621,6 +626,9 @@ async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, s
       ],
       cancel: 'back',
     });
+    if (countFrom !== money) countUp(countFrom, money, (m) => `Kassa: ${m} · nästa: ${nextName}`);
+    countFrom = money;
+    const c = await menu;
     if (c === 'back') {
       atService = false;
       message = '';
