@@ -1,3 +1,5 @@
+import { settings } from './settings';
+
 export interface MenuItem<T> {
   label: string;
   /** Liten text till höger, t.ex. bästa tid. */
@@ -31,6 +33,25 @@ export interface MenuOptions<T> {
 
 const root = () => document.getElementById('menu')!;
 
+let blipCtx: AudioContext | null = null;
+/** Kort klick: hög ton för val, mellanton för att flytta, låg för att backa. */
+function blip(freq: number, length: number) {
+  if (!settings.sound || !settings.menuSound) return;
+  // Skapas vid första klicket, som är en användargest, så webbläsaren tillåter ljudet.
+  const ctx = (blipCtx ??= new AudioContext());
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.7, t + length);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + length);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + length);
+}
+
 /**
  * Visar en meny och väntar på ett val. Styrs med piltangenter/W/S och Enter, eller musen.
  * Menyn fångar tangenttryck så att spelet inte ser dem; släppta tangenter går igenom,
@@ -55,6 +76,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const buttons = [...el.querySelectorAll('button')];
   let sel = 0;
   const select = (i: number) => {
+    if ((i + buttons.length) % buttons.length !== sel) blip(660, 0.04);
     sel = (i + buttons.length) % buttons.length;
     buttons.forEach((b, j) => b.classList.toggle('selected', j === sel));
     buttons[sel]?.scrollIntoView({ block: 'nearest' });
@@ -66,6 +88,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
 
   return new Promise<T>((resolve) => {
     const done = (value: T) => {
+      blip(value === opts.cancel ? 330 : 880, 0.09);
       opts.input?.onDone(input?.value ?? '');
       removeEventListener('keydown', onKey, true);
       el.style.display = 'none';

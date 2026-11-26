@@ -1,3 +1,4 @@
+import { settings } from './settings';
 import type { DamageEvent } from './physics/collision';
 import type { Car } from './physics/car';
 import type { SurfaceId } from './physics/surfaces';
@@ -28,7 +29,9 @@ export class Sound {
   private slipGain!: GainNode;
   private slipFilter!: BiquadFilterNode;
   private noise!: AudioBuffer;
-  muted = false;
+  get muted() {
+    return !settings.sound;
+  }
   /** Avståndsdämpning, 0–1, t.ex. för bilarna bakom huvudmenyn. */
   private volume = 1;
 
@@ -136,10 +139,12 @@ export class Sound {
   setPaused(paused: boolean) {
     if (!this.ctx) return;
     void (paused ? this.ctx.suspend() : this.ctx.resume());
+    // Ljudet kan ha slagits av eller på i inställningarna under pausen.
+    if (!paused) this.setVolume(this.volume);
   }
 
   toggleMute() {
-    this.muted = !this.muted;
+    settings.sound = !settings.sound;
     this.setVolume(this.volume);
   }
 

@@ -4,7 +4,7 @@ import { Sound } from './audio';
 import { createGui } from './gui';
 import { CONTROLS_HTML, Hud, resultHtml } from './hud';
 import { CoDriver } from './codriver';
-import { settings, showSettings } from './settings';
+import { settings, showSettings, showWelcome } from './settings';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
 import { menuScene, type MenuScene } from './menuScene';
@@ -187,6 +187,7 @@ async function main() {
     if (choice === 'controls') {
       backdrop ??= menuScene(renderer);
       backdrop.play();
+      if (settings.firstVisit) await showWelcome();
     }
     while (choice === 'settings' || choice === 'controls' || choice === 'account') {
       choice = await showMenu<MainChoice>({

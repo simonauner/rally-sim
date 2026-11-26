@@ -3,6 +3,8 @@
 import { showMenu } from './menu';
 
 const VOICE_KEY = 'rally.codriver';
+const SOUND_KEY = 'rally.sound';
+const MENU_SOUND_KEY = 'rally.menusound';
 
 function read(key: string) {
   try {
@@ -21,6 +23,8 @@ function write(key: string, value: string) {
 }
 
 let voice = read(VOICE_KEY) !== 'off';
+let sound = read(SOUND_KEY);
+let menuSound = read(MENU_SOUND_KEY) !== 'off';
 
 export const settings = {
   /** Om kartläsaren läser upp noterna; de visas på skärmen ändå. */
@@ -31,21 +35,68 @@ export const settings = {
     voice = on;
     write(VOICE_KEY, on ? 'on' : 'off');
   },
+  /** Allt ljud; N växlar det under körning. */
+  get sound() {
+    return sound !== 'off';
+  },
+  set sound(on: boolean) {
+    sound = on ? 'on' : 'off';
+    write(SOUND_KEY, sound);
+  },
+  /** Klick när man flyttar och väljer i menyerna; hörs bara med ljudet på. */
+  get menuSound() {
+    return menuSound;
+  },
+  set menuSound(on: boolean) {
+    menuSound = on;
+    write(MENU_SOUND_KEY, on ? 'on' : 'off');
+  },
+  /** Ingen har svarat på välkomstfrågorna än. */
+  get firstVisit() {
+    return sound === null;
+  },
 };
+
+/** Välkomstskärmen första gången spelet startas. */
+export async function showWelcome() {
+  settings.sound = await showMenu({
+    title: 'Välkommen!',
+    solid: true,
+    body: 'Hej och välkommen till rally direkt i webbläsaren! Först en fråga: vill du ha ljud på? Det går att ändra under Inställningar, eller med N när du kör.',
+    items: [
+      { label: 'Ja, ljud på', value: true },
+      { label: 'Nej, inget ljud', value: false },
+    ],
+  });
+  if (!settings.sound) return;
+  settings.menuSound = await showMenu({
+    title: 'Välkommen!',
+    solid: true,
+    body: 'Vill du ha ljudeffekter i menyerna?',
+    items: [
+      { label: 'Ja, menyljud på', value: true },
+      { label: 'Nej, bara i spelet', value: false },
+    ],
+  });
+}
 
 /** Inställningsmenyn, från både huvud- och pausmenyn. */
 export async function showSettings(solid: boolean) {
   for (;;) {
-    const c = await showMenu<'voice' | 'back'>({
+    const c = await showMenu<'sound' | 'menuSound' | 'voice' | 'back'>({
       title: 'Inställningar',
       solid,
       items: [
+        { label: 'Ljud', detail: settings.sound ? 'på' : 'av', value: 'sound' },
+        { label: 'Menyljud', detail: settings.menuSound ? 'på' : 'av', value: 'menuSound' },
         { label: 'Kartläsarens röst', detail: settings.voice ? 'på' : 'av', note: 'Noterna visas på skärmen ändå.', value: 'voice' },
         { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
     });
     if (c === 'back') return;
-    settings.voice = !settings.voice;
+    if (c === 'sound') settings.sound = !settings.sound;
+    else if (c === 'menuSound') settings.menuSound = !settings.menuSound;
+    else settings.voice = !settings.voice;
   }
 }
