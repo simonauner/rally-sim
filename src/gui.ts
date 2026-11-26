@@ -9,7 +9,7 @@ export interface GuiActions {
 }
 
 /** Trimningspanel: allt går att ändra under körning. */
-export function createGui(car: Car, actions: GuiActions) {
+export function createGui(car: Car, places: [label: string, key: string][], actions: GuiActions) {
   const gui = new GUI({ title: 'Trimning', width: 290 });
   const p = car.params;
 
@@ -40,15 +40,6 @@ export function createGui(car: Car, actions: GuiActions) {
   assists.add(car.assists, 'steerAssist', 0, 1, 0.05).name('Motstyrning');
 
   const test = gui.addFolder('Testplatser');
-  const places: [string, string][] = [
-    ['Grus: start', 'gravel'],
-    ['Asfalt', 'asphalt'],
-    ['Lera', 'mud'],
-    ['Snö', 'snow'],
-    ['Tvättbräda (18 m/s)', 'washboard'],
-    ['Hopp (22 m/s)', 'jump'],
-    ['Krocktest (20 m/s)', 'crash'],
-  ];
   for (const [label, key] of places) test.add({ go: () => actions.teleport(key) }, 'go').name(label);
   test.add({ repair: actions.repair }, 'repair').name('Reparera bilen');
 

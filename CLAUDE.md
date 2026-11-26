@@ -33,5 +33,5 @@ dem bara medvetet.
 
 ## Nästa steg (fas 1)
 
-Spline-etapp med material per punkt, dammpartiklar, motorljud, tidtagning och ghost, pacenotes.
+Dammpartiklar, tidtagning och ghost, pacenotes. Spline-etappen (`src/physics/stage.ts`) och motorljudet är klara.
 Därefter konto/sparning enligt README (modell: season-o-meter).

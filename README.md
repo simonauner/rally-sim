@@ -32,7 +32,13 @@ Kräver WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM-Mac) eller Safari 26.
 
 Gamepad: vänsterspak, RT/LT, A = handbroms. Panelen till höger trimmar bilen medan du kör.
 
-## Testbanan
+## Etappen
+
+Spelet startar på etappen *Skogsberg* (ca 1,8 km): grus, en asfaltsbit och en lerig skogsdel.
+Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och underlag
+(underlaget gäller fram till nästa punkt). Utanför vägen kommer ett dike och sedan lera.
+
+## Testbanan (`?testbana`)
 
 Längs +Z från start: grus (0–40 m), asfaltsremsa med lera till höger och snö till vänster (40–100),
 tvättbräda (110–150), hopp (170–180), två betongpelare (220), betongvägg för krocktest (260).
@@ -49,6 +55,7 @@ src/physics/   ren TypeScript, ingen webbläsarkod (körs även i Node)
   collision.ts   sekventiella impulser mot statiska boxar och mark
   params.ts      bilen "Kvarn 240 GL" (fiktiv)
   world.ts       testbanans höjd, underlag och hinder
+  stage.ts       etapp som spline med höjd, bredd och underlag per stödpunkt
 src/render/    Three.js (WebGPU), clay-look, deformerbar kaross, terräng, debug
 src/main.ts    spelloop: fast fysiksteg 240 Hz, rendering frikopplad
 tests/         fysiktester med förväntade intervall
@@ -79,7 +86,7 @@ Det som återstår är att köra och känna.
 ## Nästa steg
 
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
-2. Fas 1: spline-etapp, material per punkt, kamera, ljud, dammpartiklar.
+2. Fas 1: kamera, dammpartiklar (spline-etapp och ljud är klara).
 3. Fas 2: tidtagning, ghost, pacenotes.
 4. Konto och sparning, upplägget från season-o-meter:
    128-bitars hemlighet skapas automatiskt i webbläsaren, listans id = SHA-256 av hemligheten,

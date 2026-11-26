@@ -5,9 +5,11 @@ import { Hud } from './hud';
 import { Controls } from './input';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
+import { START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { DebugVectors } from './render/debug';
+import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
 
 const DT = 1 / 240;
@@ -15,7 +17,8 @@ const CAMERAS = ['bakifrån', 'förarvy', 'uppifrån', 'sidovy (skador)'];
 
 async function main() {
   // ?webgl är bara till för felsökning i miljöer utan riktig WebGPU.
-  const forceWebGL = new URLSearchParams(location.search).has('webgl');
+  const query = new URLSearchParams(location.search);
+  const forceWebGL = query.has('webgl');
   if (!forceWebGL && !('gpu' in navigator)) {
     document.getElementById('unsupported')!.style.display = 'flex';
     return;
@@ -53,8 +56,10 @@ async function main() {
   sun.shadow.bias = -0.0004;
   scene.add(sun, sun.target);
 
-  const world = new World();
-  scene.add(buildTerrain(world));
+  // ?testbana laddar den gamla lekplatsen med hinder och underlagsprov.
+  const stage = query.has('testbana') ? null : new Stage(STAGE_SKOGSBERG);
+  const world = stage ?? new World();
+  scene.add(stage ? buildStage(stage) : buildTerrain(world));
 
   const car = new Car(kvarn240(), world);
   const carMesh = new CarMesh(car);
@@ -66,17 +71,39 @@ async function main() {
   const hud = new Hud();
   const sound = new Sound();
 
-  let spawn = { x: 0, z: 0, heading: 0, speed: 0 };
-  const spawns: Record<string, typeof spawn> = {
-    gravel: { x: 0, z: 0, heading: 0, speed: 0 },
-    asphalt: { x: 0, z: 42, heading: 0, speed: 0 },
-    mud: { x: 24, z: 56, heading: 0, speed: 0 },
-    snow: { x: -24, z: 56, heading: 0, speed: 0 },
-    washboard: { x: 0, z: 92, heading: 0, speed: 18 },
-    jump: { x: 0, z: 150, heading: 0, speed: 22 },
-    crash: { x: 0, z: 235, heading: 0, speed: 20 },
-  };
-  const place = (s: typeof spawn, keepDamage: boolean) => {
+  type Spawn = { x: number; z: number; heading: number; speed: number };
+  const spawns: Record<string, Spawn> = stage
+    ? {
+        start: { ...stage.poseAt(START_S - 8), speed: 0 },
+        asphalt: { ...stage.poseAt(stage.surfaces.indexOf('asphalt') + 5), speed: 15 },
+        mud: { ...stage.poseAt(stage.surfaces.indexOf('mud') + 5), speed: 15 },
+      }
+    : {
+        gravel: { x: 0, z: 0, heading: 0, speed: 0 },
+        asphalt: { x: 0, z: 42, heading: 0, speed: 0 },
+        mud: { x: 24, z: 56, heading: 0, speed: 0 },
+        snow: { x: -24, z: 56, heading: 0, speed: 0 },
+        washboard: { x: 0, z: 92, heading: 0, speed: 18 },
+        jump: { x: 0, z: 150, heading: 0, speed: 22 },
+        crash: { x: 0, z: 235, heading: 0, speed: 20 },
+      };
+  const places: [string, string][] = stage
+    ? [
+        ['Etappstart', 'start'],
+        ['Asfaltsdelen (15 m/s)', 'asphalt'],
+        ['Leriga skogen (15 m/s)', 'mud'],
+      ]
+    : [
+        ['Grus: start', 'gravel'],
+        ['Asfalt', 'asphalt'],
+        ['Lera', 'mud'],
+        ['Snö', 'snow'],
+        ['Tvättbräda (18 m/s)', 'washboard'],
+        ['Hopp (22 m/s)', 'jump'],
+        ['Krocktest (20 m/s)', 'crash'],
+      ];
+  let spawn = Object.values(spawns)[0]!;
+  const place = (s: Spawn, keepDamage: boolean) => {
     spawn = s;
     car.reset(s.x, s.z, s.heading, s.speed, keepDamage);
   };
@@ -86,7 +113,8 @@ async function main() {
     car.drivetrain.powerFactor = 1;
     carMesh.repair();
   };
-  createGui(car, {
+  place(spawn, false);
+  createGui(car, places, {
     teleport: (name) => place(spawns[name]!, true),
     repair,
     toggleDebug: (on) => (debug.lines.visible = on),

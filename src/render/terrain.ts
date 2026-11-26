@@ -2,14 +2,14 @@ import * as THREE from 'three/webgpu';
 import { SURFACES } from '../physics/surfaces';
 import type { World } from '../physics/world';
 
-const COLORS: Record<string, number> = {
+export const COLORS: Record<string, number> = {
   gravel: 0xb89f78,
   asphalt: 0x44464c,
   mud: 0x5f4532,
   snow: 0xf1f5f8,
 };
 
-function rng(seed: number) {
+export function rng(seed: number) {
   let s = seed >>> 0;
   return () => {
     s = (s * 1664525 + 1013904223) >>> 0;
