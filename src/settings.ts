@@ -37,7 +37,8 @@ export const settings = {
   },
   /** Allt ljud; N växlar det under körning. */
   get sound() {
-    return sound !== 'off';
+    // Av tills spelaren har tackat ja på välkomstskärmen.
+    return sound === 'on';
   },
   set sound(on: boolean) {
     sound = on ? 'on' : 'off';
