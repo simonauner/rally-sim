@@ -1,4 +1,5 @@
 import type { Lang, PaceNote } from './physics/pacenotes';
+import { settings } from './settings';
 
 /** Kartläsarens röst via webbläsarens inbyggda talsyntes; inga ljudfiler. */
 export class CoDriver {
@@ -29,6 +30,7 @@ export class CoDriver {
   }
 
   say(notes: PaceNote[]) {
+    if (!settings.voice) return;
     if (!this.voice) this.pickVoice();
     // Utan röst läser webbläsaren med sin standardröst på fel språk. Hellre tyst.
     if (!this.voice) return;

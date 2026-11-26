@@ -4,6 +4,7 @@ import { Sound } from './audio';
 import { createGui } from './gui';
 import { CONTROLS_HTML, Hud, resultHtml } from './hud';
 import { CoDriver } from './codriver';
+import { settings, showSettings } from './settings';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
 import { account, localChanged, restore, startSync, syncAvailable, syncStatus } from './account/sync';
@@ -160,7 +161,7 @@ async function main() {
     showMenu({ title: 'Kontroller', body: CONTROLS_HTML, items: [{ label: '← Tillbaka', value: 0 }], cancel: 0, solid });
 
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
-  type MainChoice = 'stage' | 'test' | 'controls' | 'account' | 'career';
+  type MainChoice = 'stage' | 'test' | 'settings' | 'controls' | 'account' | 'career';
   let choice: MainChoice = query.has('testbana') ? 'test' : query.has('karriar') ? 'career' : 'controls';
   /** ?karriar=<kr>: tillbaka från ett mästerskap; kassan räknar upp med prispengarna. */
   let gained = Number(query.get('karriar')) || 0;
@@ -178,7 +179,7 @@ async function main() {
     choice = 'stage';
   }
   while (!resumed) {
-    while (choice === 'controls' || choice === 'account') {
+    while (choice === 'settings' || choice === 'controls' || choice === 'account') {
       choice = await showMenu<MainChoice>({
         title: 'RALLY',
         subtitle: 'Kvarn 240 GL',
@@ -187,11 +188,13 @@ async function main() {
           { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
           { label: 'Fri körning', detail: `${STAGES.length} etapper, alla bilar`, value: 'stage' },
           { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
+          { label: 'Inställningar', value: 'settings' },
           { label: 'Kontroller', value: 'controls' },
           { label: 'Konto', value: 'account' },
         ],
         footer: VERSION,
       });
+      if (choice === 'settings') await showSettings(true);
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
     }
@@ -488,16 +491,21 @@ async function main() {
     sound.setPaused(true);
     for (;;) {
       // I mästerskapet finns ingen omstart; att lämna det är att avbryta.
-      const c = await showMenu<'resume' | 'restart' | 'controls' | 'menu' | 'abort'>({
+      const c = await showMenu<'resume' | 'restart' | 'settings' | 'controls' | 'menu' | 'abort'>({
         title: 'Paus',
         items: [
           { label: 'Fortsätt', value: 'resume' },
           ...(stage && !champ ? [{ label: 'Starta om etappen', value: 'restart' as const }] : []),
+          { label: 'Inställningar', value: 'settings' },
           { label: 'Kontroller', value: 'controls' },
           champ ? { label: 'Avbryt mästerskapet', value: 'abort' as const } : { label: 'Huvudmeny', value: 'menu' as const },
         ],
         cancel: 'resume',
       });
+      if (c === 'settings') {
+        await showSettings(false);
+        continue;
+      }
       if (c === 'controls') {
         await showControls(false);
         continue;
@@ -618,7 +626,7 @@ async function main() {
       const s = stage.project(car.pos.x, car.pos.z).s;
       const called = caller.update(s, car.speed);
       if (called.length && !sound.muted) codriver.say(called);
-      hud.updateNotes(caller.active(s), codriver.missingVoice);
+      hud.updateNotes(caller.active(s), settings.voice && codriver.missingVoice);
     }
     pipeline.render();
     hideLoading?.();
