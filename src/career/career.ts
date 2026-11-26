@@ -16,7 +16,7 @@ export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 Turbo': 15000,
 };
 
-export type UpgradeGroup = 'Motor' | 'Växellåda' | 'Bromsar' | 'Fjädring' | 'Däck';
+export type UpgradeGroup = 'Motor' | 'Drivlina' | 'Bromsar' | 'Fjädring' | 'Däck';
 
 /** En del man kan köpa och montera, en gång per bil. Sparas som nivå 1 i garaget. */
 export interface Upgrade {
@@ -85,12 +85,22 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'gearbox',
-    group: 'Växellåda',
+    group: 'Drivlina',
     name: 'Racelåda',
     price: 5000,
     effect: 'Snabbare växlingar och 6 % kortare slutväxel',
     apply: (p) => {
       p.gearbox = { ...p.gearbox, shiftTime: p.gearbox.shiftTime * 0.6, final: p.gearbox.final * 1.06 };
+    },
+  },
+  {
+    id: 'lsd',
+    group: 'Drivlina',
+    name: 'Spärrdiff',
+    price: 4000,
+    effect: 'Hårdare låsning: mindre spinn på innerhjulet ut ur kurvor',
+    apply: (p) => {
+      p.diff = { lock: Math.max(p.diff.lock, 0.6), preload: Math.max(p.diff.preload, 80) };
     },
   },
   {
