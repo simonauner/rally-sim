@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
 import { kvarn240 } from '../src/physics/params';
+import { Barriers } from '../src/physics/barriers';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
 import type { SurfaceId, TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad } from '../src/physics/autopilot';
@@ -206,6 +207,33 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
     for (let j = i + 150; j < stage.xs.length; j += 2)
       minSep = Math.min(minSep, Math.hypot(stage.xs[i]! - stage.xs[j]!, stage.zs[i]! - stage.zs[j]!));
   check('etapp: vägen korsar inte sig själv', minSep > 2 * STAGE_CORRIDOR, `minsta avstånd ${minSep.toFixed(0)} m (krav > ${2 * STAGE_CORRIDOR})`);
+}
+
+// 8b. Avspärrningarna ger efter: bilen tappar lite fart, tar en liten smäll och delarna flyger iväg.
+{
+  const stage = new Stage(STAGE_SKOGSBERG);
+  const barriers = new Barriers(stage);
+  const results = stage.barriers.map((r) => {
+    barriers.reset();
+    const car = makeCar(stage, 'gravel');
+    const fx = Math.sin(r.yaw);
+    const fz = Math.cos(r.yaw);
+    car.reset(r.x - fx * 6, r.z - fz * 6, r.yaw, 15);
+    let before = 0;
+    let after = 0;
+    run(car, 2, () => idle, (t) => {
+      barriers.update(car, DT);
+      const along = (car.pos.x - r.x) * fx + (car.pos.z - r.z) * fz;
+      if (along < -4) before = car.forwardSpeed;
+      if (t < 0.9) after = car.forwardSpeed;
+    });
+    const past = (car.pos.x - r.x) * fx + (car.pos.z - r.z) * fz > 2;
+    const flown = barriers.parts.filter((p) => p.pos.distanceTo(p.home.pos) > 3).length;
+    return { past, loss: 1 - after / before, flown, front: car.damage.front };
+  });
+  const ok = results.every((x) => x.past && x.loss > 0.01 && x.loss < 0.15 && x.flown >= 4 && x.front < 0.1);
+  const r0 = results[0]!;
+  check('etapp: avspärrningar ger efter', ok, `${results.filter((x) => x.past).length}/${results.length} genom, fartförlust ${(r0.loss * 100).toFixed(1)} %, ${r0.flown} delar iväg, framskada ${(r0.front * 100).toFixed(0)} %`);
 }
 
 // 9. Etapp: en enkel förare kör hela vägen utan att hamna i diket.

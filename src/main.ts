@@ -7,6 +7,7 @@ import { CoDriver } from './codriver';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
 import { brakeAlongRoad } from './physics/autopilot';
+import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
@@ -18,6 +19,7 @@ import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { DebugVectors } from './render/debug';
 import { Dust } from './render/dust';
+import { buildBarriers } from './render/barriers';
 import { buildGhostMesh } from './render/ghostMesh';
 import { buildStage } from './render/stage';
 import { stageMapHtml } from './render/stageMap';
@@ -94,6 +96,9 @@ async function main() {
   const stage = choice === 'test' ? null : new Stage(STAGE_SKOGSBERG);
   const world = stage ?? new World();
   scene.add(stage ? buildStage(stage) : buildTerrain(world));
+  const barriers = stage ? new Barriers(stage) : null;
+  const barrierMeshes = barriers ? buildBarriers(barriers) : null;
+  if (barrierMeshes) scene.add(barrierMeshes.group);
 
   const car = new Car(kvarn240(), world);
   const carMesh = new CarMesh(car);
@@ -161,6 +166,7 @@ async function main() {
     finishShown = false;
     spawn = s;
     car.reset(s.x, s.z, s.heading, s.speed, keepDamage);
+    barriers?.reset();
     timer?.reset();
     recorder.reset();
     codriver.stop();
@@ -348,6 +354,7 @@ async function main() {
     acc += frameDt;
     while (acc >= DT) {
       car.step(DT, input);
+      barriers?.update(car, DT);
       if (stage && timer) {
         timer.update(stage.project(car.pos.x, car.pos.z).s, DT);
         if (timer.state === 'running') recorder.record(timer.time, car.pos, car.quat);
@@ -382,6 +389,7 @@ async function main() {
     sound.update(car, input.throttle);
     carMesh.update();
     dust.update(car, world, frameDt);
+    barrierMeshes?.update();
     // Ghosten väntar vid startlinjen före start och försvinner när du gått i mål.
     ghostMesh.visible =
       showGhost &&

@@ -131,37 +131,6 @@ export function buildStage(stage: Stage): THREE.Group {
     group.add(gate);
   });
 
-  // Avspärrning tvärs över varje korsande väg: stolpar med rödvitt band (bara grafik)
-  const tapeMats = [0xd32f2f, 0xf5f5f5].map((color) => new THREE.MeshToonMaterial({ color }));
-  for (const sp of stage.spurs) {
-    const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
-    const len = Math.hypot(b.x - a.x, b.z - a.z);
-    const dx = (b.x - a.x) / len;
-    const dz = (b.z - a.z) / len;
-    // Så nära etappen som möjligt utan att stå på den.
-    let t = 0;
-    while (t < len && stage.project(a.x + dx * t, a.z + dz * t).d < stage.project(a.x, a.z).width / 2 + 2) t += 0.5;
-    const x = a.x + dx * t;
-    const z = a.z + dz * t;
-    const barrier = new THREE.Group();
-    const hw = sp.width / 2 + 0.6;
-    for (const k of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.1, 0.1), postMat);
-      post.position.set(hw * k, 0.55, 0);
-      barrier.add(post);
-    }
-    const n = Math.round(hw * 2);
-    for (let i = 0; i < n; i++) {
-      const seg = new THREE.Mesh(new THREE.BoxGeometry((hw * 2) / n, 0.12, 0.02), tapeMats[i % 2]);
-      seg.position.set(-hw + ((i + 0.5) * hw * 2) / n, 0.95, 0);
-      barrier.add(seg);
-    }
-    barrier.position.set(x, stage.heightAt(x, z), z);
-    barrier.rotation.y = Math.atan2(dx, dz);
-    barrier.traverse((o) => (o.castShadow = true));
-    group.add(barrier);
-  }
-
   // Skog längs vägen
   const r = rng(99);
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);

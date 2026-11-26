@@ -75,6 +75,8 @@ export class Stage extends World {
   readonly surfaces: SurfaceId[];
   readonly length: number;
   readonly spurs: (Spur & { y: number })[];
+  /** Avspärrningar tvärs över de korsande vägarna, en per väg. Lokalt x går tvärs över vägen. */
+  readonly barriers: { x: number; z: number; y: number; yaw: number; halfWidth: number }[];
   private grid = new Map<number, number[]>();
   private hit: StageHit = { s: 0, d: 0, roadY: 0, width: 0, surface: 'gravel' };
 
@@ -142,6 +144,19 @@ export class Stage extends World {
       list.push(i);
     }
     this.spurs = (def.spurs ?? []).map((sp) => ({ ...sp, y: this.project(sp.points[0]!.x, sp.points[0]!.z).roadY }));
+    this.barriers = this.spurs.map((sp) => {
+      const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
+      const len = Math.hypot(b.x - a.x, b.z - a.z);
+      const dx = (b.x - a.x) / len;
+      const dz = (b.z - a.z) / len;
+      // Så nära etappen som möjligt utan att stå på den.
+      const clear = this.project(a.x, a.z).width / 2 + 2;
+      let t = 0;
+      while (t < len && this.project(a.x + dx * t, a.z + dz * t).d < clear) t += 0.5;
+      const x = a.x + dx * t;
+      const z = a.z + dz * t;
+      return { x, z, y: this.heightAt(x, z), yaw: Math.atan2(dx, dz), halfWidth: sp.width / 2 + 0.6 };
+    });
   }
 
   private key(cx: number, cz: number) {
