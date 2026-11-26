@@ -98,25 +98,61 @@ class DeformablePart {
   }
 }
 
-/** Uppdelad låda med rundade kanter. `rest` sparar formen före ev. extra formning. */
-function roundedBox(w: number, h: number, l: number, segs: [number, number, number], r: number): THREE.BufferGeometry {
+/** Uppdelad låda med rundade kanter, centrerad i `c`. */
+function roundedBox(
+  w: number,
+  h: number,
+  l: number,
+  segs: [number, number, number],
+  r: number,
+  c: [number, number, number] = [0, 0, 0],
+): THREE.BufferGeometry {
   let g: THREE.BufferGeometry = new THREE.BoxGeometry(w, h, l, ...segs);
   g.deleteAttribute('normal');
   g.deleteAttribute('uv');
   g = mergeVertices(g, 1e-4);
-  const pos = g.getAttribute('position') as THREE.BufferAttribute;
-  roundBox(pos, w / 2, h / 2, l / 2, r);
-  g.setAttribute('rest', pos.clone());
+  roundBox(g.getAttribute('position') as THREE.BufferAttribute, w / 2, h / 2, l / 2, r);
+  g.translate(...c);
   return g;
 }
 
-/** Fiktiv kantig 80-talssedan: platt motorhuv och baklucka, stora fyrkantiga lyktor. */
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+
+// Karossens profil i bilens koordinater (fram = +z, mark vid y ≈ -0.55).
+const NOSE = 1.96; // framkant plåt
+const TAIL_Z = -2.53; // bakkant plåt
+const BELT = 0.4; // gördellinje, rak från huv till baklucka
+const SCREEN = [0.546, 0.123] as const; // vindrutans fot och topp
+const BACKLIGHT = [-1.67, -1.318] as const; // bakrutans fot och topp
+const ROOF = 0.83;
+const CREASE = 0.19; // sidolisten
+
+/** Fiktiv kantig 80-talssedan: lång flat huv och baklucka, rak gördellinje, stora fyrkantiga lyktor. */
 function buildBody(paint: THREE.Color): DeformablePart {
-  const g = roundedBox(1.7, 0.62, 4.6, [12, 10, 60], 0.07);
+  const bottom = -0.31;
+  const g = roundedBox(1.7, BELT - bottom, NOSE - TAIL_Z, [14, 14, 96], 0.05, [
+    0,
+    (BELT + bottom) / 2,
+    (NOSE + TAIL_Z) / 2,
+  ]);
+  const pos = g.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    let x = pos.getX(i);
+    let y = pos.getY(i);
+    const z = pos.getZ(i);
+    // Huven sluttar svagt ner mot fronten, bakluckan rundas av i bakkant.
+    const hood = 0.08 * clamp01((z - SCREEN[0]) / (NOSE - SCREEN[0])) ** 1.4;
+    const trunk = 0.03 * clamp01((BACKLIGHT[0] - z) / (BACKLIGHT[0] - TAIL_Z)) ** 2;
+    y -= (hood + trunk) * clamp01((y - 0.1) / (BELT - 0.1));
+    // Sidan lutar lite inåt ovanför sidolisten.
+    x *= 1 - 0.03 * clamp01((y - CREASE) / (BELT - CREASE));
+    pos.setXY(i, x, y);
+  }
+  // Färgerna räknas från formen före hjulhusen och bucklorna, se nedan.
+  g.setAttribute('rest', pos.clone());
   // Hjulhus: lyft plåten ytterst över hjulen upp till en båge, så hela hjulet syns.
   // Bara |x| > 0.5 lyfts, så kvarvarande plåt innanför bildar hjulhusets innervägg.
   // `rest` behålls, så de lyfta ytorna målas mörka av `archs` nedan.
-  const pos = g.getAttribute('position') as THREE.BufferAttribute;
   for (let i = 0; i < pos.count; i++) {
     if (Math.abs(pos.getX(i)) < 0.5) continue;
     for (const zw of WHEEL_Z) {
@@ -131,35 +167,37 @@ function buildBody(paint: THREE.Color): DeformablePart {
   const p = attribute('rest', 'vec3');
   const ax = abs(p.x);
   const band = (lo: number, hi: number) => p.y.greaterThan(lo).and(p.y.lessThan(hi));
-  const front = p.z.greaterThan(2.25);
-  const rear = p.z.lessThan(-2.25);
+  const front = p.z.greaterThan(NOSE - 0.04);
+  const rear = p.z.lessThan(TAIL_Z + 0.04);
   const side = ax.greaterThan(0.8);
+  const top = p.y.greaterThan(BELT - 0.1);
 
   // Fram: grill med kromram och rutmönster, breda rektangulära strålkastare, blinkers runt hörnen.
-  const grilleBox = front.and(ax.lessThan(0.34)).and(band(-0.05, 0.2));
-  const grilleFrame = grilleBox.and(ax.greaterThan(0.31).or(p.y.lessThan(-0.025)).or(p.y.greaterThan(0.175)));
+  const grilleBox = front.and(ax.lessThan(0.38)).and(band(0.06, 0.24));
+  const grilleFrame = grilleBox.and(ax.greaterThan(0.355).or(p.y.lessThan(0.08)).or(p.y.greaterThan(0.22)));
   const crate = fract(p.x.mul(11)).lessThan(0.22).or(fract(p.y.mul(13)).lessThan(0.22));
-  const lamp = front.and(ax.greaterThan(0.37)).and(ax.lessThan(0.72)).and(band(-0.01, 0.18));
-  const lampRim = front.and(ax.greaterThan(0.355)).and(ax.lessThan(0.735)).and(band(-0.025, 0.195));
-  const indicator = band(-0.01, 0.18).and(front.and(ax.greaterThan(0.745)).or(side.and(p.z.greaterThan(2.08))));
+  const lamp = front.and(ax.greaterThan(0.42)).and(ax.lessThan(0.745)).and(band(0.07, 0.23));
+  const lampRim = front.and(ax.greaterThan(0.405)).and(ax.lessThan(0.76)).and(band(0.055, 0.245));
+  const indicator = band(0.07, 0.23).and(front.and(ax.greaterThan(0.77)).or(side.and(p.z.greaterThan(NOSE - 0.14))));
 
   // Bak: höga lyktor som går runt hörnen, röd med blinkersband överst och backljus inåt.
-  const tailZone = band(-0.09, 0.21).and(rear.and(ax.greaterThan(0.46)).or(side.and(p.z.lessThan(-2.1))));
-  const tailAmber = tailZone.and(p.y.greaterThan(0.13));
+  const tailZone = band(0.04, 0.24).and(rear.and(ax.greaterThan(0.46)).or(side.and(p.z.lessThan(TAIL_Z + 0.14))));
+  const tailAmber = tailZone.and(p.y.greaterThan(0.185));
   const tailReverse = tailZone.and(rear).and(ax.lessThan(0.56));
-  const plate = rear.and(ax.lessThan(0.26)).and(band(-0.07, 0.07));
+  const plate = rear.and(ax.lessThan(0.26)).and(band(0.07, 0.19));
 
-  // Sidor: skyddslist, dörrspringor, mörka hjulhus och svarta trösklar.
-  const strip = side.and(band(0.0, 0.05)).and(abs(p.z).lessThan(2.12));
-  const seamAt = (z: number) => abs(p.z.sub(z)).lessThan(0.01);
-  const seam = side.and(p.y.greaterThan(-0.22)).and(seamAt(0.95).or(seamAt(-0.2)).or(seamAt(-1.05)));
+  // Sidor: tunn kromlist, dörrspringor, mörka hjulhus och svarta trösklar.
+  const strip = side.and(band(CREASE - 0.009, CREASE + 0.009)).and(p.z.lessThan(NOSE - 0.16)).and(p.z.greaterThan(TAIL_Z + 0.16));
+  const seamAt = (z: number) => abs(p.z.sub(z)).lessThan(0.008);
+  const seam = side.and(p.y.greaterThan(-0.22)).and(seamAt(SCREEN[0]).or(seamAt(-0.4)).or(seamAt(-1.22)));
   const arch = (z: number) => p.z.sub(z).mul(p.z.sub(z)).add(p.y.sub(ARCH_Y).mul(p.y.sub(ARCH_Y))).lessThan(ARCH_R * ARCH_R);
   const archs = ax.greaterThan(0.45).and(arch(WHEEL_Z[0]).or(arch(WHEEL_Z[1])));
-  // Motorhuvens skarv framför vindrutan.
-  const hoodSeam = p.y.greaterThan(0.29).and(abs(p.z.sub(1.04)).lessThan(0.01));
+  // Skarvar runt motorhuven och bakluckan.
+  const lidSeam = top.and(seamAt(SCREEN[0]).or(seamAt(BACKLIGHT[0])).or(ax.sub(0.8).abs().lessThan(0.006).and(p.z.greaterThan(SCREEN[0]))));
 
-  const painted = select(seam.or(hoodSeam), color(paint.clone().multiplyScalar(0.72)), color(paint));
-  const body = select(p.y.lessThan(-0.22).or(strip).or(archs), color(BLACK), painted);
+  const painted = select(seam.or(lidSeam), color(paint.clone().multiplyScalar(0.72)), color(paint));
+  const trimmed = select(strip, color(CHROME), painted);
+  const body = select(p.y.lessThan(-0.22).or(archs), color(BLACK), trimmed);
   const tail = select(tailReverse, color(REVERSE), select(tailAmber, color(AMBER), color(TAIL)));
   const mat = new THREE.MeshToonNodeMaterial();
   mat.colorNode = select(
@@ -184,37 +222,43 @@ function buildBody(paint: THREE.Color): DeformablePart {
   return new DeformablePart(g, mat);
 }
 
-/** Upprätt kupé med tunna stolpar, svarta fönsterlister och tjock C-stolpe. */
+/** Låg kupé med lutande vindruta och bakruta, svarta fönsterlister och smal kvartsruta bak. */
 function buildCabin(paint: THREE.Color): DeformablePart {
-  const g = roundedBox(1.48, 0.56, 2.3, [10, 5, 16], 0.1);
+  const H = ROOF - BELT + 0.01;
+  const L = SCREEN[0] - BACKLIGHT[0];
+  const hx = 0.74;
+  const g = roundedBox(2 * hx, H, L, [12, 6, 24], 0.05);
+  // Rutor räknas i lådans koordinater före formningen, se buildBody.
+  g.setAttribute('rest', (g.getAttribute('position') as THREE.BufferAttribute).clone());
   const pos = g.getAttribute('position') as THREE.BufferAttribute;
+  const baseMid = (SCREEN[0] + BACKLIGHT[0]) / 2;
+  const topMid = (SCREEN[1] + BACKLIGHT[1]) / 2;
+  const topHalf = (SCREEN[1] - BACKLIGHT[1]) / 2;
   for (let i = 0; i < pos.count; i++) {
-    let x = pos.getX(i);
-    let y = pos.getY(i);
-    let z = pos.getZ(i);
-    const t = (y + 0.28) / 0.56; // 0 nere, 1 uppe
-    x *= 1 - 0.08 * t;
-    // Lutande vindruta, nästan stående bakruta.
-    z *= 1 - (z > 0 ? 0.26 : 0.1) * t;
-    // flytta upp och bakåt: ovanpå kroppen
-    y += 0.31 + 0.26;
-    z += -0.18;
-    pos.setXYZ(i, x, y, z);
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const u = pos.getZ(i) / (L / 2); // -1 bak, 1 fram
+    const t = y / H + 0.5; // 0 nere, 1 uppe
+    // Stolparna går rakt från rutornas fot till taket.
+    const z = (1 - t) * (baseMid + (u * L) / 2) + t * (topMid + u * topHalf);
+    // Sidorutorna lutar inåt, taket välvs svagt.
+    const crown = 0.03 * (x / hx) ** 2 * t ** 3;
+    pos.setXYZ(i, x * (1 - 0.17 * t), BELT - 0.01 + t * H - crown, z);
   }
   g.computeVertexNormals();
-  // Rutor räknas i lådans koordinater före avsmalningen, se buildBody.
   const p = attribute('rest', 'vec3');
-  const t = p.y.add(0.28).div(0.56);
+  const t = p.y.div(H).add(0.5);
+  const u = p.z.div(L / 2);
   const tIn = (lo: number, hi: number) => t.greaterThan(lo).and(t.lessThan(hi));
+  const uIn = (lo: number, hi: number) => u.greaterThan(lo).and(u.lessThan(hi));
   const ax = abs(p.x);
-  const side = ax.greaterThan(0.64);
-  const ends = abs(p.z).greaterThan(1.05);
-  const zIn = (lo: number, hi: number) => p.z.greaterThan(lo).and(p.z.lessThan(hi));
-  // Sidorutor: framdörr och bakdörr delade av B-stolpen, C-stolpen bak är bred.
-  const sideGlass = side.and(tIn(0.2, 0.88)).and(zIn(-0.04, 1.04).or(zIn(-0.78, -0.12)));
-  const sideTrim = side.and(tIn(0.15, 0.92)).and(zIn(-0.82, 1.08));
-  const endGlass = ends.and(ax.lessThan(0.6)).and(tIn(0.16, 0.9));
-  const endTrim = ends.and(ax.lessThan(0.64)).and(tIn(0.12, 0.93));
+  const side = ax.greaterThan(hx - 0.04);
+  const ends = abs(u).greaterThan(0.96);
+  // Sidorutor: framdörr, bakdörr och kvartsruta, åtskilda av svarta stolpar. C-stolpen är lackad.
+  const sideGlass = side.and(tIn(0.14, 0.88)).and(uIn(0.19, 0.93).or(uIn(-0.42, 0.11)).or(uIn(-0.79, -0.48)));
+  const sideTrim = side.and(tIn(0.08, 0.94)).and(uIn(-0.83, 0.98));
+  const endGlass = ends.and(ax.lessThan(hx - 0.12)).and(tIn(0.1, 0.9));
+  const endTrim = ends.and(ax.lessThan(hx - 0.08)).and(tIn(0.05, 0.94));
   const glass = sideGlass.or(endGlass);
   const trim = sideTrim.or(endTrim);
   const mat = new THREE.MeshToonNodeMaterial();
@@ -224,8 +268,7 @@ function buildCabin(paint: THREE.Color): DeformablePart {
 
 /** Stor svart stötfångare som går en bit runt hörnen. */
 function buildBumper(z: number): DeformablePart {
-  const g = roundedBox(1.78, 0.17, 0.3, [8, 2, 3], 0.05);
-  g.translate(0, -0.15, z);
+  const g = roundedBox(1.78, 0.18, 0.26, [8, 2, 3], 0.05, [0, -0.07, z]);
   g.computeVertexNormals();
   return new DeformablePart(g, new THREE.MeshToonMaterial({ color: BLACK }));
 }
@@ -240,12 +283,12 @@ function buildDetails(): THREE.Group {
     mesh.castShadow = true;
     g.add(mesh);
   };
-  add(0.5, 0.11, 0.02, 0, -0.15, 2.49, new THREE.MeshToonMaterial({ color: PLATE }));
+  add(0.5, 0.11, 0.02, 0, -0.07, NOSE + 0.18, new THREE.MeshToonMaterial({ color: PLATE }));
   for (const s of [1, -1]) {
-    add(0.06, 0.04, 0.05, s * 0.82, 0.4, 0.78, black); // spegelfot
-    add(0.12, 0.09, 0.05, s * 0.89, 0.42, 0.78, black); // spegel
-    add(0.3, 0.26, 0.015, s * 0.72, -0.38, 0.76, black); // stänkskydd fram
-    add(0.3, 0.26, 0.015, s * 0.72, -0.38, -1.9, black); // stänkskydd bak
+    add(0.06, 0.04, 0.05, s * 0.8, 0.44, 0.36, black); // spegelfot
+    add(0.12, 0.09, 0.05, s * 0.88, 0.47, 0.36, black); // spegel
+    add(0.3, 0.26, 0.015, s * 0.72, -0.38, 0.73, black); // stänkskydd fram
+    add(0.3, 0.26, 0.015, s * 0.72, -0.38, -1.98, black); // stänkskydd bak
   }
   return g;
 }
@@ -286,7 +329,7 @@ export class CarMesh {
     paint: number,
   ) {
     const c = new THREE.Color(paint);
-    this.parts = [buildBody(c), buildCabin(c), buildBumper(2.33), buildBumper(-2.33)];
+    this.parts = [buildBody(c), buildCabin(c), buildBumper(NOSE + 0.04), buildBumper(TAIL_Z - 0.03)];
     this.parts.forEach((p) => this.group.add(p.mesh));
     this.group.add(buildDetails());
     for (let i = 0; i < 4; i++) {
