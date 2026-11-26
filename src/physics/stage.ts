@@ -351,3 +351,23 @@ export const STAGE_SKOGSBERG: StageDef = {
     { points: [{ x: 520, z: 850 }, { x: 520, z: 800 }], width: 6.5, surface: 'gravel' },
   ],
 };
+
+/**
+ * Samma väg körd åt andra hållet. Underlaget gäller från en punkt fram till nästa, så varje
+ * vänd punkt får underlaget från segmentet som nu ligger framför den. Den gamla utrullningen
+ * blir startraka och den gamla startraka blir utrullning efter mål.
+ */
+export function reversed(def: StageDef, name: string): StageDef {
+  const pts = def.points;
+  const n = pts.length;
+  return {
+    ...def,
+    name,
+    points: pts.map((_, k) => ({ ...pts[n - 1 - k]!, surface: pts[Math.max(0, n - 2 - k)]!.surface })),
+  };
+}
+
+export const STAGE_SKOGSBERG_BACK = reversed(STAGE_SKOGSBERG, 'Skogsberg baklänges');
+
+/** Alla etapper, i den ordning menyerna visar dem. */
+export const STAGES: StageDef[] = [STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK];

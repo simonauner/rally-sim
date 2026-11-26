@@ -2,7 +2,7 @@ import { Quaternion, Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
 import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
-import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
+import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK } from '../src/physics/stage';
 import type { TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
@@ -370,6 +370,43 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const cases: [string | undefined, boolean][] = [[undefined, false], ['1.9.0', false], ['2.1.5', false], ['2.2.0', true], ['2.3.0', true], ['2.3.1', true], ['3.0.0', false]];
   const wrong = cases.filter(([v, want]) => recordValid(v, stage) !== want);
   check('rekord: banversion', wrong.length === 0, wrong.length ? `fel för ${wrong.map(([v]) => v).join(', ')}` : `${cases.length} fall`);
+}
+
+// 13. Skogsberg baklänges: samma väg åt andra hållet går att köra hela vägen.
+{
+  const stage = new Stage(STAGE_SKOGSBERG_BACK);
+  const fwd = new Stage(STAGE_SKOGSBERG);
+  // Var underlaget byter, och till vad: baklänges ska bytena ligga speglat (inom några meter).
+  const changes = (st: Stage) => st.surfaces.flatMap((x, i) => (i > 0 && x !== st.surfaces[i - 1] ? [[i, st.surfaces[i - 1]!, x] as const] : []));
+  const back = changes(stage);
+  const ahead = changes(fwd).reverse();
+  const mirrored = back.length === ahead.length && back.every(([i, from, to], k) => Math.abs(i - (fwd.length - ahead[k]![0])) < 4 && from === ahead[k]![2] && to === ahead[k]![1]);
+  const car = makeCar(stage, 'gravel');
+  const p0 = stage.poseAt(START_S - 8);
+  car.reset(p0.x, p0.z, p0.heading, 0);
+  const finish = stage.length - FINISH_MARGIN;
+  let maxOver = 0;
+  let time = NaN;
+  run(car, 200, (t, c) => {
+    const hit = stage.project(c.pos.x, c.pos.z);
+    if (Number.isNaN(time) && hit.s >= finish) time = t;
+    if (!Number.isNaN(time)) return brakeAlongRoad(stage, c);
+    maxOver = Math.max(maxOver, hit.d - hit.width / 2);
+    const look = stage.poseAt(hit.s + 6 + c.speed * 0.6);
+    const f = new Vector3(0, 0, 1).applyQuaternion(c.quat);
+    const err = Math.atan2(look.x - c.pos.x, look.z - c.pos.z) - Math.atan2(f.x, f.z);
+    const a = stage.poseAt(hit.s + 10).heading;
+    const b = stage.poseAt(hit.s + 40).heading;
+    const target = Math.max(9, 24 - Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) * 18);
+    return {
+      ...idle,
+      steer: Math.max(-1, Math.min(1, Math.atan2(Math.sin(err), Math.cos(err)) * 4)),
+      throttle: c.forwardSpeed < target ? 1 : 0,
+      brake: c.forwardSpeed > target + 2 ? 0.6 : 0,
+    };
+  });
+  check('baklänges: underlaget speglat', mirrored, back.map(([i, , to]) => `${to}@${i}`).join(' '));
+  check('baklänges: förare når målet på vägen', time > 60 && time < 150 && maxOver < 1, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
 }
 
 if (failures) {

@@ -4,7 +4,7 @@
  * så återställningsnyckeln går att spara från start. Upplägget kommer från season-o-meter.
  */
 
-import { STAGE_SKOGSBERG, type StageDef } from '../physics/stage';
+import { STAGES } from '../physics/stage';
 import { loadRecord, saveRecord } from '../records';
 import { loadCareer, saveCareer } from '../career/store';
 import { CAREER_KEY, careerOf, isSecret, newSecret, recordKey, recordOf, replaces, sanitize, type AccountData, type SyncRequest, type SyncResponse } from './protocol';
@@ -12,9 +12,6 @@ import { CAREER_KEY, careerOf, isSecret, newSecret, recordKey, recordOf, replace
 /** Synkserverns adress. Utan den synkas inget. */
 const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? '';
 export const syncAvailable = SYNC_URL !== '';
-
-/** Banorna vars rekord synkas. */
-const STAGES: StageDef[] = [STAGE_SKOGSBERG];
 
 const STATE_KEY = 'rally.account';
 /** Hämta andra enheters ändringar så här ofta medan spelet syns. */
