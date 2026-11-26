@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { toonOutlinePass } from 'three/tsl';
 import type { CarDamage } from './career/championship';
-import { showMenu } from './menu';
+import { LOCK_ICON, showMenu } from './menu';
 import { Car } from './physics/car';
 import type { CarModel, CarParams } from './physics/params';
 import { carSpecs, FlatWorld, type CarSpecs } from './physics/specs';
@@ -57,6 +57,8 @@ export interface PickOptions {
   action?: { label: string; denied?: (m: CarModel) => boolean; run: (m: CarModel) => Promise<boolean | void> };
   /** Liten text bredvid bilnamnet, t.ex. priset. */
   detail?: (m: CarModel) => string;
+  /** Låsta bilar går att bläddra till men inte köra; Kör blir då en hänvisning till karriären. */
+  locked?: (m: CarModel) => boolean;
   /** Bilar att jämföra med (t.ex. de man äger); ger knappen Jämför som visar dem sida vid sida. */
   compare?: CarModel[];
 }
@@ -199,12 +201,13 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
 export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], opts: PickOptions = {}): Promise<CarModel | null> {
   const room = showroom(renderer);
   const cmp = opts.compare ?? [];
-  let current = 0;
+  const locked = (m: CarModel) => opts.locked?.(m) ?? false;
+  let current = Math.max(0, cars.findIndex((m) => !locked(m)));
   let compared = 0;
   // Bilnamnet med pilar; inga <button> eftersom showMenu gör alla knappar i menyn till menyval.
   const navHtml = (list: CarModel[], m: CarModel, attr: string, detail = '') => {
     const extra = [list.length > 1 ? `${list.indexOf(m) + 1}/${list.length}` : '', detail].filter(Boolean).join(' · ');
-    const name = `<b>${m.make().name}</b>${extra ? `<small>${extra}</small>` : ''}`;
+    const name = `<b>${locked(m) ? LOCK_ICON : ''}${m.make().name}</b>${extra ? `<small>${extra}</small>` : ''}`;
     return `<div class="car-nav">${list.length > 1 ? `<span ${attr}="-1">‹</span>${name}<span ${attr}="1">›</span>` : name}</div>`;
   };
   // carSpecs kör en accelerationssimulering, så värdena sparas per bil.
@@ -246,14 +249,19 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     const to = panel.offsetHeight;
     if (from !== to) panel.animate({ height: [`${from}px`, `${to}px`] }, { duration: 200, easing: 'ease-out' });
   };
+  const pickLabel = (m: CarModel) => (locked(m) ? 'Lås upp i Karriär-läget' : (opts.action?.label ?? 'Kör'));
   let shown: CarModel | null = null;
   const show = (m: CarModel) => {
     if (m === shown) return;
     shown = m;
     room.show(m);
     render();
+    // Kör-knappen följer bilen man bläddrat till.
+    const btn = document.querySelector('#menu .items button[data-i="0"]');
+    btn?.classList.toggle('locked', locked(m));
+    if (btn?.firstElementChild) btn.firstElementChild.innerHTML = (locked(m) ? LOCK_ICON : '') + pickLabel(m);
   };
-  show(cars[0]!);
+  show(cars[current]!);
 
   const menu = document.getElementById('menu')!;
   /** Vad ← → styr; null medan en undermeny visas. */
@@ -290,7 +298,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
       side: true,
       body: bodyHtml(cars[current]!),
       items: [
-        { label: opts.action?.label ?? 'Kör', value: 'pick', denied: () => opts.action?.denied?.(cars[current]!) ?? false },
+        { label: pickLabel(cars[current]!), value: 'pick', locked: locked(cars[current]!), denied: () => locked(cars[current]!) || (opts.action?.denied?.(cars[current]!) ?? false) },
         ...(cmp.length ? [{ label: 'Jämför', value: 'compare' as const }] : []),
         { label: '← Tillbaka', value: 'back' },
       ],
@@ -309,6 +317,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
       view = 'browse';
       continue;
     }
+    if (pick === 'pick' && locked(cars[current]!)) continue;
     if (pick === 'back' || !opts.action) break;
     // Bilen man har bläddrat fram, inte den som visades när menyn öppnades.
     const m = cars[current]!;

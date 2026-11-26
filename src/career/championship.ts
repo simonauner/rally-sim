@@ -4,6 +4,7 @@
  * utan DOM; framsteget sparas i webbläsaren eftersom spelet laddar om sidan mellan etapperna.
  */
 
+import type { CareerState } from '../account/protocol';
 import type { DamageState } from '../physics/car';
 import { STAGE_TARGETS } from './career';
 import { isRival, newRivals, raceLeg, type Rival } from './rivals';
@@ -23,6 +24,22 @@ export const CHAMPIONSHIPS: ChampionshipDef[] = [
   { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'] },
   { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges', 'Isvallen'] },
 ];
+
+/** Vunnet; vinster från före `won` läses ur historiken. */
+export const hasWon = (career: CareerState, def: ChampionshipDef) =>
+  !!career.won?.includes(def.id) || !!career.history?.some((e) => e.kind === 'championship' && e.place === 1 && e.name === def.name);
+
+/** Skogsrallyt är alltid öppet; varje mästerskap därefter kräver att alla före det är vunna. */
+export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>
+  CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).every((c) => hasWon(career, c));
+
+/** Vad som låser upp mästerskapet, för menyn. */
+export const unlockHint = (career: CareerState, def: ChampionshipDef) =>
+  `vinn ${CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).filter((c) => !hasWon(career, c)).map((c) => c.name).join(' och ')}`;
+
+/** Karriären med mästerskapet vunnet. */
+export const withWin = (career: CareerState, def: ChampionshipDef): CareerState =>
+  career.won?.includes(def.id) ? career : { ...career, won: [...(career.won ?? []), def.id] };
 
 /** Det som följer med bilen mellan etapperna. */
 export interface CarDamage {

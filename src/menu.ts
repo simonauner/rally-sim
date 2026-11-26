@@ -13,7 +13,13 @@ export interface MenuItem<T> {
   value: T;
   /** Sant om valet inte går, t.ex. för lite pengar: då låter det duh-duh i stället för klick. Läses vid klicket. */
   denied?: () => boolean;
+  /** Låst: grå text med hänglås, och duh-duh vid klick om inte denied säger annat. Värdet returneras ändå. */
+  locked?: boolean;
 }
+
+/** Lucides lock (lucide-static 1.81.0, ISC). */
+export const LOCK_ICON =
+  '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
 
 export interface MenuOptions<T> {
   title: string;
@@ -116,7 +122,10 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       ${opts.body ? `<div class="body">${opts.body}</div>` : ''}
       ${opts.input ? `<input type="text" autocomplete="off" spellcheck="false" placeholder="${opts.input.placeholder}" />` : ''}
       <div class="items">${opts.items
-        .map((it, i) => `<button data-i="${i}"${it.image ? ` class="pic" style="--img: url('${it.image}')"` : ''}><span>${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
+        .map((it, i) => {
+          const cls = [it.image && 'pic', it.locked && 'locked'].filter(Boolean).join(' ');
+          return `<button data-i="${i}"${cls ? ` class="${cls}"` : ''}${it.image ? ` style="--img: url('${it.image}')"` : ''}><span>${it.locked ? LOCK_ICON : ''}${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`;
+        })
         .join('')}</div>
     </div>
     ${opts.aside ? `<div class="panel aside">${opts.aside}</div>` : ''}
@@ -138,7 +147,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   return new Promise<T>((resolve) => {
     const done = (value: T, item?: MenuItem<T>) => {
       // Duh-duh: två låga, fallande toner när valet inte går.
-      if (item?.denied?.()) {
+      if (item?.denied ? item.denied() : item?.locked) {
         blip(220, 0.14);
         blip(165, 0.22, 0.17);
       } else if (value === opts.cancel) {

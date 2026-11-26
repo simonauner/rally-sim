@@ -1,4 +1,5 @@
-import { CHAMPIONSHIPS } from './career/championship';
+import { CHAMPIONSHIPS, championshipUnlocked, unlockHint } from './career/championship';
+import { loadCareer } from './career/store';
 import { formatTime } from './hud';
 import { showMenu } from './menu';
 import { FINISH_MARGIN, Stage, STAGES, START_S, surfaceShares, type Light, type StageDef } from './physics/stage';
@@ -10,20 +11,27 @@ const LIGHT_NAMES: Record<Light, string> = { day: '', dawn: 'gryning', dusk: 'sk
 /**
  * Väljer etapp i två steg: först mästerskapet den hör till, sedan etappen, med bästa tid per
  * etapp. `extra` lägger till text efter tiden. Null = Tillbaka från första steget.
+ * Etapperna i mästerskap som inte är upplåsta i karriären visas låsta.
  */
 export async function pickStage(title: string, extra?: (s: StageDef) => string): Promise<StageDef | null> {
+  const career = loadCareer().career;
   for (;;) {
     const id = await showMenu<string>({
       title,
       solid: true,
       items: [
-        ...CHAMPIONSHIPS.map((c) => ({ label: c.name, detail: `${c.legs.length} etapper`, value: c.id })),
+        ...CHAMPIONSHIPS.map((c) =>
+          championshipUnlocked(career, c)
+            ? { label: c.name, detail: `${c.legs.length} etapper`, value: c.id }
+            : { label: c.name, note: c.legs.join(', '), detail: `${unlockHint(career, c)} i karriären`, value: c.id, locked: true },
+        ),
         { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
     });
     const champ = CHAMPIONSHIPS.find((c) => c.id === id);
     if (!champ) return null;
+    if (!championshipUnlocked(career, champ)) continue;
     const name = await showMenu<string>({
       title: champ.name,
       solid: true,

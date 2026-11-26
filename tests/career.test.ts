@@ -1,6 +1,6 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY } from '../src/career/career';
-import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { kvarn240 } from '../src/physics/params';
@@ -142,6 +142,21 @@ const CAR = 'Kvarn 240 GL';
   check('historik: kapas', full.history!.length === MAX_HISTORY && full.history!.at(-1)!.time === 90 + MAX_HISTORY + 4 && isCareerState(full), `${full.history!.length} rader`);
   const bad = { ...c, history: [{ kind: 'stage', at: 1, name: '', amount: 0 }] };
   check('historik: saneras', !isCareerState(bad) && !isCareerState({ ...c, history: [{ ...c.history![0]!, amount: 1.5 }] }), 'nekas');
+}
+
+// Mästerskapen låses upp i ordning; gamla vinster i historiken räknas.
+{
+  const skog = CHAMPIONSHIPS[0]!;
+  const myr = CHAMPIONSHIPS[1]!;
+  const open = (c: ReturnType<typeof newCareer>) => CHAMPIONSHIPS.map((ch) => (championshipUnlocked(c, ch) ? 1 : 0)).join('');
+  const fresh = newCareer();
+  const one = withWin(fresh, skog);
+  const myrOnly = withWin(fresh, myr);
+  const both = withWin(one, myr);
+  const old = logged(fresh, { kind: 'championship', name: skog.name, car: CAR, place: 1, of: 8, time: 300, amount: 9000 });
+  const second = logged(fresh, { kind: 'championship', name: skog.name, car: CAR, place: 2, of: 8, time: 300, amount: 6000 });
+  const ok = open(fresh) === '100' && open(one) === '110' && open(myrOnly) === '100' && open(both) === '111' && open(old) === '110' && open(second) === '100';
+  check('mästerskap: upplåsning', ok && withWin(one, skog) === one && isCareerState(both) && !isCareerState({ ...fresh, won: [''] }), `${open(fresh)} ${open(one)} ${open(both)}`);
 }
 
 if (failures) {

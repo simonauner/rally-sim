@@ -34,6 +34,9 @@ import {
   CHAMPIONSHIPS,
   championshipById,
   championshipPrize,
+  championshipUnlocked,
+  unlockHint,
+  withWin,
   legWeather,
   newProgress,
   raceRivals,
@@ -189,13 +192,18 @@ async function championshipMenu(career: CareerState, pick: Pick, showCar: ShowCa
       solid: true,
       body: '<div>Flera etapper i följd med samma bil mot ett fält av andra förare. Skador följer med mellan etapperna; du kan göra service mellan etapperna och laga bilen om du behöver.</div>',
       items: [
-        ...CHAMPIONSHIPS.map((ch) => ({ label: ch.name, image: CHAMPIONSHIP_IMAGES[ch.id], detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: ch.id })),
+        ...CHAMPIONSHIPS.map((ch) =>
+          championshipUnlocked(career, ch)
+            ? { label: ch.name, image: CHAMPIONSHIP_IMAGES[ch.id], detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: ch.id }
+            : { label: ch.name, image: CHAMPIONSHIP_IMAGES[ch.id], detail: unlockHint(career, ch), value: ch.id, locked: true },
+        ),
         { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
     });
     const def = championshipById(id);
     if (!def) return null;
+    if (!championshipUnlocked(career, def)) continue;
     const launch = await startChampionship(def, career, pick, showCar);
     if (launch) return launch;
   }
@@ -508,7 +516,7 @@ export async function championshipLegDone(
   if (times.length === def.legs.length) {
     const { medal, prize } = championshipPrize(def, place);
     const career = loadCareer().career;
-    commit(logged({ ...career, money: career.money + prize }, { kind: 'championship', name: def.name, car: p.car, place, of: table.length, time: total, amount: prize }));
+    commit(logged({ ...(place === 1 ? withWin(career, def) : career), money: career.money + prize }, { kind: 'championship', name: def.name, car: p.car, place, of: table.length, time: total, amount: prize }));
     saveChampionship(null);
     applause();
     await showMenu({

@@ -96,6 +96,8 @@ export interface CareerState {
   bonusDay?: string;
   /** Vad spelaren gjort, äldst först: åk, mästerskap och köp. Saknas i karriärer från före historiken. */
   history?: HistoryEntry[];
+  /** Vunna mästerskap (ChampionshipDef.id); låser upp nästa mästerskap och Fri körning. */
+  won?: string[];
 }
 
 /** En rad i historiken. `amount` är prispengar (positivt) eller vad köpet kostade (negativt). */
@@ -147,6 +149,7 @@ export function isCareerState(value: unknown): value is CareerState {
   if (!(Number.isInteger(c.money) && c.money >= 0 && c.money <= MAX_MONEY)) return false;
   if (c.bonusDay !== undefined && !(typeof c.bonusDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.bonusDay))) return false;
   if (c.history !== undefined && !(Array.isArray(c.history) && c.history.length <= MAX_HISTORY && c.history.every(isHistoryEntry))) return false;
+  if (c.won !== undefined && !(Array.isArray(c.won) && c.won.length <= 20 && c.won.every((id) => str(id, false)))) return false;
   if (typeof c.garage !== 'object' || c.garage === null) return false;
   const cars = Object.entries(c.garage);
   if (cars.length > 50) return false;

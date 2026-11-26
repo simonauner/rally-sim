@@ -17,7 +17,7 @@ import { CARS, type CarModel } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
 import { pickTyre } from './tyreMenu';
-import { legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
+import { CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
@@ -193,6 +193,17 @@ async function main() {
     room.show(m, d);
     return room;
   };
+  /** Bilarna man äger i karriären går att köra fritt; utan bil bara Kvarn 240 GL. */
+  const freeCars = () => {
+    const owned = Object.keys(loadCareer().career.garage);
+    return owned.length ? owned : ['Kvarn 240 GL'];
+  };
+  const freeDriveDetail = () => {
+    const career = loadCareer().career;
+    const stages = CHAMPIONSHIPS.filter((c) => championshipUnlocked(career, c)).reduce((n, c) => n + c.legs.length, 0);
+    const cars = freeCars().length;
+    return `${stages} av ${STAGES.length} etapper, ${cars === 1 ? '1 bil' : `${cars} bilar`}`;
+  };
   /** Kurvan med bilarna bakom huvudmenyn; byggs första gången menyn visas. */
   let backdrop: MenuScene | null = null;
   while (!resumed) {
@@ -208,7 +219,7 @@ async function main() {
         side: true,
         items: [
           { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
-          { label: 'Fri körning', detail: `${STAGES.length} etapper, alla bilar`, value: 'stage' },
+          { label: 'Fri körning', detail: freeDriveDetail(), value: 'stage' },
           { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
           { label: 'Inställningar', value: 'settings' },
           { label: 'Kontroller', value: 'controls' },
@@ -242,7 +253,7 @@ async function main() {
       stageDef = picked;
     }
     // Bilväljaren före varje start; Tillbaka går till huvudmenyn.
-    const picked = query.has('testbana') ? model : await pickCar(renderer, CARS);
+    const picked = query.has('testbana') ? model : await pickCar(renderer, CARS, { locked: (m) => !freeCars().includes(m.make().name) });
     if (picked) {
       model = picked;
       break;
