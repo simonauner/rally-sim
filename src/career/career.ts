@@ -123,8 +123,9 @@ export const MEDALS = [
 ] as const;
 export const FINISH_PRIZE = 250;
 export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze: number]> = {
-  // Testföraren i tests/physics.test.ts tar cirka 89 s utan att pressa bilen.
+  // Testföraren i tests/physics.test.ts tar cirka 89 s framlänges och 92 s baklänges utan att pressa bilen.
   Skogsberg: [90, 100, 115],
+  'Skogsberg baklänges': [93, 103, 118],
 };
 
 /** Prispengarna för ett enstaka åk. */

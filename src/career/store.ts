@@ -5,6 +5,7 @@
 
 import { isCareerState, type CareerState } from '../account/protocol';
 import { newCareer } from './career';
+import { isProgress, type ChampionshipProgress } from './championship';
 
 const KEY = 'rally.career';
 
@@ -30,5 +31,29 @@ export function saveCareer(career: CareerState, updatedAt = Date.now()) {
     localStorage.setItem(KEY, JSON.stringify({ career, updatedAt }));
   } catch {
     // Privat läge eller full lagring: ändringen gäller bara den här sessionen.
+  }
+}
+
+const CHAMPIONSHIP_KEY = 'rally.championship';
+
+/**
+ * Pågående mästerskap. Bara i den här webbläsaren, eftersom det lever minuter, inte dagar.
+ * shortcut: synkas inte; byter man enhet mitt i ett mästerskap börjar det om.
+ */
+export function loadChampionship(): ChampionshipProgress | null {
+  try {
+    const p: unknown = JSON.parse(localStorage.getItem(CHAMPIONSHIP_KEY) ?? 'null');
+    return isProgress(p) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveChampionship(p: ChampionshipProgress | null) {
+  try {
+    if (p) localStorage.setItem(CHAMPIONSHIP_KEY, JSON.stringify(p));
+    else localStorage.removeItem(CHAMPIONSHIP_KEY);
+  } catch {
+    // Privat läge: mästerskapet går inte att fortsätta efter omladdning.
   }
 }

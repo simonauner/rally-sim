@@ -1,6 +1,8 @@
 import { CAREER_KEY, isCareerState, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY, STARTER_CAR } from '../src/career/career';
+import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, repairCost, type CarDamage } from '../src/career/championship';
 import { kvarn240 } from '../src/physics/params';
+import { STAGES } from '../src/physics/stage';
 import { carSpecs } from '../src/physics/specs';
 
 let failures = 0;
@@ -53,6 +55,23 @@ function check(name: string, ok: boolean, detail: string) {
   const clean = sanitize({ [CAREER_KEY]: old, careerx: old });
   const bad = sanitize({ [CAREER_KEY]: [JSON.stringify({ money: -5, garage: {} }), 1] });
   check('karriär saneras', Object.keys(clean).join() === CAREER_KEY && Object.keys(bad).length === 0 && !isCareerState({ money: 1.5, garage: {} }), Object.keys(clean).join());
+}
+
+// 5. Mästerskap: gränser, priser, reparation och framsteg.
+{
+  const def = CHAMPIONSHIPS[0]!;
+  const legsExist = CHAMPIONSHIPS.every((c) => c.legs.every((name) => STAGES.some((s) => s.name === name)));
+  const targets = championshipTargets(def);
+  check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 183, `${def.legs.join(' + ')}, guld under ${targets?.[0]} s`);
+  const prizes = [180, 200, 230, 300].map((t) => championshipPrize(def, t));
+  check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize > 1200 * 2, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
+  const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };
+  const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
+  check('mästerskap: reparationskostnad', repairCost(none) === 0 && repairCost(crashed) === 2400, `${repairCost(crashed)} kr`);
+  const start = { id: def.id, car: 'Kvarn 240 GL', leg: 0, times: [], damage: null };
+  const next = afterLeg(start, 91.2, crashed, false);
+  const fixed = afterLeg(start, 91.2, crashed, true);
+  check('mästerskap: framsteg', isProgress(start) && isProgress(next) && next.leg === 1 && next.damage === crashed && fixed.damage === null && !isProgress({ ...next, leg: 2, times: [1, 2] }) && !isProgress({ ...start, id: 'okänt' }), `etapp ${next.leg + 1}, tider ${next.times.join()}`);
 }
 
 if (failures) {
