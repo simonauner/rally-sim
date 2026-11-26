@@ -133,7 +133,7 @@ export class Hud {
     const icon = (n: PaceNote) => (n.kind === 'corner' ? (n.dir! > 0 ? '↰' : '↱') : n.kind === 'crest' ? '⌒' : n.kind === 'finish' ? '⚑' : '▦');
     const html = notes
       .slice(0, 3)
-      .map((n, i) => `<div class="${i === 0 ? 'now' : ''}"><span class="icon">${icon(n)}</span> ${n.label}</div>`)
+      .map((n, i) => `<div class="${i === 0 ? 'now' : ''} ${n.grade ? `g${n.grade}` : ''}"><span class="icon">${icon(n)}</span> ${n.label}</div>`)
       .join('') + (missingVoice ? '<div class="hint">Ingen svensk eller engelsk röst i webbläsaren, noterna visas bara här</div>' : '');
     if (this.notes.innerHTML !== html) this.notes.innerHTML = html;
   }
