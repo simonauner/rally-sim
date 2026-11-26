@@ -494,6 +494,7 @@ async function main() {
     sun.position.set(car.pos.x + 40, car.pos.y + 70, car.pos.z - 30);
     sun.target.position.copy(car.pos);
     hud.update(car, input, CAMERAS[camMode]!);
+    hud.showGauges(!finishShown);
     if (timer) hud.updateTimer(timer, best);
     if (stage && caller) {
       const s = stage.project(car.pos.x, car.pos.z).s;
