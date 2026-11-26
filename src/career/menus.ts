@@ -110,7 +110,7 @@ export async function confirmAbort(): Promise<boolean> {
 /**
  * Karriärens huvudmeny. Delar ut dagsbonusen första gången per dag. Returnerar vad som ska
  * köras, eller null om spelaren backar. Med `gained` (t.ex. prispengar från ett avslutat mästerskap)
- * räknar kassan upp från det gamla beloppet första gången menyn visas.
+ * och dagsbonusen räknar kassan upp från det gamla beloppet, med pengaljud, första gången menyn visas.
  */
 export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Promise<Launch | null> {
   let career = loadCareer().career;
@@ -121,7 +121,7 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
     commit(career);
     message = `Dagens besök: <span class="ahead">+${formatMoney(bonus.bonus)}</span>`;
   }
-  let countFrom = career.money - gained;
+  let countFrom = career.money - gained - bonus.bonus;
   for (;;) {
     const ongoing = loadChampionship();
     // En ny karriär börjar utan bil: då finns bara bilhandlaren.
@@ -152,7 +152,10 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
           ],
       cancel: 'back',
     });
-    if (countFrom !== career.money) countUp(countFrom, career.money);
+    if (countFrom !== career.money) {
+      coins();
+      countUp(countFrom, career.money);
+    }
     countFrom = career.money;
     const c = await menu;
     message = '';
