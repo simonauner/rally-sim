@@ -339,6 +339,8 @@ async function main() {
   const camLook = new THREE.Vector3();
   const tmpDir = new THREE.Vector3();
   const tmpV = new THREE.Vector3();
+  /** Hur långt till höger om bilen målkameran tittar; glider in från 0 så bilden inte hoppar. */
+  let lookShift = 0;
 
   const updateCamera = (dt: number) => {
     const mode = CAMERAS[camMode]!;
@@ -349,9 +351,11 @@ async function main() {
     if (finishShown) {
       // Börja där kameran är (oavsett kameraläge), glid ut på cirkeln och snurra långsamt.
       if (orbit === null) {
+        // Fortsätt från exakt samma bild: blickpunkten längs kamerans nuvarande siktlinje.
         camPos.copy(camera.position);
-        camLook.copy(car.pos);
+        camLook.copy(camPos).addScaledVector(camera.getWorldDirection(tmpV), camPos.distanceTo(car.pos));
         orbit = Math.atan2(camPos.x - car.pos.x, camPos.z - car.pos.z);
+        lookShift = 0;
       }
       orbit += dt * 0.25;
       const want = tmpV.set(car.pos.x + Math.sin(orbit) * 7.5, car.pos.y + 2.2, car.pos.z + Math.cos(orbit) * 7.5);
@@ -360,9 +364,10 @@ async function main() {
       camera.position.copy(camPos);
       camera.up.set(0, 1, 0);
       // Titta lite till höger om bilen så den hamnar vänster om resultatpanelen.
+      lookShift += (2.2 - lookShift) * (1 - Math.exp(-dt * 2));
       const right = tmpDir.subVectors(camLook, camPos).cross(camera.up).normalize();
-      camera.lookAt(tmpV.copy(camLook).addScaledVector(right, 2.2));
-      camera.fov = 50;
+      camera.lookAt(tmpV.copy(camLook).addScaledVector(right, lookShift));
+      camera.fov += (50 - camera.fov) * (1 - Math.exp(-dt * 2));
     } else if (chase) {
       // Blanda bilens riktning med färdriktningen så sladdar syns tydligt.
       if (car.speed > 6) {
