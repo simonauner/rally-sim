@@ -1,5 +1,7 @@
+import { Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
 import { kvarn240 } from '../src/physics/params';
+import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
 import type { SurfaceId, TyreType } from '../src/physics/surfaces';
 import { World } from '../src/physics/world';
 
@@ -168,6 +170,64 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   check('krasch: bilen stoppas av väggen', car.pos.z < 261 && car.speed < 3, `z=${car.pos.z.toFixed(2)} fart ${car.speed.toFixed(2)}`);
   check('krasch: skada registrerad', car.damage.front > 0.1 && events > 3, `framskada ${car.damage.front.toFixed(2)}, ${events} kontakthändelser, störst ${maxJ.toFixed(0)} Ns`);
   check('krasch: effekt minskad', car.drivetrain.powerFactor < 1, `effektfaktor ${car.drivetrain.powerFactor.toFixed(2)}`);
+}
+
+// 8. Etapp: geometri och underlag per stödpunkt.
+{
+  const stage = new Stage(STAGE_SKOGSBERG);
+  const pts = STAGE_SKOGSBERG.points;
+  const onPoints = pts.slice(1, -1).every((p) => {
+    const hit = stage.project(p.x, p.z);
+    return hit.d < 0.5 && Math.abs(stage.heightAt(p.x, p.z) - p.y) < 0.3;
+  });
+  check('etapp: vägen går genom stödpunkterna', onPoints, `längd ${stage.length} m`);
+  const seen = new Set(stage.surfaces);
+  const wanted = new Set(pts.slice(0, -1).map((p) => p.surface));
+  check('etapp: underlag per punkt', [...wanted].every((x) => seen.has(x)), [...seen].join(', '));
+  const p = stage.poseAt(START_S);
+  const lx = Math.cos(p.heading);
+  const lz = -Math.sin(p.heading);
+  const verge = stage.surfaceAt(p.x + lx * 6, p.z + lz * 6);
+  check('etapp: vägkant är lera', verge === 'mud', verge);
+  let minSep = Infinity;
+  for (let i = 0; i < stage.xs.length; i += 2)
+    for (let j = i + 150; j < stage.xs.length; j += 2)
+      minSep = Math.min(minSep, Math.hypot(stage.xs[i]! - stage.xs[j]!, stage.zs[i]! - stage.zs[j]!));
+  check('etapp: vägen korsar inte sig själv', minSep > 2 * STAGE_CORRIDOR, `minsta avstånd ${minSep.toFixed(0)} m (krav > ${2 * STAGE_CORRIDOR})`);
+}
+
+// 9. Etapp: en enkel förare kör hela vägen utan att hamna i diket.
+{
+  const stage = new Stage(STAGE_SKOGSBERG);
+  const car = makeCar(stage, 'gravel');
+  const p0 = stage.poseAt(START_S);
+  car.reset(p0.x, p0.z, p0.heading, 0);
+  const finish = stage.length - FINISH_MARGIN;
+  let s = START_S;
+  let maxOver = 0;
+  let time = NaN;
+  run(car, 200, (_t, c) => {
+    const hit = stage.project(c.pos.x, c.pos.z);
+    if (!Number.isNaN(time)) return { ...idle, brake: 1 };
+    s = hit.s;
+    maxOver = Math.max(maxOver, hit.d - hit.width / 2);
+    const look = stage.poseAt(s + 6 + c.speed * 0.6);
+    const fwd = new Vector3(0, 0, 1).applyQuaternion(c.quat);
+    const err = Math.atan2(look.x - c.pos.x, look.z - c.pos.z) - Math.atan2(fwd.x, fwd.z);
+    const a = stage.poseAt(s + 10).heading;
+    const b = stage.poseAt(s + 40).heading;
+    const target = Math.max(9, 24 - Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) * 18);
+    return {
+      ...idle,
+      steer: Math.max(-1, Math.min(1, Math.atan2(Math.sin(err), Math.cos(err)) * 4)),
+      throttle: c.forwardSpeed < target ? 1 : 0,
+      brake: c.forwardSpeed > target + 2 ? 0.6 : 0,
+    };
+  }, (t) => {
+    if (Number.isNaN(time) && s >= finish) time = t;
+  });
+  check('etapp: förare når målet', time > 60 && time < 150, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, kom ${s.toFixed(0)} av ${finish.toFixed(0)} m`);
+  check('etapp: håller sig på vägen', maxOver < 1, `som mest ${maxOver.toFixed(2)} m utanför kanten`);
 }
 
 if (failures) {
