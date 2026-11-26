@@ -7,6 +7,8 @@ export interface MenuItem<T> {
   /** Liten rad under texten, t.ex. vad en del gör. */
   note?: string;
   value: T;
+  /** Sant om valet inte går, t.ex. för lite pengar: då låter det duh-duh i stället för klick. Läses vid klicket. */
+  denied?: () => boolean;
 }
 
 export interface MenuOptions<T> {
@@ -35,11 +37,11 @@ const root = () => document.getElementById('menu')!;
 
 let blipCtx: AudioContext | null = null;
 /** Kort klick: hög ton för val, mellanton för att flytta, låg för att backa. */
-function blip(freq: number, length: number) {
+function blip(freq: number, length: number, delay = 0) {
   if (!settings.sound || !settings.menuSound) return;
   // Skapas vid första klicket, som är en användargest, så webbläsaren tillåter ljudet.
   const ctx = (blipCtx ??= new AudioContext());
-  const t = ctx.currentTime;
+  const t = ctx.currentTime + delay;
   const osc = ctx.createOscillator();
   osc.type = 'triangle';
   osc.frequency.setValueAtTime(freq, t);
@@ -127,8 +129,12 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   input?.focus();
 
   return new Promise<T>((resolve) => {
-    const done = (value: T) => {
-      blip(value === opts.cancel ? 330 : 880, 0.09);
+    const done = (value: T, item?: MenuItem<T>) => {
+      // Duh-duh: två låga, fallande toner när valet inte går.
+      if (item?.denied?.()) {
+        blip(220, 0.14);
+        blip(165, 0.22, 0.17);
+      } else blip(value === opts.cancel ? 330 : 880, 0.09);
       opts.input?.onDone(input?.value ?? '');
       removeEventListener('keydown', onKey, true);
       el.style.display = 'none';
@@ -143,14 +149,14 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       if (e.repeat && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) return;
       if (e.code === 'ArrowUp' || e.code === 'KeyW') select(sel - 1);
       else if (e.code === 'ArrowDown' || e.code === 'KeyS') select(sel + 1);
-      else if (e.code === 'Enter' || e.code === 'Space') done(opts.items[sel]!.value);
+      else if (e.code === 'Enter' || e.code === 'Space') done(opts.items[sel]!.value, opts.items[sel]);
       else if (e.code === 'Escape' && opts.cancel !== undefined) done(opts.cancel);
     };
     // Capture på window: körs före spelets egna lyssnare.
     addEventListener('keydown', onKey, true);
     buttons.forEach((b, i) => {
       b.addEventListener('mouseenter', () => select(i));
-      b.addEventListener('click', () => done(opts.items[i]!.value));
+      b.addEventListener('click', () => done(opts.items[i]!.value, opts.items[i]));
     });
   });
 }

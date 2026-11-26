@@ -216,7 +216,7 @@ async function parts(car: string, group: string) {
       side: true,
       body: message,
       items: [
-        ...parts.map((u) => ({ label: u.name, note: u.effect, detail: levelOf(career, car, u.id) ? 'monterad' : formatMoney(u.price), value: u.id })),
+        ...parts.map((u) => ({ label: u.name, note: u.effect, detail: levelOf(career, car, u.id) ? 'monterad' : formatMoney(u.price), value: u.id, denied: () => buyUpgrade(career, car, u.id) === 'poor' })),
         { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
@@ -268,6 +268,7 @@ async function dealer(pick: Pick) {
       compare: ownedModels(career),
       action: {
         label: 'Köp',
+        denied: (m) => buyCar(loadCareer().career, nameOf(m)) === 'poor',
         run: async (m) => {
           const name = nameOf(m);
           const result = buyCar(loadCareer().career, name);
@@ -478,7 +479,7 @@ export async function championshipLegDone(
       side: true,
       body: `${message}${repaired ? '' : damageHtml(damage)}${cost > 0 ? `<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : '<div>Bilen är hel.</div>'}`,
       items: [
-        ...(cost > 0 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'repair' as const }] : []),
+        ...(cost > 0 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'repair' as const, denied: () => money < cost }] : []),
         { label: cost > 0 ? 'Kör vidare utan att laga' : 'Kör nästa etapp', value: 'go' },
         { label: '← Tillbaka', value: 'back' },
       ],

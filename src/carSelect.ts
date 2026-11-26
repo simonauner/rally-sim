@@ -54,7 +54,7 @@ export interface PickOptions {
    * visas bilväljaren igen med bilen byggd på nytt (t.ex. med nya uppgraderingar).
    * Returnerar run true stängs väljaren och bilen returneras.
    */
-  action?: { label: string; run: (m: CarModel) => Promise<boolean | void> };
+  action?: { label: string; denied?: (m: CarModel) => boolean; run: (m: CarModel) => Promise<boolean | void> };
   /** Liten text bredvid bilnamnet, t.ex. priset. */
   detail?: (m: CarModel) => string;
   /** Bilar att jämföra med (t.ex. de man äger); ger knappen Jämför som visar dem sida vid sida. */
@@ -288,7 +288,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
       side: true,
       body: bodyHtml(cars[current]!),
       items: [
-        { label: opts.action?.label ?? 'Kör', value: 'pick' },
+        { label: opts.action?.label ?? 'Kör', value: 'pick', denied: () => opts.action?.denied?.(cars[current]!) ?? false },
         ...(cmp.length ? [{ label: 'Jämför', value: 'compare' as const }] : []),
         { label: '← Tillbaka', value: 'back' },
       ],
