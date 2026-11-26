@@ -6,7 +6,8 @@
 
 import { STAGE_SKOGSBERG, type StageDef } from '../physics/stage';
 import { loadRecord, saveRecord } from '../records';
-import { isSecret, newSecret, recordKey, recordOf, replaces, sanitize, type AccountData, type SyncRequest, type SyncResponse } from './protocol';
+import { loadCareer, saveCareer } from '../career/store';
+import { CAREER_KEY, careerOf, isSecret, newSecret, recordKey, recordOf, replaces, sanitize, type AccountData, type SyncRequest, type SyncResponse } from './protocol';
 
 /** Synkserverns adress. Utan den synkas inget. */
 const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? '';
@@ -61,9 +62,11 @@ export function account(): AccountState {
 
 export const syncStatus = () => ({ phase, syncedAt: readState()?.syncedAt ?? null });
 
-/** Det enheten har: bästa tiden per bana, under nyckeln för banans versionsepok. */
+/** Det enheten har: bästa tiden per bana (under nyckeln för banans versionsepok) och karriären. */
 function localData(): AccountData {
   const data: AccountData = {};
+  const { career, updatedAt } = loadCareer();
+  if (updatedAt > 0) data[CAREER_KEY] = [JSON.stringify(career), updatedAt];
   for (const stage of STAGES) {
     const r = loadRecord(stage);
     if (r) data[recordKey(stage)] = [JSON.stringify(r), Date.now()];
@@ -71,8 +74,11 @@ function localData(): AccountData {
   return data;
 }
 
-/** Tar in rekord från servern som är bättre än de lokala. */
+/** Tar in rekord från servern som är bättre än de lokala, och karriären om den är nyare. */
 function importData(changes: AccountData) {
+  const incomingCareer = changes[CAREER_KEY];
+  const career = careerOf(incomingCareer);
+  if (incomingCareer && career && incomingCareer[1] > loadCareer().updatedAt) saveCareer(career, incomingCareer[1]);
   for (const stage of STAGES) {
     const incoming = changes[recordKey(stage)];
     const local = loadRecord(stage);
@@ -129,14 +135,18 @@ async function run() {
   }
 }
 
-/** Anropas när ett nytt rekord har sparats lokalt. */
-export function recordChanged() {
+/** Anropas när ett nytt rekord eller karriären har sparats lokalt. */
+export function localChanged() {
   writeState({ ...account(), changedAt: Date.now() });
   void syncNow();
 }
 
-/** Byter till kontot med den här hemligheten. Lokala rekord slås ihop med kontots. */
+/**
+ * Byter till kontot med den här hemligheten. Lokala rekord slås ihop med kontots, medan
+ * kontots karriär ersätter den här enhetens.
+ */
 export function restore(secret: string) {
+  saveCareer(loadCareer().career, 0);
   writeState({ secret, cursor: 0, changedAt: Date.now(), pushedAt: 0 });
   return syncNow();
 }

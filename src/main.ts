@@ -6,7 +6,7 @@ import { CONTROLS_HTML, formatTime, Hud, resultHtml } from './hud';
 import { CoDriver } from './codriver';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
-import { account, recordChanged, restore, startSync, syncAvailable, syncStatus } from './account/sync';
+import { account, localChanged, restore, startSync, syncAvailable, syncStatus } from './account/sync';
 import { recoveryKey, secretFromKey } from './account/recoveryKey';
 import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
@@ -458,7 +458,7 @@ async function main() {
       if (!best || timer.time < best.time) {
         best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
         saveRecord(stage.def, best);
-        recordChanged();
+        localChanged();
       }
     }
     if (finished && !finishShown) {
