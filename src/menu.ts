@@ -17,6 +17,8 @@ export interface MenuOptions<T> {
   solid?: boolean;
   /** Panelen vid högerkanten utan att dämpa spelet, t.ex. målskärmen där bilen syns. */
   side?: boolean;
+  /** Liten text nere i högra hörnet av skärmen, t.ex. version. */
+  footer?: string;
   /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
   input?: { placeholder: string; onDone: (value: string) => void };
   /** Anropas när markeringen flyttas, även för första valet. */
@@ -42,7 +44,8 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       <div class="items">${opts.items
         .map((it, i) => `<button data-i="${i}"><span>${it.label}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
         .join('')}</div>
-    </div>`;
+    </div>
+    ${opts.footer ? `<div class="corner">${opts.footer}</div>` : ''}`;
   el.style.display = 'flex';
   const buttons = [...el.querySelectorAll('button')];
   let sel = 0;

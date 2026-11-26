@@ -35,6 +35,8 @@ import { buildTerrain } from './render/terrain';
 
 const DT = 1 / 240;
 const CAMERAS = ['bakifrån', 'förarvy', 'uppifrån', 'sidovy (skador)'];
+/** Sätts vid bygget i vite.config.ts. */
+const VERSION = `version ${import.meta.env.VITE_COMMIT} · byggd ${new Date(import.meta.env.VITE_BUILT_AT).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' })}`;
 
 async function main() {
   // ?webgl är bara till för felsökning i miljöer utan riktig WebGPU.
@@ -168,6 +170,7 @@ async function main() {
           { label: 'Kontroller', value: 'controls' },
           { label: 'Konto', value: 'account' },
         ],
+        footer: VERSION,
       });
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
