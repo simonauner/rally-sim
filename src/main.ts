@@ -215,7 +215,6 @@ async function main() {
     while (choice === 'settings' || choice === 'controls' || choice === 'account') {
       choice = await showMenu<MainChoice>({
         title: 'RALLY',
-        subtitle: 'Kvarn 240 GL',
         side: true,
         items: [
           { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
