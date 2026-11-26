@@ -25,6 +25,13 @@ export interface Spur {
 
 export interface StageDef {
   name: string;
+  /**
+   * Banans version, major.minor.patch. Major: rekord och ghost nollställs alltid.
+   * Minor: nollställs bara om recordsSince flyttas fram. Patch: bara kosmetiskt.
+   */
+  version: string;
+  /** Äldsta versionen (inom samma major) vars rekord och ghost fortfarande gäller. */
+  recordsSince: string;
   points: StagePoint[];
   spurs?: Spur[];
 }
@@ -261,6 +268,8 @@ export class Stage extends World {
  */
 export const STAGE_SKOGSBERG: StageDef = {
   name: 'Skogsberg',
+  version: '1.0.0',
+  recordsSince: '1.0.0',
   points: [
     { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
     { x: 0, z: 0, y: 0, width: 7, surface: 'gravel' },

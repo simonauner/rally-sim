@@ -8,6 +8,7 @@ import { GhostRecorder, sampleGhost, sectionLosses, timeAlongStage } from '../sr
 import { generateNotes, NoteCaller, type PaceNote } from '../src/physics/pacenotes';
 import { StageTimer } from '../src/physics/timing';
 import { World } from '../src/physics/world';
+import { recordValid } from '../src/records';
 
 const DT = 1 / 240;
 let failures = 0;
@@ -314,6 +315,13 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   caller.seek(1000);
   const firstAfter = caller.update(1000, 50)[0];
   check('pacenotes: hoppar fram vid teleport', !!firstAfter && firstAfter.s > 1000, `första ${firstAfter?.s.toFixed(0)} m`);
+}
+
+{
+  const stage = { ...STAGE_SKOGSBERG, version: '2.3.1', recordsSince: '2.2.0' };
+  const cases: [string | undefined, boolean][] = [[undefined, false], ['1.9.0', false], ['2.1.5', false], ['2.2.0', true], ['2.3.0', true], ['2.3.1', true], ['3.0.0', false]];
+  const wrong = cases.filter(([v, want]) => recordValid(v, stage) !== want);
+  check('rekord: banversion', wrong.length === 0, wrong.length ? `fel för ${wrong.map(([v]) => v).join(', ')}` : `${cases.length} fall`);
 }
 
 if (failures) {

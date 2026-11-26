@@ -76,7 +76,7 @@ async function main() {
   type MainChoice = 'stage' | 'test' | 'controls';
   let choice: MainChoice = query.has('testbana') ? 'test' : 'controls';
   while (choice === 'controls') {
-    const best = loadRecord(STAGE_SKOGSBERG.name);
+    const best = loadRecord(STAGE_SKOGSBERG);
     choice = await showMenu<MainChoice>({
       title: 'RALLY',
       subtitle: 'Kvarn 240 GL · fysikprototyp',
@@ -140,7 +140,7 @@ async function main() {
       ];
   let spawn = Object.values(spawns)[0]!;
   const timer = stage ? new StageTimer(START_S, stage.length - FINISH_MARGIN) : null;
-  let best: StageRecord | null = stage ? loadRecord(stage.def.name) : null;
+  let best: StageRecord | null = stage ? loadRecord(stage.def) : null;
   /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
   let previousBest: StageRecord | null = null;
   let resultSaved = false;
@@ -358,7 +358,7 @@ async function main() {
       previousBest = best;
       if (!best || timer.time < best.time) {
         best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
-        saveRecord(stage.def.name, best);
+        saveRecord(stage.def, best);
       }
     }
     if (finished && !finishShown) {
