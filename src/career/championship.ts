@@ -17,12 +17,14 @@ export interface ChampionshipDef {
   name: string;
   /** Etappernas namn, i körordning (StageDef.name). */
   legs: string[];
+  /** Fältets grundtakt som andel av guldtiden; ingen motståndare blir snabbare än strax under den. */
+  pace: number;
 }
 
 export const CHAMPIONSHIPS: ChampionshipDef[] = [
-  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges', 'Tallmon'] },
-  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'] },
-  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges', 'Isvallen'] },
+  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges', 'Tallmon'], pace: 0.985 },
+  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'], pace: 0.965 },
+  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges', 'Isvallen'], pace: 0.945 },
 ];
 
 /** Vunnet; vinster från före `won` läses ur historiken. */
@@ -100,8 +102,8 @@ export function legWeather(p: ChampionshipProgress, leg = p.leg): Weather {
 }
 
 /** Ett nytt mästerskap med ett slumpat fält motståndare. */
-export function newProgress(def: ChampionshipDef, car: string, seed: number, playerPace?: number): ChampionshipProgress {
-  return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, playerPace) };
+export function newProgress(def: ChampionshipDef, car: string, seed: number): ChampionshipProgress {
+  return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, def.pace) };
 }
 
 /**
@@ -111,10 +113,10 @@ export function newProgress(def: ChampionshipDef, car: string, seed: number, pla
 export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipProgress {
   const def = championshipById(p.id)!;
   const seed = p.seed ?? p.times.length * 1000 + Math.round(time * 100);
-  let rivals = p.rivals ?? newRivals(seed);
+  let rivals = p.rivals ?? newRivals(seed, def.pace);
   const times = [...p.times, time];
   const slowdown = def.legs.map((_, i) => WEATHER_SLOWDOWN[legWeather({ ...p, seed }, i)]);
-  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown);
+  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown, def.pace - 0.015);
   return { ...p, seed, rivals };
 }
 

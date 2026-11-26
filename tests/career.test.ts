@@ -101,26 +101,28 @@ const CAR = 'Kvarn 240 GL';
   const fresh = newProgress(def, 'Kvarn 240 GL', 42);
   const names = new Set(fresh.rivals!.map((v) => v.name));
   check('motståndare: ett fält', fresh.rivals!.length === RIVAL_COUNT && names.size === RIVAL_COUNT && Math.min(...fresh.rivals!.map((v) => v.pace)) <= 1 && isProgress(fresh), [...names].slice(0, 3).join(', ') + ' …');
-  const run = (pace: number, seed: number, known?: number) => {
-    let p = newProgress(def, 'Kvarn 240 GL', seed, known);
-    for (const leg of def.legs) {
+  const run = (pace: number, seed: number, d = def) => {
+    let p = newProgress(d, 'Kvarn 240 GL', seed);
+    for (const leg of d.legs) {
       const time = STAGE_TARGETS[leg]![0] * pace;
       p = afterLeg(raceRivals(p, time), time, { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 }, true);
     }
     return { place: standings(p.rivals!, p.times).findIndex((s) => s.player) + 1, valid: isProgress({ ...p, leg: p.leg - 1, times: p.times.slice(0, -1), rivals: p.rivals!.map((v) => ({ ...v, times: v.times.slice(0, -1) })) }) };
   };
-  const winRate = (pace: number, known?: number) => {
-    const results = Array.from({ length: 300 }, (_, seed) => run(pace, seed, known));
+  const winRate = (pace: number, d = def) => {
+    const results = Array.from({ length: 300 }, (_, seed) => run(pace, seed, d));
     return { wins: results.filter((r) => r.place === 1).length / results.length, podium: results.filter((r) => r.place <= 3).length / results.length, valid: results.every((r) => r.valid) };
   };
   const gold = winRate(1);
-  // 20 % snabbare än guld: utan rekord hinner fältet inte ikapp efter första etappen; med
-  // rekord i samma fart möts spelaren av motstånd från start.
-  const fast = winRate(0.8);
-  const known = winRate(0.8, 0.8);
+  // Fältet följer inte spelaren under golvet, så en snabbare bil lönar sig: i Vinterrallyt räcker
+  // guldfart inte, men 5 % under guld vinner oftare än inte.
+  const fast = winRate(0.9);
   const slow = winRate(1.25);
-  const ok = gold.valid && gold.wins > 0.05 && gold.wins < 0.5 && gold.podium > 0.4 && fast.wins > 0.5 && known.wins > 0.2 && known.wins < 0.85 && slow.wins < 0.02;
-  check('motståndare: utmaning men går att vinna', ok, `vinst i guldfart ${(gold.wins * 100).toFixed(0)} % (pall ${(gold.podium * 100).toFixed(0)} %), 20 % snabbare ${(fast.wins * 100).toFixed(0)} %, dito med rekord ${(known.wins * 100).toFixed(0)} %, bronsfart ${(slow.wins * 100).toFixed(0)} %`);
+  const winter = CHAMPIONSHIPS[2]!;
+  const winterGold = winRate(1, winter);
+  const winterFast = winRate(0.95, winter);
+  const ok = gold.valid && gold.wins > 0.05 && gold.wins < 0.5 && gold.podium > 0.4 && fast.wins > 0.8 && slow.wins < 0.02 && winterGold.wins < 0.2 && winterFast.wins > 0.5;
+  check('motståndare: utmaning men går att vinna', ok, `vinst i guldfart ${(gold.wins * 100).toFixed(0)} % (pall ${(gold.podium * 100).toFixed(0)} %), 10 % snabbare ${(fast.wins * 100).toFixed(0)} %, bronsfart ${(slow.wins * 100).toFixed(0)} %; vinter i guldfart ${(winterGold.wins * 100).toFixed(0)} %, 5 % snabbare ${(winterFast.wins * 100).toFixed(0)} %`);
   // Väder: samma frö ger samma väder, och motståndarna kör långsammare i regn.
   const same = def.legs.every((_, i) => legWeather(fresh, i) === legWeather({ ...fresh }, i));
   const dryLeg = raceLeg(fresh.rivals!, def.legs, 0, [90], 7)[0]!.times[0]!;

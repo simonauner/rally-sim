@@ -25,18 +25,15 @@ const pick = <T>(list: readonly T[], r: () => number) => list[Math.floor(r() * l
 const gauss = (r: () => number) => (r() + r() + r() + r() - 2) * 1.73;
 
 /**
- * Ett nytt fält. Den snabbaste kör på guldtid eller strax under, resten sprids ut mot
- * bronsnivå, så den som kör i guldfart slåss om pallen. Med `playerPace` (spelarens bästa takt
- * från egna rekord) läggs de två snabbaste nära den, så en snabb förare möts av motstånd redan
- * på första etappen.
+ * Ett nytt fält. Den snabbaste kör på mästerskapets grundtakt `base` eller strax över, resten
+ * sprids ut mot bronsnivå. Fältet beror inte på spelaren, så en snabbare bil ger en marginal som märks.
  */
-export function newRivals(seed: number, playerPace?: number): Rival[] {
+export function newRivals(seed: number, base = 0.985): Rival[] {
   const r = rng(seed);
   const names = new Set<string>();
   while (names.size < RIVAL_COUNT) names.add(`${pick(FIRST, r)} ${pick(LAST, r)}`);
   return [...names].map((name, i) => {
-    const pace = 0.985 + i * 0.022 + r() * 0.015;
-    return { name, pace: playerPace && i < 2 ? Math.min(pace, playerPace * (0.98 + r() * 0.05)) : pace, times: [] };
+    return { name, pace: base + i * 0.022 + r() * 0.015, times: [] };
   });
 }
 
@@ -50,10 +47,11 @@ function legTime(stage: string, pace: number, r: () => number): number {
 
 /**
  * Motståndarnas tider på etapp `leg`, och deras takt inför nästa. Är spelaren snabbare än hela
- * fältet hittills (bästa takt över körda etapper) hittar en eller två av de snabbaste samma fart,
- * slumpat från lite långsammare till lite snabbare, så att ledningen inte blir gratis.
+ * fältet hittills (bästa takt över körda etapper) närmar sig en eller två av de snabbaste, oftast till
+ * strax efter, så att ledningen inte blir gratis. De blir aldrig snabbare än golvet `floor`, så den
+ * som har en bil som räcker under golvet vinner om den kör jämnt.
  */
-export function raceLeg(rivals: Rival[], legs: string[], leg: number, playerTimes: number[], seed: number, slowdown: number[] = []): Rival[] {
+export function raceLeg(rivals: Rival[], legs: string[], leg: number, playerTimes: number[], seed: number, slowdown: number[] = [], floor = 0.97): Rival[] {
   const r = rng(seed + 7919 * (leg + 1));
   // Vädret gör alla långsammare; spelarens takt räknas utan vädret, så ett regnigt åk inte ser långsamt ut.
   const raced = rivals.map((v) => ({ ...v, times: [...v.times.slice(0, leg), legTime(legs[leg]!, v.pace * (slowdown[leg] ?? 1), r)] }));
@@ -64,7 +62,7 @@ export function raceLeg(rivals: Rival[], legs: string[], leg: number, playerTime
   const chasers = r() < 0.5 ? 1 : 2;
   for (let k = 0; k < chasers; k++) {
     const v = top.splice(Math.floor(r() * top.length), 1)[0]!;
-    v.pace = Math.min(v.pace, playerPace * (0.95 + r() * 0.07));
+    v.pace = Math.min(v.pace, Math.max(floor, playerPace * (0.99 + r() * 0.04)));
   }
   return raced;
 }

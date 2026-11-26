@@ -10,7 +10,6 @@ import vinterrallytImg from '../assets/champ-vinterrallyt.webp';
 import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
 import { pickStage, stagePreviewHtml } from '../stageMenu';
-import { loadRecord } from '../records';
 import { WEATHER_NAMES, type Weather } from '../physics/weather';
 import {
   applyUpgrades,
@@ -49,7 +48,7 @@ import {
   type ChampionshipDef,
   type ChampionshipProgress,
 } from './championship';
-import { goldTime, RIVAL_COUNT, standings, type Standing } from './rivals';
+import { RIVAL_COUNT, standings, type Standing } from './rivals';
 import { formatTime, lampStatus } from '../hud';
 import { loadCareer, loadChampionship, saveCareer, saveChampionship } from './store';
 
@@ -442,14 +441,8 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
   if (!model || !stage) return null;
   // Samma förhandsvisning och service som mellan etapperna, med hel bil.
   const whole: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1, lamps: [0, 0] };
-  // Spelarens bästa takt på mästerskapets etapper, från egna rekord, så fältet möter den.
-  const paces = def.legs.flatMap((leg) => {
-    const s = STAGES.find((x) => x.name === leg);
-    const best = s && loadRecord(s);
-    return best ? [best.time / goldTime(leg)] : [];
-  });
   // Framsteget skapas före förhandsvisningen, så första etappens väder går att visa; det sparas först vid start.
-  const progress = newProgress(def, nameOf(model), Math.floor(Math.random() * 2 ** 31), paces.length ? Math.min(...paces) : undefined);
+  const progress = newProgress(def, nameOf(model), Math.floor(Math.random() * 2 ** 31));
   if (!(await beforeLeg(def, 0, whole, (d) => showCar(model, d), legWeather(progress, 0)))) return null;
   saveChampionship(progress);
   return { model, stage, championship: progress };
