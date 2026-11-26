@@ -77,7 +77,7 @@ export class Car {
   angVel = new Vector3();
   wheels: WheelState[];
   drivetrain: Drivetrain;
-  assists: Assists = { abs: true, tc: true, steerAssist: 0.5 };
+  assists: Assists = { abs: true, tc: true, steerAssist: 1 };
   damage: DamageState = { front: 0, rear: 0, left: 0, right: 0, roof: 0 };
   damageEvents: DamageEvent[] = [];
   collisionPoints: Vector3[] = [];
@@ -240,14 +240,21 @@ export class Car {
     // --- Styrning ---------------------------------------------------------------
     const v = Math.abs(this.forwardSpeed);
     const maxAngle = p.steer.maxAngle / (1 + (v / p.steer.speedRef) ** 2);
-    let target = input.steer * maxAngle;
+    const driverAngle = input.steer * maxAngle;
+    let target = driverAngle;
     if (this.assists.steerAssist > 0 && v > 4) {
       // Peka framhjulen mot färdriktningen: hjälper vid sladd.
       const beta = Math.atan2(this.lateralSpeed, Math.abs(this.forwardSpeed)) * (this.forwardSpeed >= 0 ? 1 : -1);
-      target += Math.max(-0.3, Math.min(0.3, beta)) * this.assists.steerAssist;
+      target += clamp(beta, 0.3) * this.assists.steerAssist;
+      // Girdämpare: motstyr när bilen roterar fortare än föraren styr (eller greppet tillåter).
+      const yaw = this.angVel.dot(_up);
+      const mu = TYRE_GRIP[p.tyre][wheels[0]!.surface] * p.gripScale;
+      const wanted = clamp((this.forwardSpeed * Math.tan(driverAngle)) / p.wheelbase, (mu * G) / v);
+      const excess = yaw - wanted;
+      if (excess * yaw > 0) target -= clamp(excess * 0.3, 0.35) * this.assists.steerAssist;
     }
     const rateBase = Math.abs(target) > Math.abs(this.steerAngle) ? p.steer.rate : p.steer.centerRate;
-    const rate = rateBase / (1 + v / 12);
+    const rate = rateBase / (1 + v / 30);
     const dS = target - this.steerAngle;
     this.steerAngle += Math.max(-rate * dt, Math.min(rate * dt, dS));
 
@@ -332,17 +339,19 @@ export class Car {
     for (const i of driven) shaftOmega += wheels[i]!.omega;
     shaftOmega /= Math.max(1, driven.length);
 
-    // Traction control: begränsa gasen om drivhjulen slirar.
+    // Traction control: begränsa gasen när drivhjulens kombinerade slip (längs + sid) når greppets topp,
+    // annars äter hjulspinnet upp sidgreppet och bakvagnen går ut.
     this.tcActive = false;
     if (this.assists.tc && v > 1) {
       let worst = 0;
       for (const i of driven) {
         const w = wheels[i]!;
-        const peak = SURFACES[w.surface].peakSlipRatio;
-        worst = Math.max(worst, (w.kappa - peak * 1.4) / peak);
+        const sp = SURFACES[w.surface];
+        const sx = w.kappa / sp.peakSlipRatio;
+        if (sx > 0.3) worst = Math.max(worst, Math.hypot(sx, w.tanAlpha / sp.peakTanSlipAngle) - 0.95);
       }
       if (worst > 0) {
-        gas *= Math.max(0.15, 1 - worst * 0.8);
+        gas *= Math.max(0.1, 1 - worst * 2);
         this.tcActive = true;
       }
     }
@@ -497,4 +506,8 @@ export class Car {
 
     this.updateWheelGeometry();
   }
+}
+
+function clamp(x: number, limit: number) {
+  return Math.max(-limit, Math.min(limit, x));
 }

@@ -121,6 +121,18 @@ for (const [surface, tyre, lo, hi] of [
   check('handbroms: kan rotera', maxYawRate > 0.8 && maxYawRate < 6, `maxgirhastighet ${maxYawRate.toFixed(2)} rad/s`);
 }
 
+// 5b. Fullgas i kurva på grus med hjälpmedel på (som på tangentbord): bilen ska inte snurra.
+for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
+  const car = makeCar(new FlatWorld('gravel'), 'gravel');
+  car.reset(0, 0, 0, v0);
+  let maxBeta = 0;
+  run(car, 5, (t) => ({ ...idle, steer, throttle: t > 0.5 ? 1 : 0.3 }), () => {
+    if (car.speed > 3) maxBeta = Math.max(maxBeta, Math.abs(Math.atan2(car.lateralSpeed, car.forwardSpeed)));
+  });
+  const deg = (maxBeta * 180) / Math.PI;
+  check(`fullgas i kurva ${v0} m/s`, deg < 30, `max sladdvinkel ${deg.toFixed(0)}° (förväntat < 30)`);
+}
+
 // 6. Testbanan: tvättbräda, hopp och landning utan sönderfall.
 {
   const world = new World();
