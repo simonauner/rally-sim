@@ -26,13 +26,16 @@ interface Row {
 function specRows(p: CarParams, s: CarSpecs): Row[] {
   const hp = s.powerKw * 1.36;
   const z = s.zeroTo100;
+  // Rallydäcken byter inte däcktyp utan höjer greppet, så det måste synas här.
+  const grip = Math.round((p.gripScale - 1) * 100);
+  const gripText = grip ? `, ${grip > 0 ? '+' : '−'}${Math.abs(grip)} % grepp` : '';
   return [
     { k: 'Motoreffekt', full: `${num(hp)} hk (${num(s.powerKw)} kW) vid ${num(s.powerRpm)} rpm`, short: `${num(hp)} hk`, v: hp, more: true },
     { k: 'Vridmoment', full: `${num(s.torqueNm)} Nm vid ${num(s.torqueRpm)} rpm`, short: `${num(s.torqueNm)} Nm`, v: s.torqueNm, more: true },
     { k: 'Vikt', full: `${num(p.mass)} kg · ${num(p.mass / hp, 1)} kg/hk`, short: `${num(p.mass)} kg`, v: p.mass, more: false },
     { k: 'Viktfördelning', full: `${num(s.frontWeight * 100)}/${num(100 - s.frontWeight * 100)} fram/bak`, short: `${num(s.frontWeight * 100)}/${num(100 - s.frontWeight * 100)}` },
     { k: 'Drivning', full: `${DRIVE(p)}, ${p.gearbox.ratios.length} växlar`, short: DRIVE(p) },
-    { k: 'Däck', full: `${TYRE_NAMES[p.tyre]}, Ø ${num(p.wheelRadius * 200)} cm`, short: TYRE_NAMES[p.tyre] },
+    { k: 'Däck', full: `${TYRE_NAMES[p.tyre]}, Ø ${num(p.wheelRadius * 200)} cm${gripText}`, short: `${TYRE_NAMES[p.tyre]}${gripText}` },
     { k: '0–100 km/h', full: Number.isNaN(z) ? 'når inte 100' : `${num(z, 1)} s på grus`, short: Number.isNaN(z) ? '–' : `${num(z, 1)} s`, v: Number.isNaN(z) ? undefined : z, more: false },
     { k: 'Toppfart', full: `${num(s.topSpeedKmh)} km/h`, short: `${num(s.topSpeedKmh)} km/h`, v: s.topSpeedKmh, more: true },
   ];
