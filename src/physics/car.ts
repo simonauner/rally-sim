@@ -69,6 +69,9 @@ const _vMount = new Vector3();
 const _force = new Vector3();
 const _qInv = new Quaternion();
 
+/** Från den här skadan lyser en strålkastare inte alls. */
+export const LAMP_BROKEN = 0.5;
+
 export class Car {
   pos = new Vector3(0, 1, 0);
   quat = new Quaternion();
@@ -79,6 +82,8 @@ export class Car {
   drivetrain: Drivetrain;
   assists: Assists = { abs: true, tc: true, steerAssist: 1 };
   damage: DamageState = { front: 0, rear: 0, left: 0, right: 0, roof: 0 };
+  /** Strålkastarnas skada [vänster, höger], 0..1. Från LAMP_BROKEN lyser lyktan inte alls. */
+  lamps = [0, 0];
   damageEvents: DamageEvent[] = [];
   collisionPoints: Vector3[] = [];
 
@@ -144,6 +149,7 @@ export class Car {
       this.damage = { front: 0, rear: 0, left: 0, right: 0, roof: 0 };
       for (const w of this.wheels) w.damage = 0;
       this.drivetrain.powerFactor = 1;
+      this.lamps = [0, 0];
     }
     this.updateWheelGeometry();
   }
@@ -194,6 +200,12 @@ export class Car {
     });
     const wheel = this.wheels[best]!;
     wheel.damage = Math.min(1, wheel.damage + scale * 0.8);
+    // Träffar framifrån tar strålkastaren på den sidan, och lite av den andra.
+    if (local.z > b.halfZ * 0.6) {
+      const side = local.x > 0 ? 0 : 1;
+      this.lamps[side] = Math.min(1, this.lamps[side]! + scale * 3);
+      this.lamps[1 - side] = Math.min(1, this.lamps[1 - side]! + scale * 0.8);
+    }
     this.drivetrain.powerFactor = 1 - 0.4 * d.front;
   }
 

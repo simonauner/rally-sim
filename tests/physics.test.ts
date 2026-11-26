@@ -1,5 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
-import { Car, type Input } from '../src/physics/car';
+import { Car, LAMP_BROKEN, type Input } from '../src/physics/car';
 import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
 import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
@@ -446,6 +446,20 @@ for (const def of STAGES) {
   });
   const ok = results.every((r) => !r.rolled && r.out < r.v0 * 0.45 && r.off < 8) && results[1]!.dmg > 0.01 && results.every((r) => r.dmg < 0.25);
   check('snövallar bromsar och skadar milt', ok, results.map((r) => `${r.v0} m/s → ${r.out.toFixed(1)} m/s efter 2 s, skada ${(r.dmg * 100).toFixed(0)} %, ${r.off.toFixed(1)} m utanför${r.rolled ? ', VÄLTE' : ''}`).join(' · '));
+}
+
+// 16. Strålkastarna: en lätt knuff framifrån skadar lyktan lite, en hård smäll mot vänster hörn
+// slår sönder den vänstra men inte den högra.
+{
+  const car = makeCar(new FlatWorld('gravel'), 'gravel');
+  const nose = new Vector3(0.6, 0, car.params.body.halfZ);
+  car.registerDamage(nose, car.params.mass * 14 * 0.03, 'object');
+  const light = [...car.lamps];
+  car.registerDamage(nose, car.params.mass * 14 * 0.2, 'object');
+  const ok = light[0]! > 0 && light[0]! < LAMP_BROKEN && car.lamps[0]! >= LAMP_BROKEN && car.lamps[1]! < LAMP_BROKEN;
+  check('strålkastare går sönder', ok, `knuff ${light.map((l) => l.toFixed(2)).join('/')}, smäll ${car.lamps.map((l) => l.toFixed(2)).join('/')}`);
+  car.reset(0, 0, 0, 0);
+  check('strålkastare lagas vid omstart', car.lamps.every((l) => l === 0), car.lamps.join('/'));
 }
 
 if (failures) {

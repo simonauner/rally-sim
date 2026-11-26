@@ -1,4 +1,4 @@
-import type { Car, Input } from './physics/car';
+import { LAMP_BROKEN, type Car, type Input } from './physics/car';
 import type { CarParams } from './physics/params';
 import { SURFACES, TYRE_NAMES } from './physics/surfaces';
 import type { PaceNote } from './physics/pacenotes';
@@ -14,6 +14,15 @@ export const CONTROLS_HTML = [
   '<b>C</b> kamera · <b>M</b> manuell låda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
   '<b>F1</b> felsökning · <b>H</b> visa/dölj hjälpen · <b>N</b> ljud av/på · <b>G</b> ghost av/på · <b>Esc</b> meny',
 ].join('<br/>');
+
+/** Strålkastarnas skick i ord, för skadepanelen och servicen. */
+export function lampStatus(lamps: number[]): string {
+  const broken = lamps.map((l) => l >= LAMP_BROKEN);
+  if (broken[0] && broken[1]) return 'båda trasiga';
+  if (broken[0]) return 'vänster trasig';
+  if (broken[1]) return 'höger trasig';
+  return lamps.some((l) => l > 0.05) ? 'skadade' : 'hela';
+}
 
 export class Hud {
   private hud = document.getElementById('hud')!;
@@ -71,7 +80,7 @@ export class Hud {
         <table id="wheels"><tr><th></th><td>last</td><td>slip</td><td>vinkel</td><td>grepp</td><td>underlag</td></tr>${rows}</table>`;
       const d = car.damage;
       const pct = (v: number) => (v * 100).toFixed(0);
-      this.damage.innerHTML = `<b>Skador</b><br/>fram ${pct(d.front)} % · bak ${pct(d.rear)} %<br/>vänster ${pct(d.left)} % · höger ${pct(d.right)} %<br/>tak ${pct(d.roof)} % · effekt ${(dtn.powerFactor * 100).toFixed(0)} %`;
+      this.damage.innerHTML = `<b>Skador</b><br/>fram ${pct(d.front)} % · bak ${pct(d.rear)} %<br/>vänster ${pct(d.left)} % · höger ${pct(d.right)} %<br/>tak ${pct(d.roof)} % · effekt ${(dtn.powerFactor * 100).toFixed(0)} %<br/>lyktor: ${lampStatus(car.lamps)}`;
     }
 
     this.drawGG(car);
