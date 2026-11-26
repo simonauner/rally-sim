@@ -37,6 +37,9 @@
       #menu.side { justify-content: flex-end; align-items: flex-start; padding: 12vh max(16px, 4vw) 0; background: none; }
       /* Fast bredd så panelen inte hoppar när innehållet byts; höjden animeras i carSelect.ts. */
       #menu.side .panel { width: 460px; box-sizing: border-box; overflow: hidden; }
+      /* Två lika höga paneler bredvid varandra, under varandra på smala skärmar. */
+      #menu.pair { flex-wrap: wrap; align-content: safe center; padding: 16px 0; box-sizing: border-box; align-items: stretch; gap: 16px; overflow-y: auto; }
+      #menu.pair .panel { width: 460px; max-height: none; }
       #menu .recovery { margin: 12px 0; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; word-break: break-all; user-select: all; }
       #menu input { display: block; width: 100%; box-sizing: border-box; margin-top: 14px; padding: 10px 12px; font: inherit; font-size: 15px; border: 2px solid #1b1b1b33; border-radius: 8px; text-transform: uppercase; }
       #menu .loading { margin-top: 16px; display: flex; align-items: center; gap: 10px; font-size: 15px; }
@@ -48,8 +51,7 @@
       #menu .car-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 20px; }
       #menu .car-nav b { flex: 1; text-align: center; }
       #menu .car-nav small { font-size: 12px; opacity: 0.6; }
-      #menu .compare { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-      #menu :is(.car-nav, .compare) span { padding: 2px 12px; border-radius: 8px; background: #0000000d; cursor: pointer; user-select: none; }
+      #menu .car-nav span { padding: 2px 12px; border-radius: 8px; background: #0000000d; cursor: pointer; user-select: none; }
       #menu .prize { margin-top: 10px; font-size: 18px; font-weight: 700; }
       #menu .hint { margin-top: 8px; opacity: 0.6; font-size: 12px; }
       #menu .corner { position: fixed; right: 12px; bottom: 8px; font-size: 11px; opacity: 0.45; }

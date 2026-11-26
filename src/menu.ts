@@ -19,6 +19,8 @@ export interface MenuOptions<T> {
   solid?: boolean;
   /** Panelen vid högerkanten utan att dämpa spelet, t.ex. målskärmen där bilen syns. */
   side?: boolean;
+  /** En panel till, till höger om den vanliga (HTML), t.ex. bilen man jämför med. */
+  aside?: string;
   /** Liten text nere i högra hörnet av skärmen, t.ex. version. */
   footer?: string;
   /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
@@ -36,7 +38,7 @@ const root = () => document.getElementById('menu')!;
  */
 export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const el = root();
-  el.className = opts.solid ? 'solid' : opts.side ? 'side' : '';
+  el.className = opts.solid ? 'solid' : opts.side ? 'side' : opts.aside ? 'pair' : '';
   el.innerHTML = `
     <div class="panel">
       <h1>${opts.title}</h1>
@@ -47,6 +49,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
         .map((it, i) => `<button data-i="${i}"><span>${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
         .join('')}</div>
     </div>
+    ${opts.aside ? `<div class="panel aside">${opts.aside}</div>` : ''}
     ${opts.footer ? `<div class="corner">${opts.footer}</div>` : ''}`;
   el.style.display = 'flex';
   const buttons = [...el.querySelectorAll('button')];
