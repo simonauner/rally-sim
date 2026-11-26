@@ -12,7 +12,7 @@ export const CONTROLS_HTML = [
   '<b>W/S</b> gas/broms (S bakåt vid stopp) · <b>A/D</b> styr',
   '<b>Mellanslag</b> handbroms · <b>R</b> tillbaka på vägen · <b>T</b> starta om',
   '<b>C</b> kamera · <b>M</b> manuell låda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
-  '<b>H</b> visa/dölj panelen · <b>N</b> ljud av/på · <b>G</b> ghost av/på · <b>Esc</b> meny',
+  '<b>F1</b> felsökning · <b>H</b> visa/dölj hjälpen · <b>N</b> ljud av/på · <b>G</b> ghost av/på · <b>Esc</b> meny',
 ].join('<br/>');
 
 export class Hud {
@@ -59,7 +59,7 @@ export class Hud {
         TYRE_NAMES[car.params.tyre],
       ].join(' · ');
       this.hud.innerHTML = `
-        <div><span class="big">${gear}</span> &nbsp; ${kmh.toFixed(0)} km/h · ${dtn.rpm.toFixed(0)} rpm ${dtn.limiterCut ? '⚠' : ''}</div>
+        <div>${kmh.toFixed(0)} km/h · ${dtn.rpm.toFixed(0)} rpm ${dtn.limiterCut ? '⚠' : ''}</div>
         <div>gas ${(input.throttle * 100).toFixed(0)} % · broms ${(input.brake * 100).toFixed(0)} % · ratt ${(car.steerAngle * 57.3).toFixed(0)}° · ${flags}</div>
         <div>kamera: ${cameraName}</div>
         <table id="wheels"><tr><th></th><td>last</td><td>slip</td><td>vinkel</td><td>grepp</td><td>underlag</td></tr>${rows}</table>`;
@@ -69,10 +69,10 @@ export class Hud {
     }
 
     this.drawGG(car);
-    this.drawGauges(car.params, dtn.rpm, kmh);
+    this.drawGauges(car.params, dtn.rpm, kmh, gear);
   }
 
-  private drawGauges(params: CarParams, rpm: number, kmh: number) {
+  private drawGauges(params: CarParams, rpm: number, kmh: number, gear: string) {
     const g = params.gauges;
     const h = this.gauges.height;
     const r = h * 0.47;
@@ -91,6 +91,12 @@ export class Hud {
     ctx.clearRect(0, 0, this.gauges.width, h);
     ctx.drawImage(this.faces.canvas, 0, 0);
     drawNeedle(ctx, tacho, rpm);
+    // Växeln i ett litet fönster där den riktiga mätaren har trippmätaren.
+    ctx.fillStyle = '#eee';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.round(r * 0.22)}px Helvetica, Arial, sans-serif`;
+    ctx.fillText(gear, speedo.x, speedo.y + r * 0.4);
     drawNeedle(ctx, speedo, kmh);
   }
 

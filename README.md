@@ -30,10 +30,11 @@ Kräver WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM-Mac) eller Safari 26.
 | Esc | Pausmeny (fortsätt, starta om, kontroller, huvudmeny) |
 | C | Byt kamera (bakifrån, förarvy, uppifrån, sidovy för skador) |
 | M, E / Q | Manuell växellåda |
+| F1 | Felsökning av/på: telemetri, skador, g-kraft och trimningspanelen (dolda från start) |
 | F3 | Kraftvektorer av/på (röd = däckkraft, blå = hjullast, grön = färdriktning) |
 | H | Dölj/visa hjälptext |
 
-Gamepad: vänsterspak, RT/LT, A = handbroms. Panelen till höger trimmar bilen medan du kör.
+Gamepad: vänsterspak, RT/LT, A = handbroms. Trimningspanelen (F1) trimmar bilen medan du kör.
 
 ## Menyer
 

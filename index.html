@@ -41,6 +41,8 @@
       #menu .spinner { width: 18px; height: 18px; border: 3px solid #1b1b1b33; border-top-color: #1b1b1b; border-radius: 50%; animation: spin 0.8s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
       #menu button small { font-size: 12px; opacity: 0.7; }
+      /* Felsökningsverktygen visas bara med F1. */
+      body:not(.debug) :is(#hud, #gg, #damage, .lil-gui.lil-root) { display: none; }
       #damage { position: fixed; left: 12px; top: 112px; color: #1b1b1b; font-size: 12px; background: #fffb; padding: 8px 10px; border-radius: 8px; pointer-events: none; }
     </style>
   </head>

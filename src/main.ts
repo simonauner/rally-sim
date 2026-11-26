@@ -326,6 +326,7 @@ async function main() {
     if (controls.wasPressed('KeyR') && !finished) recover();
     if (controls.wasPressed('KeyT')) restart();
     if (controls.wasPressed('KeyC')) camMode = (camMode + 1) % CAMERAS.length;
+    if (controls.wasPressed('F1')) document.body.classList.toggle('debug');
     if (controls.wasPressed('F3')) debug.lines.visible = !debug.lines.visible;
     if (controls.wasPressed('KeyH')) hud.toggleHelp();
     if (controls.wasPressed('KeyN')) sound.toggleMute();
