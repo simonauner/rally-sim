@@ -392,29 +392,32 @@ export async function championshipLegDone(
 
   const nextName = def.legs[times.length]!;
   const nextStage = STAGES.find((s) => s.name === nextName);
-  const first = await showMenu<'service' | 'go'>({
-    title: `Nästa: ${nextName}`,
-    subtitle: `Etapp ${times.length + 1} av ${def.legs.length}`,
-    side: true,
-    body: nextStage ? stagePreviewHtml(nextStage) : '',
-    items: [
-      { label: 'Till service', value: 'service' },
-      { label: 'Starta etappen', detail: repairCost(damage) > 0 ? 'utan att laga' : undefined, value: 'go' },
-    ],
-    cancel: 'service',
-  });
-  if (first === 'go') {
-    saveChampionship(afterLeg(p, time, damage, false));
-    return 'next';
-  }
-
-  const room = showCar(damage);
+  // Vridbordet öppnas vid första besöket på servicen och står kvar bakom förhandsvisningen.
+  let room: Showroom | null = null;
   let message = '';
   let repaired = false;
+  let atService = false;
   for (;;) {
     const cost = repaired ? 0 : repairCost(damage);
+    if (!atService) {
+      const c = await showMenu<'service' | 'go'>({
+        title: `Nästa: ${nextName}`,
+        subtitle: `Etapp ${times.length + 1} av ${def.legs.length}`,
+        side: true,
+        body: nextStage ? stagePreviewHtml(nextStage) : '',
+        items: [
+          { label: 'Till service', value: 'service' },
+          { label: 'Starta etappen', detail: cost > 0 ? 'utan att laga' : undefined, value: 'go' },
+        ],
+        cancel: 'service',
+      });
+      if (c === 'go') break;
+      atService = true;
+      room ??= showCar(damage);
+      continue;
+    }
     const money = loadCareer().career.money;
-    const c = await showMenu<'repair' | 'go' | 'abort'>({
+    const c = await showMenu<'repair' | 'go' | 'back' | 'abort'>({
       title: 'Service',
       subtitle: `Kassa: ${formatMoney(money)} · nästa: ${nextName}`,
       side: true,
@@ -422,12 +425,19 @@ export async function championshipLegDone(
       items: [
         ...(cost > 0 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'repair' as const }] : []),
         { label: cost > 0 ? 'Kör vidare utan att laga' : 'Kör nästa etapp', value: 'go' },
+        { label: '← Nästa etapp', value: 'back' },
         { label: 'Avbryt mästerskapet', value: 'abort' },
       ],
+      cancel: 'back',
     });
+    if (c === 'back') {
+      atService = false;
+      message = '';
+      continue;
+    }
     if (c === 'abort') {
       if (await confirmAbort()) {
-        room.close();
+        room?.close();
         return { prize: 0 };
       }
       continue;
@@ -439,12 +449,13 @@ export async function championshipLegDone(
       }
       commit({ ...loadCareer().career, money: money - cost });
       repaired = true;
-      room.repair();
+      room?.repair();
       message = `<div class="ahead">Lagad för ${formatMoney(cost)}.</div>`;
       continue;
     }
-    room.close();
-    saveChampionship(afterLeg(p, time, damage, repaired));
-    return 'next';
+    break;
   }
+  room?.close();
+  saveChampionship(afterLeg(p, time, damage, repaired));
+  return 'next';
 }
