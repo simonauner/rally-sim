@@ -21,6 +21,7 @@ import {
   STAGE_TARGETS,
   UPGRADES,
   type BuyResult,
+  type Upgrade,
 } from './career';
 import {
   afterLeg,
@@ -191,10 +192,32 @@ async function parts(car: string, group: string) {
     if (!id) return;
     const u = parts.find((x) => x.id === id)!;
     const result = buyUpgrade(career, car, id);
+    if (typeof result === 'object' && !(await confirmPart(u, career.money))) {
+      message = '';
+      continue;
+    }
     if (typeof result === 'object') commit(result);
     message = buyMessage(result, u.price, `<div class="ahead">${u.name} monterad.</div>`);
   }
 }
+
+/** Frågar om köpet: pris, kassa, vad som blir kvar och vad delen gör. */
+const confirmPart = (u: Upgrade, money: number) =>
+  showMenu<boolean>({
+    title: u.name,
+    subtitle: u.group,
+    side: true,
+    body: `<div>${u.effect}</div><table class="specs">
+      <tr><th>Pris</th><td>${formatMoney(u.price)}</td></tr>
+      <tr><th>Kassa</th><td>${formatMoney(money)}</td></tr>
+      <tr><th>Kvar efter köpet</th><td>${formatMoney(money - u.price)}</td></tr>
+    </table>`,
+    items: [
+      { label: `Köp för ${formatMoney(u.price)}`, value: true },
+      { label: '← Tillbaka', value: false },
+    ],
+    cancel: false,
+  });
 
 /** Bilhandlaren: samma vridbord som bilväljaren, med ägda bilar att jämföra med. */
 async function dealer(pick: Pick) {
