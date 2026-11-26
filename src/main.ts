@@ -3,11 +3,13 @@ import { toonOutlinePass } from 'three/tsl';
 import { Sound } from './audio';
 import { createGui } from './gui';
 import { Hud } from './hud';
+import { CoDriver } from './codriver';
 import { Controls } from './input';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
+import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
 import { loadRecord, saveRecord, type StageRecord } from './records';
 import { World } from './physics/world';
@@ -118,6 +120,8 @@ async function main() {
   /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
   let previousBest: StageRecord | null = null;
   let resultSaved = false;
+  const caller = stage ? new NoteCaller(generateNotes(stage, START_S, stage.length - FINISH_MARGIN)) : null;
+  const codriver = new CoDriver();
   const recorder = new GhostRecorder();
   const ghostMesh = buildGhostMesh(car.params);
   scene.add(ghostMesh);
@@ -130,6 +134,8 @@ async function main() {
     car.reset(s.x, s.z, s.heading, s.speed, keepDamage);
     timer?.reset();
     recorder.reset();
+    codriver.stop();
+    if (stage) caller?.seek(stage.project(s.x, s.z).s);
     resultSaved = false;
   };
   // På etappen ställer R tillbaka bilen på vägen där den är, och klockan fortsätter.
@@ -138,6 +144,8 @@ async function main() {
     const p = stage.poseAt(stage.project(car.pos.x, car.pos.z).s);
     car.reset(p.x, p.z, p.heading, 0, true);
     camInit = false;
+    codriver.stop();
+    caller?.seek(stage.project(p.x, p.z).s);
   };
   const repair = () => {
     for (const k of Object.keys(car.damage) as (keyof typeof car.damage)[]) car.damage[k] = 0;
@@ -288,6 +296,12 @@ async function main() {
     sun.target.position.copy(car.pos);
     hud.update(car, input, CAMERAS[camMode]!);
     if (timer) hud.updateTimer(timer, best, previousBest);
+    if (stage && caller) {
+      const s = stage.project(car.pos.x, car.pos.z).s;
+      const called = caller.update(s, car.speed);
+      if (called.length && !sound.muted) codriver.say(called.map((n) => n.speech).join(', '));
+      hud.updateNotes(caller.active(s), codriver.missingVoice);
+    }
     pipeline.render();
     (window as unknown as { __afterRender?: () => void }).__afterRender?.();
   });

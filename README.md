@@ -44,6 +44,10 @@ Klockan startar när bilen passerar startportalen och stannar vid målportalen, 
 Bästa tiden sparas i webbläsaren (localStorage) tills konto och sparning finns, tillsammans med
 en ghost: bästa åket inspelat i 20 Hz, som körs som en genomskinlig bil bredvid dig.
 
+Kartläsaren läser pacenotes med webbläsarens svenska talsyntes, ungefär tre sekunder före varje not.
+Noterna räknas fram ur splinen: kurvor 1–6 (1 snävast) med riktning och "lång", krön, byte av underlag,
+mål och avstånd mellan noterna. De visas också överst på skärmen.
+
 ## Testbanan (`?testbana`)
 
 Längs +Z från start: grus (0–40 m), asfaltsremsa med lera till höger och snö till vänster (40–100),

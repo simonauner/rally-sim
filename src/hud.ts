@@ -1,5 +1,6 @@
 import type { Car, Input } from './physics/car';
 import { SURFACES, TYRE_NAMES } from './physics/surfaces';
+import type { PaceNote } from './physics/pacenotes';
 import type { StageTimer } from './physics/timing';
 import type { StageRecord } from './records';
 
@@ -10,6 +11,7 @@ export class Hud {
   private help = document.getElementById('help')!;
   private damage = document.getElementById('damage')!;
   private timer = document.getElementById('timer')!;
+  private notes = document.getElementById('notes')!;
   private gg = document.getElementById('gg') as HTMLCanvasElement;
   private ctx = this.gg.getContext('2d')!;
   private trail: [number, number][] = [];
@@ -81,6 +83,16 @@ export class Hud {
       } · <b>T</b> kör igen`;
     }
     if (this.timer.innerHTML !== html) this.timer.innerHTML = html;
+  }
+
+  /** Upplästa noter som ligger framför bilen, närmast först. */
+  updateNotes(notes: PaceNote[], missingVoice: boolean) {
+    const icon = (n: PaceNote) => (n.kind === 'corner' ? (n.dir! > 0 ? '↰' : '↱') : n.kind === 'crest' ? '⌒' : n.kind === 'finish' ? '⚑' : '▦');
+    const html = notes
+      .slice(0, 3)
+      .map((n, i) => `<div class="${i === 0 ? 'now' : ''}"><span class="icon">${icon(n)}</span> ${n.label}</div>`)
+      .join('') + (missingVoice ? '<div class="hint">Ingen svensk röst i webbläsaren, noterna visas bara här</div>' : '');
+    if (this.notes.innerHTML !== html) this.notes.innerHTML = html;
   }
 
   private drawGG(car: Car) {
