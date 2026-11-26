@@ -50,6 +50,11 @@ Etapperna är *Skogsberg* (ca 1,8 km: grus, en asfaltsbit och en lerig skogsdel)
 kantas vägen av snövallar i stället för dike: kör man i dem gräver hjulen ner sig, bilen bromsas
 kraftigt och tar en mild skada.
 Alla finns också baklänges, samma väg åt andra hållet med egna noter, rekord och ghost.
+Tre etapper körs i annat ljus (`light` på etappen): *Tallmon* i skymning (snabbt grus med en
+asfaltsbit), *Ljungheden* i gryning (ljunghedar med krön och en lerig sänka) och *Isvallen* på
+natten (snö). Då lyser bilens strålkastare. En hård smäll framifrån slår sönder lyktan på den
+sidan, och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
+inbromsning. I Fri körning väljer man först mästerskap och sedan etapp.
 Före varje start väljer man däck (grus, asfalt eller vinter); menyn visar etappens underlag och
 förväljer det däck som greppar bäst i snitt (`bestTyre` i `src/physics/stage.ts`).
 Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och underlag
@@ -126,7 +131,7 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
 - **Enstaka etapp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
   gratis efteråt, så bilarna i garaget tar aldrig skada.
-- **Mästerskap** (Skogsrallyt, Myrkullarallyt och Vinterrallyt, varje etapp fram och tillbaka): totaltiden avgör och
+- **Mästerskap** (Skogsrallyt, Myrkullarallyt och Vinterrallyt, tre etapper vardera varav en i skymning, gryning respektive natt; prispengarna växer med antalet etapper): totaltiden avgör och
   prispengarna är större. Skador följer med mellan etapperna; på servicen lagar man för egna
   pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis
   men inga prispengar. Framsteget sparas i webbläsaren, eftersom sidan laddas om mellan
