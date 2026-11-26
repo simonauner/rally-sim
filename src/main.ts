@@ -13,6 +13,7 @@ import { loadRecord, saveRecord, type StageRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { DebugVectors } from './render/debug';
+import { Dust } from './render/dust';
 import { buildGhostMesh } from './render/ghostMesh';
 import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
@@ -71,6 +72,8 @@ async function main() {
   const car = new Car(kvarn240(), world);
   const carMesh = new CarMesh(car);
   carMesh.addTo(scene);
+  const dust = new Dust();
+  scene.add(dust.mesh);
   const debug = new DebugVectors();
   scene.add(debug.lines);
 
@@ -271,6 +274,7 @@ async function main() {
 
     sound.update(car, input.throttle);
     carMesh.update();
+    dust.update(car, world, frameDt);
     // Ghosten väntar vid startlinjen före start och försvinner när du gått i mål.
     ghostMesh.visible =
       showGhost &&

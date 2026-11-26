@@ -62,7 +62,7 @@ src/physics/   ren TypeScript, ingen webbläsarkod (körs även i Node)
   params.ts      bilen "Kvarn 240 GL" (fiktiv)
   world.ts       testbanans höjd, underlag och hinder
   stage.ts       etapp som spline med höjd, bredd och underlag per stödpunkt
-src/render/    Three.js (WebGPU), clay-look, deformerbar kaross, terräng, debug
+src/render/    Three.js (WebGPU), clay-look, deformerbar kaross, terräng, damm per underlag, debug
 src/main.ts    spelloop: fast fysiksteg 240 Hz, rendering frikopplad
 tests/         fysiktester med förväntade intervall
 ```
@@ -92,7 +92,7 @@ Det som återstår är att köra och känna.
 ## Nästa steg
 
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
-2. Fas 1: kamera, dammpartiklar (spline-etapp och ljud är klara).
+2. Fas 1: kamera (spline-etapp, ljud och dammpartiklar är klara).
 3. Fas 2: tidtagning, ghost, pacenotes.
 4. Konto och sparning, upplägget från season-o-meter:
    128-bitars hemlighet skapas automatiskt i webbläsaren, listans id = SHA-256 av hemligheten,
