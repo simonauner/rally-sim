@@ -90,13 +90,31 @@ export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipP
   return { ...p, seed, rivals };
 }
 
-/** Vad det kostar att laga allt: kaross, hjul, motor och strålkastare. Avrundat till 50 kr. */
+export type RepairPart = 'body' | 'wheels' | 'engine' | 'lamps';
+
+/** Vad det kostar att laga varje del: kaross, hjul, motor och strålkastare. Avrundat till 50 kr. */
+export function partCosts(d: CarDamage): Record<RepairPart, number> {
+  const round = (kr: number) => Math.round(kr / 50) * 50;
+  return {
+    body: round((d.body.front + d.body.rear + d.body.left + d.body.right + d.body.roof) * 1500),
+    wheels: round(d.wheels.reduce((a, b) => a + b, 0) * 800),
+    engine: round((1 - d.powerFactor) * 4000),
+    lamps: round((d.lamps ?? []).reduce((a, b) => a + b, 0) * 600),
+  };
+}
+
+/** Vad det kostar att laga allt. */
 export function repairCost(d: CarDamage): number {
-  const body = d.body.front + d.body.rear + d.body.left + d.body.right + d.body.roof;
-  const wheels = d.wheels.reduce((a, b) => a + b, 0);
-  const engine = 1 - d.powerFactor;
-  const lamps = (d.lamps ?? []).reduce((a, b) => a + b, 0);
-  return Math.round((body * 1500 + wheels * 800 + engine * 4000 + lamps * 600) / 50) * 50;
+  const c = partCosts(d);
+  return c.body + c.wheels + c.engine + c.lamps;
+}
+
+/** Skadan efter att en del lagats; resten är som förut. */
+export function repairPart(d: CarDamage, part: RepairPart): CarDamage {
+  if (part === 'body') return { ...d, body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 } };
+  if (part === 'wheels') return { ...d, wheels: d.wheels.map(() => 0) };
+  if (part === 'engine') return { ...d, powerFactor: 1 };
+  return { ...d, lamps: [0, 0] };
 }
 
 export const hasDamage = (d: CarDamage | null) => !!d && repairCost(d) > 0;

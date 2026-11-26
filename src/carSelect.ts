@@ -64,8 +64,8 @@ export interface PickOptions {
 export interface Showroom {
   /** Ställer bilen på vridbordet, med bucklor och snedställda hjul om den är skadad. */
   show(m: CarModel, damage?: CarDamage | null): void;
-  /** Lagar bilen på vridbordet: hjulen rätas och bucklorna slätas ut. */
-  repair(): void;
+  /** Lagar bilen på vridbordet: hjulen rätas och/eller bucklorna slätas ut. */
+  repair(body: boolean, wheels: boolean): void;
   close(): void;
 }
 
@@ -124,12 +124,14 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
     sun.position.set(center.x + 5, center.y + 10, center.z + 6);
     sun.target.position.copy(center);
   };
-  const repair = () => {
+  const repair = (body: boolean, wheels: boolean) => {
     if (!car || !mesh) return;
-    car.wheels.forEach((w) => (w.damage = 0));
-    settle(car);
-    mesh.update();
-    healing = 0.9;
+    if (wheels) {
+      car.wheels.forEach((w) => (w.damage = 0));
+      settle(car);
+      mesh.update();
+    }
+    if (body) healing = 0.9;
   };
 
   // Vridbordet: snurrar av sig själv och följer musen när man drar.

@@ -32,7 +32,10 @@ import {
   newProgress,
   raceRivals,
   championshipMedals,
+  partCosts,
   repairCost,
+  repairPart,
+  type RepairPart,
   type CarDamage,
   type ChampionshipDef,
   type ChampionshipProgress,
@@ -347,6 +350,8 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
   return { model, stage, championship: progress };
 }
 
+const PART_NAMES: Record<RepairPart, string> = { body: 'karossen', wheels: 'hjulen', engine: 'motorn', lamps: 'strålkastarna' };
+
 const pct = (x: number) => `${Math.round(x * 100)} %`;
 
 function damageHtml(d: CarDamage) {
@@ -443,10 +448,9 @@ export async function championshipLegDone(
   // Vridbordet öppnas vid första besöket på servicen och står kvar bakom förhandsvisningen.
   let room: Showroom | null = null;
   let message = '';
-  let repaired = false;
   let atService = false;
   for (;;) {
-    const cost = repaired ? 0 : repairCost(damage);
+    const cost = repairCost(damage);
     if (!atService) {
       const c = await showMenu<'service' | 'go' | 'abort'>({
         title: `Nästa: ${nextName}`,
@@ -473,13 +477,16 @@ export async function championshipLegDone(
       continue;
     }
     const money = loadCareer().career.money;
-    const c = await showMenu<'repair' | 'go' | 'back'>({
+    const parts = partCosts(damage);
+    const broken = (Object.keys(parts) as RepairPart[]).filter((k) => parts[k] > 0);
+    const c = await showMenu<RepairPart | 'all' | 'go' | 'back'>({
       title: 'Service',
       subtitle: `Kassa: ${formatMoney(money)} · nästa: ${nextName}`,
       side: true,
-      body: `${message}${repaired ? '' : damageHtml(damage)}${cost > 0 ? `<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : '<div>Bilen är hel.</div>'}`,
+      body: `${message}${cost > 0 ? `${damageHtml(damage)}<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : '<div>Bilen är hel.</div>'}`,
       items: [
-        ...(cost > 0 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'repair' as const, denied: () => money < cost }] : []),
+        ...(broken.length > 1 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'all' as const, denied: () => money < cost }] : []),
+        ...broken.map((k) => ({ label: `Laga ${PART_NAMES[k]}`, detail: formatMoney(parts[k]), value: k, denied: () => money < parts[k] })),
         { label: cost > 0 ? 'Kör vidare utan att laga' : 'Kör nästa etapp', value: 'go' },
         { label: '← Tillbaka', value: 'back' },
       ],
@@ -490,20 +497,22 @@ export async function championshipLegDone(
       message = '';
       continue;
     }
-    if (c === 'repair') {
-      if (money < cost) {
-        message = `<div class="behind">Du har inte råd: det kostar ${formatMoney(cost)}.</div>`;
+    if (c !== 'go') {
+      const fix = c === 'all' ? broken : [c];
+      const price = c === 'all' ? cost : parts[c];
+      if (money < price) {
+        message = `<div class="behind">Du har inte råd: det kostar ${formatMoney(price)}.</div>`;
         continue;
       }
-      commit({ ...loadCareer().career, money: money - cost });
-      repaired = true;
-      room?.repair();
-      message = `<div class="ahead">Lagad för ${formatMoney(cost)}.</div>`;
+      commit({ ...loadCareer().career, money: money - price });
+      damage = fix.reduce(repairPart, damage);
+      room?.repair(fix.includes('body'), fix.includes('wheels'));
+      message = `<div class="ahead">${c === 'all' ? 'Lagad' : `Lagade ${PART_NAMES[c]}`} för ${formatMoney(price)}.</div>`;
       continue;
     }
     break;
   }
   room?.close();
-  saveChampionship(afterLeg(p, time, damage, repaired));
+  saveChampionship(afterLeg(p, time, damage, repairCost(damage) === 0));
   return 'next';
 }

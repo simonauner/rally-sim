@@ -1,6 +1,6 @@
 import { CAREER_KEY, isCareerState, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY } from '../src/career/career';
-import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, newProgress, raceRivals, repairCost, type CarDamage } from '../src/career/championship';
+import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { kvarn240 } from '../src/physics/params';
@@ -86,6 +86,8 @@ const CAR = 'Kvarn 240 GL';
   const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
   const noLamp: CarDamage = { ...crashed, lamps: [0.6, 0] };
   check('mästerskap: reparationskostnad', repairCost(none) === 0 && repairCost(crashed) === 2400 && repairCost(noLamp) === 2750, `${repairCost(crashed)} kr, med trasig lykta ${repairCost(noLamp)} kr`);
+  const lampsFixed = repairPart(noLamp, 'lamps');
+  check('mästerskap: laga en del', repairCost(lampsFixed) === 2400 && lampsFixed.powerFactor === 0.76 && repairCost(repairPart(repairPart(repairPart(lampsFixed, 'body'), 'wheels'), 'engine')) === 0, `lyktorna för ${repairCost(noLamp) - repairCost(lampsFixed)} kr`);
   const start = { id: def.id, car: 'Kvarn 240 GL', leg: 0, times: [], damage: null };
   const next = afterLeg(start, 91.2, crashed, false);
   const fixed = afterLeg(start, 91.2, crashed, true);
