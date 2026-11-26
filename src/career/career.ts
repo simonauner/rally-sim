@@ -16,56 +16,178 @@ export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 Turbo': 15000,
 };
 
+export type UpgradeGroup = 'Motor' | 'Växellåda' | 'Bromsar' | 'Fjädring' | 'Däck';
+
+/** En del man kan köpa och montera, en gång per bil. Sparas som nivå 1 i garaget. */
 export interface Upgrade {
   id: string;
+  group: UpgradeGroup;
   name: string;
-  /** Pris för varje nivå, i ordning. Nivå 0 är standard. */
-  prices: number[];
-  /** Vad en nivå gör, för menyn. */
+  price: number;
+  /** Vad delen gör, för menyn. */
   effect: string;
-  apply: (p: CarParams, level: number) => void;
+  apply: (p: CarParams) => void;
 }
 
-/** Uppgraderingarna. Effekterna är måttliga, så en uppgraderad 240 GL fortfarande är en 240 GL. */
+/** Skalar vridmomentkurvan med en faktor som beror på varvtalet. */
+const torque = (p: CarParams, factor: (rpm: number) => number) => {
+  p.engine = { ...p.engine, curveNm: p.engine.curveNm.map((nm, i) => nm * factor(p.engine.curveRpm[i]!)) };
+};
+
+/**
+ * Delarna. Effekterna är måttliga och staplas, så en fullt byggd 240 GL fortfarande är en 240 GL.
+ * shortcut: fysiken har ingen bromsfading eller motorvärme, så borrade skivor och luftfilter ger bara
+ * mer moment; ge dem egna effekter om det modelleras.
+ */
 export const UPGRADES: Upgrade[] = [
   {
-    id: 'engine',
-    name: 'Motor',
-    prices: [2000, 4500, 8000],
-    effect: '+6 % vridmoment per nivå',
-    apply: (p, l) => {
-      p.engine = { ...p.engine, curveNm: p.engine.curveNm.map((nm) => nm * (1 + 0.06 * l)) };
+    id: 'airfilter',
+    group: 'Motor',
+    name: 'Sportluftfilter',
+    price: 800,
+    effect: '+2 % vridmoment',
+    apply: (p) => torque(p, () => 1.02),
+  },
+  {
+    id: 'exhaust',
+    group: 'Motor',
+    name: 'Sportavgassystem',
+    price: 2000,
+    effect: '+4 % vridmoment över 3 500 rpm',
+    apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.04 : 1.01)),
+  },
+  {
+    id: 'racecat',
+    group: 'Motor',
+    name: 'Racekatalysator',
+    price: 1500,
+    effect: '+3 % vridmoment över 3 500 rpm',
+    apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.03 : 1)),
+  },
+  {
+    id: 'cams',
+    group: 'Motor',
+    name: 'Vassare kamaxlar',
+    price: 3500,
+    effect: '+8 % vridmoment över 4 500 rpm, −4 % under 2 500',
+    apply: (p) => torque(p, (rpm) => (rpm >= 4500 ? 1.08 : rpm < 2500 ? 0.96 : 1.02)),
+  },
+  {
+    id: 'pistons',
+    group: 'Motor',
+    name: 'Smidda kolvar',
+    price: 4500,
+    effect: 'Varvtaket höjs 500 rpm',
+    apply: (p) => {
+      p.engine = { ...p.engine, limiterRpm: p.engine.limiterRpm + 500 };
+      p.gearbox = { ...p.gearbox, upshiftRpm: p.gearbox.upshiftRpm + 400 };
     },
   },
   {
-    id: 'brakes',
-    name: 'Bromsar',
-    prices: [1000, 2500, 4000],
-    effect: '+10 % bromsmoment per nivå',
-    apply: (p, l) => {
-      p.brake = { ...p.brake, total: p.brake.total * (1 + 0.1 * l) };
+    id: 'gearbox',
+    group: 'Växellåda',
+    name: 'Racelåda',
+    price: 5000,
+    effect: 'Snabbare växlingar och 6 % kortare slutväxel',
+    apply: (p) => {
+      p.gearbox = { ...p.gearbox, shiftTime: p.gearbox.shiftTime * 0.6, final: p.gearbox.final * 1.06 };
     },
   },
   {
-    id: 'suspension',
-    name: 'Fjädring',
-    prices: [1500, 3000, 5000],
-    effect: '+8 % dämpning och krängningshämmare per nivå',
-    apply: (p, l) => {
-      const k = 1 + 0.08 * l;
-      p.susp = { ...p.susp, bump: p.susp.bump * k, rebound: p.susp.rebound * k, arbFront: p.susp.arbFront * k, arbRear: p.susp.arbRear * k };
+    id: 'pads',
+    group: 'Bromsar',
+    name: 'Racebelägg',
+    price: 1000,
+    effect: '+8 % bromsmoment',
+    apply: (p) => {
+      p.brake = { ...p.brake, total: p.brake.total * 1.08 };
     },
   },
   {
-    id: 'tyres',
-    name: 'Däck',
-    prices: [1500, 3500, 6000],
-    effect: '+3 % grepp per nivå',
-    apply: (p, l) => {
-      p.gripScale *= 1 + 0.03 * l;
+    id: 'drilled',
+    group: 'Bromsar',
+    name: 'Borrade bromsskivor',
+    price: 1500,
+    effect: '+5 % bromsmoment',
+    apply: (p) => {
+      p.brake = { ...p.brake, total: p.brake.total * 1.05 };
+    },
+  },
+  {
+    id: 'bigdiscs',
+    group: 'Bromsar',
+    name: 'Större bromsskivor',
+    price: 3000,
+    effect: '+12 % bromsmoment',
+    apply: (p) => {
+      p.brake = { ...p.brake, total: p.brake.total * 1.12 };
+    },
+  },
+  {
+    id: 'dampers',
+    group: 'Fjädring',
+    name: 'Gasstötdämpare',
+    price: 2500,
+    effect: '+15 % dämpning',
+    apply: (p) => {
+      p.susp = { ...p.susp, bump: p.susp.bump * 1.15, rebound: p.susp.rebound * 1.15 };
+    },
+  },
+  {
+    id: 'springs',
+    group: 'Fjädring',
+    name: 'Sportfjädrar',
+    price: 2000,
+    effect: '+12 % fjäderkonstant',
+    apply: (p) => {
+      p.susp = { ...p.susp, kFront: p.susp.kFront * 1.12, kRear: p.susp.kRear * 1.12 };
+    },
+  },
+  {
+    id: 'arb',
+    group: 'Fjädring',
+    name: 'Kraftigare krängningshämmare',
+    price: 1500,
+    effect: '+25 % krängningsstyvhet',
+    apply: (p) => {
+      p.susp = { ...p.susp, arbFront: p.susp.arbFront * 1.25, arbRear: p.susp.arbRear * 1.25 };
+    },
+  },
+  {
+    id: 'rallytyres',
+    group: 'Däck',
+    name: 'Rallydäck',
+    price: 3500,
+    effect: '+6 % grepp',
+    apply: (p) => {
+      p.gripScale *= 1.06;
     },
   },
 ];
+
+/** De gamla uppgraderingarna i nivåer, och vad varje nivå kostade. Köpta nivåer återbetalas. */
+const OLD_UPGRADES: Record<string, number[]> = {
+  engine: [2000, 4500, 8000],
+  brakes: [1000, 2500, 4000],
+  suspension: [1500, 3000, 5000],
+  tyres: [1500, 3500, 6000],
+};
+
+/** Byter gamla nivåuppgraderingar mot pengarna tillbaka. Samma resultat varje gång, så den kan köras vid varje laddning. */
+export function migrateCareer(career: CareerState): CareerState {
+  let refund = 0;
+  const garage: CareerState['garage'] = {};
+  for (const [car, { upgrades }] of Object.entries(career.garage)) {
+    const kept: Record<string, number> = {};
+    for (const [id, level] of Object.entries(upgrades)) {
+      const old = OLD_UPGRADES[id];
+      if (old) refund += old.slice(0, level).reduce((a, b) => a + b, 0);
+      else kept[id] = level;
+    }
+    garage[car] = { upgrades: kept };
+  }
+  return refund ? { ...career, money: career.money + refund, garage } : career;
+}
 
 export function newCareer(): CareerState {
   return { money: START_MONEY, garage: { [STARTER_CAR]: { upgrades: {} } } };
@@ -76,10 +198,7 @@ export const levelOf = (career: CareerState, car: string, upgrade: string) => ca
 /** Bilens parametrar med karriärens uppgraderingar. */
 export function applyUpgrades(params: CarParams, upgrades: Record<string, number>): CarParams {
   const p = { ...params };
-  for (const u of UPGRADES) {
-    const level = Math.min(upgrades[u.id] ?? 0, u.prices.length);
-    if (level > 0) u.apply(p, level);
-  }
+  for (const u of UPGRADES) if (upgrades[u.id]) u.apply(p);
   return p;
 }
 
@@ -89,14 +208,12 @@ export function buyUpgrade(career: CareerState, car: string, upgradeId: string):
   const u = UPGRADES.find((x) => x.id === upgradeId);
   const owned = career.garage[car];
   if (!u || !owned) return 'unknown';
-  const level = levelOf(career, car, upgradeId);
-  const price = u.prices[level];
-  if (price === undefined) return 'maxed';
-  if (career.money < price) return 'poor';
+  if (levelOf(career, car, upgradeId)) return 'maxed';
+  if (career.money < u.price) return 'poor';
   return {
     ...career,
-    money: career.money - price,
-    garage: { ...career.garage, [car]: { upgrades: { ...owned.upgrades, [upgradeId]: level + 1 } } },
+    money: career.money - u.price,
+    garage: { ...career.garage, [car]: { upgrades: { ...owned.upgrades, [upgradeId]: 1 } } },
   };
 }
 

@@ -151,33 +151,48 @@ async function garage(pick: Pick) {
 }
 
 async function upgrades(car: string) {
-  let message = '';
   for (;;) {
     const career = loadCareer().career;
-    const id = await showMenu<string>({
+    const groups = [...new Set(UPGRADES.map((u) => u.group))];
+    const group = await showMenu<string>({
       title: car,
       subtitle: `Kassa: ${formatMoney(career.money)}`,
       side: true,
-      body: `${message}<table class="specs">${UPGRADES.map((u) => `<tr><th>${u.name}</th><td>${u.effect}</td></tr>`).join('')}</table>`,
       items: [
-        ...UPGRADES.map((u) => {
-          const level = levelOf(career, car, u.id);
-          const price = u.prices[level];
-          return {
-            label: `${u.name} ${'●'.repeat(level)}${'○'.repeat(u.prices.length - level)}`,
-            detail: price === undefined ? 'max' : formatMoney(price),
-            value: u.id,
-          };
+        ...groups.map((g) => {
+          const parts = UPGRADES.filter((u) => u.group === g);
+          return { label: g, detail: `${parts.filter((u) => levelOf(career, car, u.id)).length}/${parts.length} monterade`, value: g };
         }),
         { label: 'Tillbaka', value: '' },
       ],
       cancel: '',
     });
+    if (!group) return;
+    await parts(car, group);
+  }
+}
+
+async function parts(car: string, group: string) {
+  const parts = UPGRADES.filter((u) => u.group === group);
+  let message = '';
+  for (;;) {
+    const career = loadCareer().career;
+    const id = await showMenu<string>({
+      title: group,
+      subtitle: `${car} · Kassa: ${formatMoney(career.money)}`,
+      side: true,
+      body: `${message}<table class="specs">${parts.map((u) => `<tr><th>${u.name}</th><td>${u.effect}</td></tr>`).join('')}</table>`,
+      items: [
+        ...parts.map((u) => ({ label: u.name, detail: levelOf(career, car, u.id) ? 'monterad' : formatMoney(u.price), value: u.id })),
+        { label: 'Tillbaka', value: '' },
+      ],
+      cancel: '',
+    });
     if (!id) return;
-    const u = UPGRADES.find((x) => x.id === id)!;
+    const u = parts.find((x) => x.id === id)!;
     const result = buyUpgrade(career, car, id);
     if (typeof result === 'object') commit(result);
-    message = buyMessage(result, u.prices[levelOf(career, car, id)], `<div class="ahead">${u.name} nivå ${levelOf(career, car, id) + 1} köpt.</div>`);
+    message = buyMessage(result, u.price, `<div class="ahead">${u.name} monterad.</div>`);
   }
 }
 

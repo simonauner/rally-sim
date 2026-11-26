@@ -52,6 +52,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const select = (i: number) => {
     sel = (i + buttons.length) % buttons.length;
     buttons.forEach((b, j) => b.classList.toggle('selected', j === sel));
+    buttons[sel]?.scrollIntoView({ block: 'nearest' });
     opts.onSelect?.(opts.items[sel]!.value);
   };
   select(0);

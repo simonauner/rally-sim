@@ -1,5 +1,5 @@
 import { CAREER_KEY, isCareerState, replaces, sanitize, type Stamped } from '../src/account/protocol';
-import { applyUpgrades, buyCar, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY, STARTER_CAR } from '../src/career/career';
+import { applyUpgrades, buyCar, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY, STARTER_CAR } from '../src/career/career';
 import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, repairCost, type CarDamage } from '../src/career/championship';
 import { kvarn240 } from '../src/physics/params';
 import { STAGES } from '../src/physics/stage';
@@ -15,13 +15,13 @@ function check(name: string, ok: boolean, detail: string) {
 {
   let c = newCareer();
   check('ny karriär', c.money === START_MONEY && !!c.garage[STARTER_CAR] && isCareerState(c), `${c.money} kr, ${Object.keys(c.garage).join()}`);
-  const engine = buyUpgrade(c, STARTER_CAR, 'engine');
-  check('köpa uppgradering', typeof engine === 'object' && engine.money === START_MONEY - 2000 && engine.garage[STARTER_CAR]!.upgrades.engine === 1 && c.money === START_MONEY, typeof engine === 'object' ? `${engine.money} kr kvar` : engine);
-  check('för lite pengar', buyUpgrade(engine as typeof c, STARTER_CAR, 'engine') === 'poor' && buyCar(c, 'Kvarn 240 Turbo') === 'poor', 'nekas');
-  check('okänt', buyUpgrade(c, 'Ingen bil', 'engine') === 'unknown' && buyCar(c, STARTER_CAR) === 'unknown', 'nekas');
+  const exhaust = buyUpgrade(c, STARTER_CAR, 'exhaust');
+  check('köpa uppgradering', typeof exhaust === 'object' && exhaust.money === START_MONEY - 2000 && exhaust.garage[STARTER_CAR]!.upgrades.exhaust === 1 && c.money === START_MONEY, typeof exhaust === 'object' ? `${exhaust.money} kr kvar` : exhaust);
+  check('för lite pengar', buyUpgrade(exhaust as typeof c, STARTER_CAR, 'gearbox') === 'poor' && buyCar(c, 'Kvarn 240 Turbo') === 'poor', 'nekas');
+  check('okänt', buyUpgrade(c, 'Ingen bil', 'exhaust') === 'unknown' && buyUpgrade(c, STARTER_CAR, 'engine') === 'unknown' && buyCar(c, STARTER_CAR) === 'unknown', 'nekas');
   c = { ...c, money: 100_000 };
-  for (let i = 0; i < 3; i++) c = buyUpgrade(c, STARTER_CAR, 'tyres') as typeof c;
-  check('max nivå', buyUpgrade(c, STARTER_CAR, 'tyres') === 'maxed', `däck nivå ${c.garage[STARTER_CAR]!.upgrades.tyres}`);
+  c = buyUpgrade(c, STARTER_CAR, 'rallytyres') as typeof c;
+  check('redan monterad', buyUpgrade(c, STARTER_CAR, 'rallytyres') === 'maxed', 'nekas');
   const turbo = buyCar(c, 'Kvarn 240 Turbo');
   check('köpa bil', typeof turbo === 'object' && !!turbo.garage['Kvarn 240 Turbo'] && turbo.money === c.money - 15000, typeof turbo === 'object' ? Object.keys(turbo.garage).join(', ') : turbo);
   const a = claimDailyBonus(c, '2026-11-26');
@@ -40,11 +40,19 @@ function check(name: string, ok: boolean, detail: string) {
 // 3. Uppgraderingar ändrar bilen, men inte grundbilen.
 {
   const base = kvarn240();
-  const tuned = applyUpgrades(base, { engine: 3, brakes: 2, tyres: 1 });
-  check('uppgraderingar', tuned.engine.curveNm[3]! > base.engine.curveNm[3]! * 1.17 && tuned.brake.total > base.brake.total && tuned.gripScale > base.gripScale && kvarn240().engine.curveNm[3] === base.engine.curveNm[3], `${base.engine.curveNm[3]} → ${tuned.engine.curveNm[3]!.toFixed(0)} Nm`);
+  const engine = { airfilter: 1, exhaust: 1, racecat: 1, cams: 1, pistons: 1 };
+  const tuned = applyUpgrades(base, { ...engine, pads: 1, rallytyres: 1 });
+  check('uppgraderingar', tuned.engine.curveNm[3]! > base.engine.curveNm[3]! * 1.1 && tuned.engine.limiterRpm > base.engine.limiterRpm && tuned.brake.total > base.brake.total && tuned.gripScale > base.gripScale && kvarn240().engine.curveNm[3] === base.engine.curveNm[3], `${base.engine.curveNm[3]} → ${tuned.engine.curveNm[3]!.toFixed(0)} Nm`);
   const s0 = carSpecs(base);
-  const s3 = carSpecs(applyUpgrades(base, { engine: 3 }));
+  const s3 = carSpecs(applyUpgrades(base, engine));
   check('motorn gör bilen snabbare', s3.zeroTo100 < s0.zeroTo100 - 0.3, `0–100 ${s0.zeroTo100.toFixed(1)} → ${s3.zeroTo100.toFixed(1)} s`);
+}
+
+// 3b. Gamla nivåuppgraderingar återbetalas.
+{
+  const old = { ...newCareer(), garage: { [STARTER_CAR]: { upgrades: { engine: 2, tyres: 1, pads: 1 } } } };
+  const m = migrateCareer(old);
+  check('gamla uppgraderingar återbetalas', m.money === START_MONEY + 2000 + 4500 + 1500 && JSON.stringify(m.garage[STARTER_CAR]!.upgrades) === '{"pads":1}' && migrateCareer(m) === m, `${m.money} kr`);
 }
 
 // 4. Synk: karriären valideras och senaste ändringen vinner.

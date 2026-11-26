@@ -4,7 +4,7 @@
  */
 
 import { isCareerState, type CareerState } from '../account/protocol';
-import { newCareer } from './career';
+import { migrateCareer, newCareer } from './career';
 import { isProgress, type ChampionshipProgress } from './championship';
 
 const KEY = 'rally.career';
@@ -18,7 +18,7 @@ interface Stored {
 export function loadCareer(): Stored {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Stored | null;
-    if (s && isCareerState(s.career) && Number.isInteger(s.updatedAt)) return s;
+    if (s && isCareerState(s.career) && Number.isInteger(s.updatedAt)) return { ...s, career: migrateCareer(s.career) };
   } catch {
     // Trasig data: börja om.
   }
