@@ -1,6 +1,6 @@
 /** Karriärens menyer: översikt med dagsbonus, garage med uppgraderingar och bilhandlare. */
 
-import type { CareerState } from '../account/protocol';
+import type { CareerState, HistoryEntry } from '../account/protocol';
 import { localChanged } from '../account/sync';
 import type { PickOptions, Showroom } from '../carSelect';
 import { applause, showMenu } from '../menu';
@@ -17,6 +17,7 @@ import {
   formatMoney,
   levelOf,
   localDay,
+  logged,
   MEDALS,
   prizeFor,
   STAGE_TARGETS,
@@ -124,7 +125,7 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
       body: `${message ? `<div>${message}</div>` : ''}${
         firstCar
           ? '<div>Du har ingen bil än. Köp din första hos bilhandlaren; det som blir över räcker till delar.</div>'
-          : '<div>Enstaka etapp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>'
+          : `${lastRace(career)}<div>Enstaka etapp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`
       }`,
       items: firstCar
         ? [
@@ -133,9 +134,10 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
           ]
         : [
             { label: 'Enstaka etapp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
-            ...(ongoing
-              ? [{ label: `Fortsätt mästerskap: ${championshipById(ongoing.id)?.name}`, detail: `etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'ongoing' }]
-              : CHAMPIONSHIPS.map((ch) => ({ label: `Mästerskap: ${ch.name}`, detail: `${ch.legs.length} etapper, upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: `champ:${ch.id}` }))),
+            ongoing
+              ? { label: 'Mästerskap', detail: `pågår: ${championshipById(ongoing.id)?.name}, etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'champ' }
+              : { label: 'Mästerskap', detail: `upp till ${formatMoney(Math.max(...CHAMPIONSHIPS.map((ch) => championshipMedals(ch)[0]!.prize)))}`, value: 'champ' },
+            { label: 'Historik', detail: career.history?.length ? `${career.history.length} händelser` : undefined, value: 'history' },
             { label: 'Garage', detail: Object.keys(career.garage).length === 1 ? '1 bil' : `${Object.keys(career.garage).length} bilar`, value: 'garage' },
             { label: 'Bilhandlare', value: 'dealer' },
             { label: '← Tillbaka', value: 'back' },
@@ -155,15 +157,73 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
       const model = stage && (await pick(ownedModels(career)));
       if (stage && model) return { model, stage, championship: null };
     }
-    const def = c.startsWith('champ:') ? championshipById(c.slice('champ:'.length)) : null;
-    if (c === 'ongoing' || def) {
-      const launch = def ? await startChampionship(def, career, pick, showCar) : await ongoingMenu();
+    if (c === 'champ') {
+      const launch = ongoing ? await ongoingMenu() : await championshipMenu(career, pick, showCar);
       if (launch) return launch;
     }
+    if (c === 'history') await history(career);
     if (c === 'garage') await garage(pick);
     if (c === 'dealer') await dealer(pick);
     career = loadCareer().career;
   }
+}
+
+/** Mästerskapen att välja mellan. */
+async function championshipMenu(career: CareerState, pick: Pick, showCar: ShowCar): Promise<Launch | null> {
+  for (;;) {
+    const id = await showMenu<string>({
+      title: 'Mästerskap',
+      subtitle: `Kassa: ${formatMoney(career.money)}`,
+      solid: true,
+      body: '<div>Flera etapper i följd med samma bil mot ett fält av andra förare. Skador följer med mellan etapperna; du kan göra service mellan etapperna och laga bilen om du behöver.</div>',
+      items: [
+        ...CHAMPIONSHIPS.map((ch) => ({ label: ch.name, note: ch.legs.join(', '), detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: ch.id })),
+        { label: '← Tillbaka', value: '' },
+      ],
+      cancel: '',
+    });
+    const def = championshipById(id);
+    if (!def) return null;
+    const launch = await startChampionship(def, career, pick, showCar);
+    if (launch) return launch;
+  }
+}
+
+/** En historikrad som [vad, detaljer]. */
+function describe(e: HistoryEntry): [string, string] {
+  const money = e.amount > 0 ? `<span class="ahead">+${formatMoney(e.amount)}</span>` : e.amount < 0 ? `−${formatMoney(-e.amount)}` : '';
+  const parts = (...xs: (string | false | undefined)[]) => xs.filter(Boolean).join(' · ');
+  if (e.kind === 'stage') return [e.name, parts(e.time !== undefined && formatTime(e.time), e.medal ?? 'i mål', e.car, money)];
+  if (e.kind === 'championship') return [e.name, parts(!!e.place && `${trophy(e.place)}${e.place}:a av ${e.of}`, e.time !== undefined && formatTime(e.time), e.car, money)];
+  if (e.kind === 'upgrade') return [e.name, parts(e.car, money)];
+  return [`Köpte ${e.name}`, money];
+}
+
+/** Senaste enstaka etappen eller mästerskapet, för karriärens översikt. */
+function lastRace(career: CareerState) {
+  const e = [...(career.history ?? [])].reverse().find((x) => x.kind === 'stage' || x.kind === 'championship');
+  if (!e) return '';
+  const [what, detail] = describe(e);
+  return `<div>Senast: <b>${what}</b> · ${detail}</div>`;
+}
+
+const dateOf = (at: number) => new Date(at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+
+/** Allt spelaren gjort i karriären, nyast först. */
+async function history(career: CareerState) {
+  const list = [...(career.history ?? [])].reverse();
+  const rows = list.map((e) => {
+    const [what, detail] = describe(e);
+    return `<tr><th>${dateOf(e.at)}</th><td><b>${what}</b><br>${detail}</td></tr>`;
+  });
+  await showMenu({
+    title: 'Historik',
+    subtitle: `Kassa: ${formatMoney(career.money)}`,
+    solid: true,
+    body: rows.length ? `<table class="specs">${rows.join('')}</table>` : '<div>Inget än. Kör en etapp eller köp något så hamnar det här.</div>',
+    items: [{ label: '← Tillbaka', value: 0 }],
+    cancel: 0,
+  });
 }
 
 /** Räknar upp kassan i menyns underrubrik under 1,5 s, snabbt först och långsamt mot slutet. */
@@ -295,10 +355,10 @@ async function dealer(pick: Pick) {
 }
 
 /** Delar ut prispengar för ett enstaka åk och returnerar en rad till målskärmen. */
-export function awardPrize(stageName: string, time: number): string {
+export function awardPrize(stageName: string, time: number, car: string): string {
   const { medal, prize } = prizeFor(stageName, time);
   const career = loadCareer().career;
-  commit({ ...career, money: career.money + prize });
+  commit(logged({ ...career, money: career.money + prize }, { kind: 'stage', name: stageName, car, time, medal, amount: prize }));
   return `<div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ''}</div><div>Bilen lagas gratis efter enstaka lopp.</div>`;
 }
 
@@ -330,7 +390,7 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
     solid: true,
     body: `<div>Etapper: ${def.legs.join(', ')}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen: ${championshipMedals(def)
       .map((m, i) => `${i + 1}:a ger ${formatMoney(m.prize)}`)
-      .join(', ')}. Skador följer med mellan etapperna; på servicen lagar du för egna pengar eller kör vidare. Omstart finns inte.</div>`,
+      .join(', ')}. Omstart finns inte.</div>`,
     items: [
       { label: 'Välj bil och starta', value: 'go' },
       { label: '← Tillbaka', value: 'back' },
@@ -429,7 +489,7 @@ export async function championshipLegDone(
   if (times.length === def.legs.length) {
     const { medal, prize } = championshipPrize(def, place);
     const career = loadCareer().career;
-    commit({ ...career, money: career.money + prize });
+    commit(logged({ ...career, money: career.money + prize }, { kind: 'championship', name: def.name, car: p.car, place, of: table.length, time: total, amount: prize }));
     saveChampionship(null);
     applause(place <= 3);
     await showMenu({

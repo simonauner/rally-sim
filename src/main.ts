@@ -599,7 +599,7 @@ async function main() {
     if (stage && timer?.state === 'finished' && !resultSaved) {
       resultSaved = true;
       previousBest = best;
-      prizeHtml = careerMode ? awardPrize(stage.def.name, timer.time) : '';
+      prizeHtml = careerMode ? awardPrize(stage.def.name, timer.time, car.params.name) : '';
       if (!best || timer.time < best.time) {
         best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
         saveRecord(stage.def, best);

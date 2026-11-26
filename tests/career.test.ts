@@ -1,5 +1,5 @@
-import { CAREER_KEY, isCareerState, replaces, sanitize, type Stamped } from '../src/account/protocol';
-import { applyUpgrades, buyCar, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY } from '../src/career/career';
+import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
+import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY } from '../src/career/career';
 import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
@@ -125,6 +125,18 @@ const CAR = 'Kvarn 240 GL';
   const old = { id: def.id, car: 'Kvarn 240 GL', leg: 1, times: [91], damage: null };
   const caught = raceRivals(old, 94);
   check('motståndare: gammalt framsteg', caught.rivals!.length === RIVAL_COUNT && caught.rivals!.every((v) => v.times.length === 2), `${caught.rivals![0]!.times.join(', ')}`);
+}
+
+// Historik: köp loggas, listan kapas och trasiga rader underkänns.
+{
+  const c = buyUpgrade(buyCar(newCareer(), CAR) as ReturnType<typeof newCareer>, CAR, 'pads') as ReturnType<typeof newCareer>;
+  const kinds = c.history!.map((e) => `${e.kind}:${e.amount}`).join(', ');
+  check('historik: köp loggas', kinds === 'car:-6000, upgrade:-1000' && isCareerState(c), kinds);
+  let full = c;
+  for (let i = 0; i < MAX_HISTORY + 5; i++) full = logged(full, { kind: 'stage', name: 'Skogsberg', car: CAR, time: 90 + i, medal: null, amount: 250 });
+  check('historik: kapas', full.history!.length === MAX_HISTORY && full.history!.at(-1)!.time === 90 + MAX_HISTORY + 4 && isCareerState(full), `${full.history!.length} rader`);
+  const bad = { ...c, history: [{ kind: 'stage', at: 1, name: '', amount: 0 }] };
+  check('historik: saneras', !isCareerState(bad) && !isCareerState({ ...c, history: [{ ...c.history![0]!, amount: 1.5 }] }), 'nekas');
 }
 
 if (failures) {

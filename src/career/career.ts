@@ -3,7 +3,7 @@
  * store.ts och synkas med kontot. Alla funktioner returnerar ett nytt tillstånd.
  */
 
-import type { CareerState } from '../account/protocol';
+import { MAX_HISTORY, type CareerState, type HistoryEntry } from '../account/protocol';
 import type { CarParams } from '../physics/params';
 
 /**
@@ -215,6 +215,11 @@ export function applyUpgrades(params: CarParams, upgrades: Record<string, number
   return p;
 }
 
+/** Lägger till en rad i historiken; de äldsta faller bort när den är full. */
+export function logged(career: CareerState, entry: Omit<HistoryEntry, 'at'>, at = Date.now()): CareerState {
+  return { ...career, history: [...(career.history ?? []), { ...entry, at }].slice(-MAX_HISTORY) };
+}
+
 export type BuyResult = CareerState | 'poor' | 'maxed' | 'unknown';
 
 export function buyUpgrade(career: CareerState, car: string, upgradeId: string): BuyResult {
@@ -223,18 +228,17 @@ export function buyUpgrade(career: CareerState, car: string, upgradeId: string):
   if (!u || !owned) return 'unknown';
   if (levelOf(career, car, upgradeId)) return 'maxed';
   if (career.money < u.price) return 'poor';
-  return {
-    ...career,
-    money: career.money - u.price,
-    garage: { ...career.garage, [car]: { upgrades: { ...owned.upgrades, [upgradeId]: 1 } } },
-  };
+  return logged(
+    { ...career, money: career.money - u.price, garage: { ...career.garage, [car]: { upgrades: { ...owned.upgrades, [upgradeId]: 1 } } } },
+    { kind: 'upgrade', name: u.name, car, amount: -u.price },
+  );
 }
 
 export function buyCar(career: CareerState, car: string): BuyResult {
   const price = CAR_PRICES[car];
   if (price === undefined || career.garage[car]) return 'unknown';
   if (career.money < price) return 'poor';
-  return { ...career, money: career.money - price, garage: { ...career.garage, [car]: { upgrades: {} } } };
+  return logged({ ...career, money: career.money - price, garage: { ...career.garage, [car]: { upgrades: {} } } }, { kind: 'car', name: car, amount: -price });
 }
 
 /** Dagsbonusen, en gång per dag. `today` är YYYY-MM-DD i lokal tid. */

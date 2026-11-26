@@ -94,6 +94,48 @@ export interface CareerState {
   garage: Record<string, { upgrades: Record<string, number> }>;
   /** Dagen (YYYY-MM-DD, lokal tid) då dagsbonusen senast hämtades. */
   bonusDay?: string;
+  /** Vad spelaren gjort, äldst först: åk, mästerskap och köp. Saknas i karriärer från före historiken. */
+  history?: HistoryEntry[];
+}
+
+/** En rad i historiken. `amount` är prispengar (positivt) eller vad köpet kostade (negativt). */
+export interface HistoryEntry {
+  kind: 'stage' | 'championship' | 'upgrade' | 'car';
+  /** När det hände (ms sedan 1970). */
+  at: number;
+  /** Etappen, mästerskapet, delen eller bilen. */
+  name: string;
+  /** Bilen som kördes eller uppgraderades. */
+  car?: string;
+  /** Placering i mästerskapet, och av hur många. */
+  place?: number;
+  of?: number;
+  /** Medaljen på en enstaka etapp, eller null utan medalj. */
+  medal?: string | null;
+  /** Tiden på etappen eller totaltiden i mästerskapet (s). */
+  time?: number;
+  amount: number;
+}
+
+export const MAX_HISTORY = 200;
+const str = (v: unknown, optional = true) => (v === undefined ? optional : typeof v === 'string' && v.length > 0 && v.length <= 40);
+const num = (v: unknown) => v === undefined || (typeof v === 'number' && Number.isFinite(v));
+
+function isHistoryEntry(value: unknown): value is HistoryEntry {
+  const e = value as HistoryEntry;
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    ['stage', 'championship', 'upgrade', 'car'].includes(e.kind) &&
+    Number.isInteger(e.at) &&
+    e.at >= 0 &&
+    str(e.name, false) &&
+    str(e.car) &&
+    (e.medal === null || str(e.medal)) &&
+    [e.place, e.of, e.time].every(num) &&
+    Number.isInteger(e.amount) &&
+    Math.abs(e.amount) <= MAX_MONEY
+  );
 }
 
 export const CAREER_KEY = 'career';
@@ -104,6 +146,7 @@ export function isCareerState(value: unknown): value is CareerState {
   if (typeof c !== 'object' || c === null) return false;
   if (!(Number.isInteger(c.money) && c.money >= 0 && c.money <= MAX_MONEY)) return false;
   if (c.bonusDay !== undefined && !(typeof c.bonusDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.bonusDay))) return false;
+  if (c.history !== undefined && !(Array.isArray(c.history) && c.history.length <= MAX_HISTORY && c.history.every(isHistoryEntry))) return false;
   if (typeof c.garage !== 'object' || c.garage === null) return false;
   const cars = Object.entries(c.garage);
   if (cars.length > 50) return false;
