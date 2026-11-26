@@ -46,7 +46,9 @@ körning inte finns. `?testbana` hoppar över menyn och går direkt till testban
 
 Etapperna är *Skogsberg* (ca 1,8 km: grus, en asfaltsbit och en lerig skogsdel) och *Myrkulla*
 (ca 2,7 km: snabbt grus, en lerig väg över myren, en lång stigning med krön och en asfaltsbit).
-*Frostberga* är en vinteretapp (ca 2,1 km packad snö med en plogad grusväg på mitten).
+*Frostberga* är en vinteretapp (ca 2,1 km packad snö med en plogad grusväg på mitten). Där
+kantas vägen av snövallar i stället för dike: kör man i dem gräver hjulen ner sig, bilen bromsas
+kraftigt och tar en mild skada.
 Alla finns också baklänges, samma väg åt andra hållet med egna noter, rekord och ghost.
 Före varje start väljer man däck (grus, asfalt eller vinter); menyn visar etappens underlag och
 förväljer det däck som greppar bäst i snitt (`bestTyre` i `src/physics/stage.ts`).

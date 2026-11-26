@@ -33,7 +33,7 @@ const CREST_DROP = 0.5;
 const JUNCTION_GAP = 15;
 
 const GRADE_WORDS = ['', 'ett', 'två', 'tre', 'fyra', 'fem', 'sex'];
-const SURFACE_WORDS: Record<SurfaceId, string> = { gravel: 'grus', asphalt: 'asfalt', mud: 'lera', snow: 'snö' };
+const SURFACE_WORDS: Record<SurfaceId, string> = { gravel: 'grus', asphalt: 'asfalt', mud: 'lera', snow: 'snö', snowbank: 'snövall' };
 const DISTANCE_WORDS: Record<number, string> = {
   50: 'femtio',
   100: 'hundra',

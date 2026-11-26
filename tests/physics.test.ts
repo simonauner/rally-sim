@@ -2,7 +2,7 @@ import { Quaternion, Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
 import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
-import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
+import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
@@ -422,6 +422,28 @@ for (const def of STAGES) {
   const advice = STAGES.map((d) => `${d.name}: ${bestTyre(d)}`);
   const ok = STAGES.every((d) => bestTyre(d) === (d.winter ? 'snow' : 'gravel'));
   check('däckråd per etapp', ok, advice.join(', '));
+}
+
+// 15. Snövallarna: bilen som kör in i vallen bromsas kraftigt, tar lite skada och välter inte.
+{
+  const stage = new Stage(STAGE_FROSTBERGA);
+  const results = [12, 22].map((v0) => {
+    const car = makeCar(stage, 'snow');
+    const p = stage.poseAt(START_S + 30);
+    // 25° ut mot vänster vägkant från vägens mitt.
+    car.reset(p.x, p.z, p.heading + 0.44, v0);
+    let maxSpeedOut = 0;
+    let rolled = false;
+    run(car, 2, () => idle, () => {
+      if (new Vector3(0, 1, 0).applyQuaternion(car.quat).y < 0.3) rolled = true;
+    });
+    maxSpeedOut = car.speed;
+    const dmg = Object.values(car.damage).reduce((a, b) => a + b, 0);
+    const hit = stage.project(car.pos.x, car.pos.z);
+    return { v0, out: maxSpeedOut, dmg, rolled, off: hit.d - hit.width / 2 };
+  });
+  const ok = results.every((r) => !r.rolled && r.out < r.v0 * 0.45 && r.off < 8) && results[1]!.dmg > 0.01 && results.every((r) => r.dmg < 0.25);
+  check('snövallar bromsar och skadar milt', ok, results.map((r) => `${r.v0} m/s → ${r.out.toFixed(1)} m/s efter 2 s, skada ${(r.dmg * 100).toFixed(0)} %, ${r.off.toFixed(1)} m utanför${r.rolled ? ', VÄLTE' : ''}`).join(' · '));
 }
 
 if (failures) {

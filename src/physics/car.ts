@@ -465,6 +465,11 @@ export class Car {
 
       w.tyreForceW.copy(_fw).multiplyScalar(out.fx).addScaledVector(_lw, fy);
       this.addForceAt(w.tyreForceW, w.contactW);
+      if (sp.sink) {
+        // Hjulet plöjer i djup snö: motstånd mot kontaktpunktens fart längs marken.
+        _vP.addScaledVector(_n, -_vP.dot(_n)).multiplyScalar(-sp.sink * fz);
+        this.addForceAt(_vP, w.contactW);
+      }
       void gy;
       void def;
     }

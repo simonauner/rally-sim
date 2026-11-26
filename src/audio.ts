@@ -8,6 +8,7 @@ const SURFACE_SOUND: Record<SurfaceId, { roll: number; slip: number; q: number; 
   gravel: { roll: 900, slip: 1800, q: 0.8, level: 0.9 },
   mud: { roll: 300, slip: 500, q: 1.2, level: 0.7 },
   snow: { roll: 1500, slip: 2500, q: 0.7, level: 0.5 },
+  snowbank: { roll: 700, slip: 1200, q: 0.6, level: 0.9 },
 };
 
 /** Syntetiserat ljud med Web Audio: motor, däck/underlag och krockar. */

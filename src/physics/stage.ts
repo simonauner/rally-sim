@@ -59,6 +59,8 @@ const CELL = 20;
 const TREES = 2500;
 /** Bortom detta avstånd från vägen är terrängen bara utfyllnad. */
 export const STAGE_CORRIDOR = 45;
+/** Snövallarnas höjd över vägen på vinteretapper (m). */
+export const SNOWBANK_HEIGHT = 0.7;
 
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -291,17 +293,20 @@ export class Stage extends World {
   override heightAt(x: number, z: number): number {
     const { d, roadY, width } = this.roadAt(x, z);
     const hw = width / 2;
-    const ditch = -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
+    // Vinterväg har plogade snövallar där andra vägar har dike.
+    const edge = this.def.winter ? SNOWBANK_HEIGHT * smooth(hw + 0.3, hw + 1.4, d) * (1 - smooth(hw + 2.4, hw + 4.5, d)) : -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
     const bank = smooth(hw + 2.5, hw + 8, d) * 0.12 * (d - hw - 2.5);
     const hills = smooth(hw + 4, hw + 30, d) * (1.8 * Math.sin(x * 0.021 + 1) * Math.cos(z * 0.017) + 0.9 * Math.sin(z * 0.043 + x * 0.029));
-    return roadY + ditch + bank + hills;
+    return roadY + edge + bank + hills;
   }
 
   override surfaceAt(x: number, z: number): SurfaceId {
     const { d, width, surface } = this.roadAt(x, z);
     if (d <= width / 2 + 0.3) return surface;
-    // Vägkanten: lös jord, eller snö om vägen är snöig eller det är vinter.
-    return surface === 'snow' || this.def.winter ? 'snow' : 'mud';
+    // Utanför vinterväg är det vallar och sedan djup snö: hjulen gräver ner sig.
+    if (this.def.winter) return 'snowbank';
+    // Vägkanten: lös jord, eller snö om vägen är snöig.
+    return surface === 'snow' ? 'snow' : 'mud';
   }
 }
 
