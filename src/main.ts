@@ -36,7 +36,11 @@ import { buildTerrain } from './render/terrain';
 const DT = 1 / 240;
 const CAMERAS = ['bakifrån nära', 'bakifrån långt', 'motorhuv', 'förarvy', 'uppifrån', 'sidovy (skador)'] as const;
 /** Jaktkamerorna: avstånd bakom bilen och höjd över den (m). */
-const CHASE: Record<string, { back: number; up: number }> = { 'bakifrån nära': { back: 5.6, up: 2.0 }, 'bakifrån långt': { back: 7.6, up: 2.8 } };
+/** tight: kameran följer med bilen innan utjämningen, så den inte släpar efter i fart. */
+const CHASE: Record<string, { back: number; up: number; tight?: boolean }> = {
+  'bakifrån nära': { back: 4.7, up: 1.6, tight: true },
+  'bakifrån långt': { back: 7.0, up: 2.5 },
+};
 const CAMERA_KEY = 'rally.camera';
 /** Sätts vid bygget i vite.config.ts. */
 const VERSION = `version ${import.meta.env.VITE_COMMIT} · byggd ${new Date(import.meta.env.VITE_BUILT_AT).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' })}`;
@@ -337,6 +341,8 @@ async function main() {
   let camMode = Math.max(0, CAMERAS.indexOf(readCamera() as (typeof CAMERAS)[number]));
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
+  /** Bilens position förra bildrutan, för det täta kameraläget. */
+  const camCar = new THREE.Vector3();
   const tmpDir = new THREE.Vector3();
   const tmpV = new THREE.Vector3();
   /** Hur långt till höger om bilen målkameran tittar; glider in från 0 så bilden inte hoppar. */
@@ -376,9 +382,9 @@ async function main() {
         tmpV.normalize();
         fwd.lerp(tmpV, 0.45).normalize();
       }
-      // I fart drar kameran sig bakåt och vidgar bilden lite, så farten känns.
+      // I fart vidgas bilden och kameran skakar lite; den drar sig inte bakåt, för då krymper farten.
       const fast = Math.min(1, car.speed / 40);
-      const wantPos = tmpV.copy(car.pos).addScaledVector(fwd, -(chase.back + fast * 1.2));
+      const wantPos = tmpV.copy(car.pos).addScaledVector(fwd, -chase.back);
       // Aldrig under marken bakom bilen, t.ex. i en svacka eller på väg upp mot ett krön.
       wantPos.y = Math.max(car.pos.y + chase.up, world.heightAt(wantPos.x, wantPos.z) + 0.9);
       const lookX = car.pos.x + fwd.x * 5;
@@ -387,13 +393,22 @@ async function main() {
         camPos.copy(wantPos);
         camLook.set(lookX, car.pos.y + 0.5, lookZ);
         camInit = true;
+      } else if (chase.tight) {
+        const moved = tmpDir.subVectors(car.pos, camCar);
+        camPos.add(moved);
+        camLook.add(moved);
       }
+      camCar.copy(car.pos);
       camPos.lerp(wantPos, 1 - Math.exp(-dt * 5));
       camLook.lerp(tmpV.set(lookX, car.pos.y + 0.5, lookZ), 1 - Math.exp(-dt * 9));
       camera.position.copy(camPos);
       camera.up.set(0, 1, 0);
+      const t = performance.now() / 1000;
+      const shake = fast * fast * (car.wheels[0]!.surface === 'asphalt' ? 0.012 : 0.03);
+      camera.position.y += (Math.sin(t * 37) + Math.sin(t * 23.3)) * shake;
+      camera.position.x += Math.sin(t * 29.1) * shake;
       camera.lookAt(camLook);
-      camera.fov = 58 + fast * 10;
+      camera.fov = 58 + fast * 16;
     } else if (mode === 'motorhuv') {
       camera.position.copy(tmpV.set(0, 0.55, 1.5).applyQuaternion(car.quat).add(car.pos));
       camera.up.set(0, 1, 0).applyQuaternion(car.quat);
