@@ -341,7 +341,7 @@ function damageHtml(d: CarDamage) {
 /**
  * Efter en etapp i mästerskapet. Mellan etapperna: service där spelaren lagar för egna pengar,
  * kör vidare skadad eller avbryter. Efter sista: totaltid och prispengar. Returnerar 'next' när
- * nästa etapp ska laddas, 'menu' för huvudmenyn och prispengarna när mästerskapet är klart. På servicen står bilen med sina skador på
+ * nästa etapp ska laddas, annars prispengarna (0 om spelaren avbryter) på väg till karriären. På servicen står bilen med sina skador på
  * vridbordet från showCar.
  */
 export async function championshipLegDone(
@@ -350,7 +350,7 @@ export async function championshipLegDone(
   resultBody: string,
   damage: CarDamage,
   showCar: (d: CarDamage) => Showroom,
-): Promise<'next' | 'menu' | { prize: number }> {
+): Promise<'next' | { prize: number }> {
   const def = championshipById(p.id)!;
   const times = [...p.times, time];
   const total = times.reduce((a, b) => a + b, 0);
@@ -397,7 +397,7 @@ export async function championshipLegDone(
     if (c === 'abort') {
       if (await confirmAbort()) {
         room.close();
-        return 'menu';
+        return { prize: 0 };
       }
       continue;
     }

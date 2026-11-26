@@ -157,7 +157,7 @@ async function main() {
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
   type MainChoice = 'stage' | 'test' | 'controls' | 'account' | 'career';
   let choice: MainChoice = query.has('testbana') ? 'test' : query.has('karriar') ? 'career' : 'controls';
-  /** ?karriar=<kr>: tillbaka från ett avslutat mästerskap; kassan räknar upp med prispengarna. */
+  /** ?karriar=<kr>: tillbaka från ett mästerskap; kassan räknar upp med prispengarna. */
   let gained = Number(query.get('karriar')) || 0;
   // Ladda man om sidan ska kassan inte räkna upp igen.
   if (query.has('karriar')) history.replaceState(null, '', location.pathname + (forceWebGL ? '?webgl' : ''));
@@ -429,6 +429,7 @@ async function main() {
 
   // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
   const goToMainMenu = () => void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
+  const goToCareer = (prize = 0) => void (location.href = `${location.pathname}?karriar=${prize}${forceWebGL ? '&webgl' : ''}`);
   const goToNextLeg = () => void (location.href = `${location.pathname}?mastarskap${forceWebGL ? '&webgl' : ''}`);
 
   /** Prispengarna från senaste åket, för målskärmen. */
@@ -441,10 +442,7 @@ async function main() {
         room.show(model, d);
         return room;
       });
-      if (next === 'next') return goToNextLeg();
-      if (next === 'menu') return goToMainMenu();
-      location.href = `${location.pathname}?karriar=${next.prize}${forceWebGL ? '&webgl' : ''}`;
-      return;
+      return next === 'next' ? goToNextLeg() : goToCareer(next.prize);
     }
     const c = await showMenu<'again' | 'menu'>({
       title: 'Mål',
@@ -482,7 +480,7 @@ async function main() {
       }
       if (c === 'menu') return goToMainMenu();
       if (c === 'abort') {
-        if (await confirmAbort()) return goToMainMenu();
+        if (await confirmAbort()) return goToCareer();
         continue;
       }
       if (c === 'restart') restart();
