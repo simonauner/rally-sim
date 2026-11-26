@@ -21,6 +21,9 @@ import { loadRecord, saveRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { pickCar } from './carSelect';
+import { formatMoney } from './career/career';
+import { awardPrize, careerMenu } from './career/menus';
+import { loadCareer } from './career/store';
 import { DebugVectors } from './render/debug';
 import { Dust } from './render/dust';
 import { buildBarriers } from './render/barriers';
@@ -137,9 +140,11 @@ async function main() {
     showMenu({ title: 'Kontroller', body: CONTROLS_HTML, items: [{ label: 'Tillbaka', value: 0 }], cancel: 0, solid });
 
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
-  type MainChoice = 'stage' | 'test' | 'controls' | 'account';
+  type MainChoice = 'stage' | 'test' | 'controls' | 'account' | 'career';
   let choice: MainChoice = query.has('testbana') ? 'test' : 'controls';
   let model = CARS[0]!;
+  /** Karriärlopp ger prispengar; fri körning gör det inte. */
+  let careerMode = false;
   for (;;) {
     while (choice === 'controls' || choice === 'account') {
       const best = loadRecord(STAGE_SKOGSBERG);
@@ -148,7 +153,8 @@ async function main() {
         subtitle: 'Kvarn 240 GL · fysikprototyp',
         solid: true,
         items: [
-          { label: `Kör etapp: ${STAGE_SKOGSBERG.name}`, detail: best ? `bästa ${formatTime(best.time)}` : undefined, value: 'stage' },
+          { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
+          { label: `Fri körning: ${STAGE_SKOGSBERG.name}`, detail: best ? `bästa ${formatTime(best.time)}` : undefined, value: 'stage' },
           { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
           { label: 'Kontroller', value: 'controls' },
           { label: 'Konto', value: 'account' },
@@ -156,6 +162,17 @@ async function main() {
       });
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
+    }
+    if (choice === 'career') {
+      const fromCareer = await careerMenu((models) => pickCar(renderer, models));
+      if (fromCareer) {
+        model = fromCareer;
+        careerMode = true;
+        choice = 'stage';
+        break;
+      }
+      choice = 'controls';
+      continue;
     }
     // Bilväljaren före varje start; Tillbaka går till huvudmenyn.
     const picked = query.has('testbana') ? model : await pickCar(renderer, CARS);
@@ -363,12 +380,14 @@ async function main() {
   // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
   const goToMainMenu = () => void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
 
+  /** Prispengarna från senaste åket, för målskärmen. */
+  let prizeHtml = '';
   const showFinish = async () => {
     if (!stage || !timer) return;
     const c = await showMenu<'again' | 'menu'>({
       title: 'Mål',
       side: true,
-      body: resultHtml(timer, previousBest),
+      body: resultHtml(timer, previousBest) + prizeHtml,
       items: [
         { label: 'Kör igen', value: 'again' },
         { label: 'Huvudmeny', value: 'menu' },
@@ -455,6 +474,7 @@ async function main() {
     if (stage && timer?.state === 'finished' && !resultSaved) {
       resultSaved = true;
       previousBest = best;
+      prizeHtml = careerMode ? awardPrize(stage.def.name, timer.time) : '';
       if (!best || timer.time < best.time) {
         best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
         saveRecord(stage.def, best);

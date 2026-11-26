@@ -112,7 +112,22 @@ Det som återstår är att köra och känna.
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
 2. Fas 1: kamera (spline-etapp, ljud och dammpartiklar är klara).
 3. Fas 2: tidtagning, ghost, pacenotes.
-4. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
+4. Mästerskap i karriären (kräver fler etapper).
+5. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
+
+## Karriär
+
+Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
+
+- **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
+- **Enstaka etapp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
+  gratis efteråt, så bilarna i garaget tar aldrig skada.
+- **Mästerskap:** kommer när det finns fler etapper. Där ska skador följa med mellan
+  etapperna och lagas för pengar, och den som avbryter erbjuds gratis reparation.
+
+Pengarna köper uppgraderingar i garaget (motor, bromsar, fjädring, däck, tre nivåer var) och
+bilar hos bilhandlaren. Man börjar med Kvarn 240 GL. Regler och priser finns i
+`src/career/career.ts`. Fri körning finns kvar med alla bilar och utan pengar.
 
 ## Driftsättning
 
