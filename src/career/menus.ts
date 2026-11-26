@@ -153,7 +153,8 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
       cancel: 'back',
     });
     if (countFrom !== career.money) {
-      coins();
+      // Köp har redan spelat ljudet; bara intäkter klirrar här.
+      if (career.money > countFrom) coins();
       countUp(countFrom, career.money);
     }
     countFrom = career.money;
