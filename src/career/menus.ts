@@ -400,7 +400,7 @@ export async function championshipLegDone(
   for (;;) {
     const cost = repaired ? 0 : repairCost(damage);
     if (!atService) {
-      const c = await showMenu<'service' | 'go'>({
+      const c = await showMenu<'service' | 'go' | 'abort'>({
         title: `Nästa: ${nextName}`,
         subtitle: `Etapp ${times.length + 1} av ${def.legs.length}`,
         side: true,
@@ -408,16 +408,24 @@ export async function championshipLegDone(
         items: [
           { label: 'Till service', value: 'service' },
           { label: 'Starta etappen', detail: cost > 0 ? 'utan att laga' : undefined, value: 'go' },
+          { label: 'Avbryt mästerskapet', value: 'abort' },
         ],
         cancel: 'service',
       });
       if (c === 'go') break;
+      if (c === 'abort') {
+        if (await confirmAbort()) {
+          room?.close();
+          return { prize: 0 };
+        }
+        continue;
+      }
       atService = true;
       room ??= showCar(damage);
       continue;
     }
     const money = loadCareer().career.money;
-    const c = await showMenu<'repair' | 'go' | 'back' | 'abort'>({
+    const c = await showMenu<'repair' | 'go' | 'back'>({
       title: 'Service',
       subtitle: `Kassa: ${formatMoney(money)} · nästa: ${nextName}`,
       side: true,
@@ -426,20 +434,12 @@ export async function championshipLegDone(
         ...(cost > 0 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'repair' as const }] : []),
         { label: cost > 0 ? 'Kör vidare utan att laga' : 'Kör nästa etapp', value: 'go' },
         { label: '← Nästa etapp', value: 'back' },
-        { label: 'Avbryt mästerskapet', value: 'abort' },
       ],
       cancel: 'back',
     });
     if (c === 'back') {
       atService = false;
       message = '';
-      continue;
-    }
-    if (c === 'abort') {
-      if (await confirmAbort()) {
-        room?.close();
-        return { prize: 0 };
-      }
       continue;
     }
     if (c === 'repair') {
