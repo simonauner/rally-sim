@@ -15,8 +15,8 @@ export interface MenuOptions<T> {
   cancel?: T;
   /** Täck spelet helt (huvudmeny) i stället för att visa det dämpat bakom (paus). */
   solid?: boolean;
-  /** Bredare panel, t.ex. för målskärmens karta. */
-  wide?: boolean;
+  /** Panelen vid högerkanten utan att dämpa spelet, t.ex. målskärmen där bilen syns. */
+  side?: boolean;
   /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
   input?: { placeholder: string; onDone: (value: string) => void };
 }
@@ -30,9 +30,9 @@ const root = () => document.getElementById('menu')!;
  */
 export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const el = root();
-  el.className = opts.solid ? 'solid' : '';
+  el.className = opts.solid ? 'solid' : opts.side ? 'side' : '';
   el.innerHTML = `
-    <div class="panel${opts.wide ? ' wide' : ''}">
+    <div class="panel">
       <h1>${opts.title}</h1>
       ${opts.subtitle ? `<div class="subtitle">${opts.subtitle}</div>` : ''}
       ${opts.body ? `<div class="body">${opts.body}</div>` : ''}

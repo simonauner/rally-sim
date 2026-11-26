@@ -13,7 +13,7 @@ import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
 import { kvarn240 } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage';
-import { GhostRecorder, sampleGhost, sectionLosses, timeAlongStage } from './physics/ghost';
+import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
 import type { StageRecord } from './account/protocol';
@@ -25,7 +25,6 @@ import { Dust } from './render/dust';
 import { buildBarriers } from './render/barriers';
 import { buildGhostMesh } from './render/ghostMesh';
 import { buildStage } from './render/stage';
-import { stageMapHtml } from './render/stageMap';
 import { buildTerrain } from './render/terrain';
 
 const DT = 1 / 240;
@@ -224,10 +223,13 @@ async function main() {
   /** Tid sedan målgång och om målskärmen visas; bilen körs av autopiloten under tiden. */
   let finishedFor = 0;
   let finishShown = false;
+  /** Vinkeln runt bilen när kameran cirklar efter målgång; null = vanlig kamera. */
+  let orbit: number | null = null;
   const place = (s: Spawn, keepDamage: boolean) => {
     camInit = false;
     finishedFor = 0;
     finishShown = false;
+    orbit = null;
     spawn = s;
     car.reset(s.x, s.z, s.heading, s.speed, keepDamage);
     barriers?.reset();
@@ -269,7 +271,24 @@ async function main() {
     const fwd = tmpDir.set(0, 0, 1).applyQuaternion(car.quat);
     fwd.y = 0;
     fwd.normalize();
-    if (camMode === 0) {
+    if (finishShown) {
+      // Börja där kameran är (oavsett kameraläge), glid ut på cirkeln och snurra långsamt.
+      if (orbit === null) {
+        camPos.copy(camera.position);
+        camLook.copy(car.pos);
+        orbit = Math.atan2(camPos.x - car.pos.x, camPos.z - car.pos.z);
+      }
+      orbit += dt * 0.25;
+      const want = tmpV.set(car.pos.x + Math.sin(orbit) * 7.5, car.pos.y + 2.2, car.pos.z + Math.cos(orbit) * 7.5);
+      camPos.lerp(want, 1 - Math.exp(-dt * 2));
+      camLook.lerp(car.pos, 1 - Math.exp(-dt * 3));
+      camera.position.copy(camPos);
+      camera.up.set(0, 1, 0);
+      // Titta lite till höger om bilen så den hamnar vänster om resultatpanelen.
+      const right = tmpDir.subVectors(camLook, camPos).cross(camera.up).normalize();
+      camera.lookAt(tmpV.copy(camLook).addScaledVector(right, 2.2));
+      camera.fov = 50;
+    } else if (camMode === 0) {
       // Blanda bilens riktning med färdriktningen så sladdar syns tydligt.
       if (car.speed > 6) {
         tmpV.copy(car.vel);
@@ -335,15 +354,10 @@ async function main() {
 
   const showFinish = async () => {
     if (!stage || !timer) return;
-    // Var tiden vanns eller förlorades: åket mot förra rekordets ghost, meter för meter.
-    const finishS = stage.length - FINISH_MARGIN;
-    const run = timeAlongStage(recorder.data(), stage);
-    const ref = previousBest?.ghost ? timeAlongStage(previousBest.ghost, stage) : null;
-    const sections = ref ? sectionLosses(run, ref, START_S, finishS) : null;
     const c = await showMenu<'again' | 'menu'>({
       title: 'Mål',
-      wide: true,
-      body: resultHtml(timer, previousBest) + stageMapHtml(stage, START_S, finishS, sections),
+      side: true,
+      body: resultHtml(timer, previousBest),
       items: [
         { label: 'Kör igen', value: 'again' },
         { label: 'Huvudmeny', value: 'menu' },

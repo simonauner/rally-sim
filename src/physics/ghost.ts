@@ -1,5 +1,4 @@
 import type { Quaternion, Vector3 } from 'three';
-import type { Stage } from './stage';
 
 /** Inspelat åk: position och rotation med fast takt, räknat i etapptid från startlinjen. */
 export interface GhostData {
@@ -62,53 +61,4 @@ export function sampleGhost(g: GhostData, t: number, pos: Vector3, quat: Quatern
     quat.w + (sign * qw - quat.w) * u,
   ).normalize();
   return true;
-}
-
-/**
- * När åket passerade varje meter av etappen (index = meter), räknat från startlinjen; NaN där det
- * aldrig kom. Bara framsteg räknas: backar bilen fylls inget i förrän den är förbi sin längsta punkt.
- */
-export function timeAlongStage(g: GhostData, stage: Stage): Float64Array {
-  const out = new Float64Array(Math.floor(stage.length) + 1).fill(NaN);
-  const F = g.frames;
-  let maxS = NaN;
-  let tAtMax = 0;
-  for (let k = 0; k < F.length / STRIDE; k++) {
-    const t = k / g.hz;
-    const s = stage.project(F[k * STRIDE]!, F[k * STRIDE + 2]!).s;
-    if (!(s > maxS)) {
-      if (Number.isNaN(maxS)) {
-        maxS = s;
-        tAtMax = t;
-      }
-      continue;
-    }
-    for (let m = Math.ceil(maxS); m <= s && m < out.length; m++) out[m] = tAtMax + ((t - tAtMax) * (m - maxS)) / (s - maxS);
-    maxS = s;
-    tAtMax = t;
-  }
-  return out;
-}
-
-export interface Section {
-  from: number;
-  to: number;
-  /** Tid förlorad mot referensen genom sektionen (s); negativ = vunnen. */
-  loss: number;
-}
-
-/** Vinst eller förlust per sektion om size meter, där båda åken har tider. */
-export function sectionLosses(run: Float64Array, ref: Float64Array, from: number, to: number, size = 25): Section[] {
-  const out: Section[] = [];
-  // Inspelningen börjar och slutar en bildruta från linjerna, så kanterna kan sakna tider.
-  const ok = (m: number) => Number.isFinite(run[m]!) && Number.isFinite(ref[m]!);
-  for (let start = Math.ceil(from); start < to; start += size) {
-    let a = start;
-    let b = Math.min(Math.floor(to), start + size);
-    while (a < b && !ok(a)) a++;
-    while (b > a && !ok(b)) b--;
-    const loss = run[b]! - run[a]! - (ref[b]! - ref[a]!);
-    if (b > a) out.push({ from: start, to: Math.min(Math.floor(to), start + size), loss });
-  }
-  return out;
 }
