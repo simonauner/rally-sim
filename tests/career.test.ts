@@ -60,9 +60,9 @@ function check(name: string, ok: boolean, detail: string) {
 // 5. Mästerskap: gränser, priser, reparation och framsteg.
 {
   const def = CHAMPIONSHIPS[0]!;
-  const legsExist = CHAMPIONSHIPS.every((c) => c.legs.every((name) => STAGES.some((s) => s.name === name)));
+  const legsExist = CHAMPIONSHIPS.every((c) => c.legs.every((name) => STAGES.some((s) => s.name === name)) && !!championshipTargets(c));
   const targets = championshipTargets(def);
-  check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 183, `${def.legs.join(' + ')}, guld under ${targets?.[0]} s`);
+  check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 183, `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
   const prizes = [180, 200, 230, 300].map((t) => championshipPrize(def, t));
   check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize > 1200 * 2, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
   const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };

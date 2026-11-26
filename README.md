@@ -44,8 +44,9 @@ körning inte finns. `?testbana` hoppar över menyn och går direkt till testban
 
 ## Etapperna
 
-Etapperna är *Skogsberg* (ca 1,8 km: grus, en asfaltsbit och en lerig skogsdel) och *Skogsberg
-baklänges*, samma väg åt andra hållet med egna noter, rekord och ghost.
+Etapperna är *Skogsberg* (ca 1,8 km: grus, en asfaltsbit och en lerig skogsdel) och *Myrkulla*
+(ca 2,7 km: snabbt grus, en lerig väg över myren, en lång stigning med krön och en asfaltsbit).
+Båda finns också baklänges, samma väg åt andra hållet med egna noter, rekord och ghost.
 Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och underlag
 (underlaget gäller fram till nästa punkt). Utanför vägen kommer ett dike och sedan lera.
 
@@ -113,7 +114,7 @@ Det som återstår är att köra och känna.
 1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
 2. Fas 1: kamera (spline-etapp, ljud och dammpartiklar är klara).
 3. Fas 2: tidtagning, ghost, pacenotes.
-4. Fler etapper och mästerskap (`STAGES` i `src/physics/stage.ts`, `CHAMPIONSHIPS` i `src/career/championship.ts`).
+4. Fler etapper och mästerskap, gärna med snö (`STAGES` i `src/physics/stage.ts`, `CHAMPIONSHIPS` i `src/career/championship.ts`).
 5. Parkoppling med kod (som i season-o-meter), så att en ny enhet kan kopplas utan att skriva av nyckeln.
 
 ## Karriär
@@ -123,7 +124,7 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
 - **Enstaka etapp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
   gratis efteråt, så bilarna i garaget tar aldrig skada.
-- **Mästerskap** (Skogsrallyt: Skogsberg och Skogsberg baklänges): totaltiden avgör och
+- **Mästerskap** (Skogsrallyt och Myrkullarallyt, varje etapp fram och tillbaka): totaltiden avgör och
   prispengarna är större. Skador följer med mellan etapperna; på servicen lagar man för egna
   pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis
   men inga prispengar. Framsteget sparas i webbläsaren, eftersom sidan laddas om mellan

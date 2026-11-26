@@ -30,6 +30,7 @@ import {
   CHAMPIONSHIP_MEDALS,
   repairCost,
   type CarDamage,
+  type ChampionshipDef,
   type ChampionshipProgress,
 } from './championship';
 import { formatTime } from '../hud';
@@ -99,20 +100,17 @@ export async function careerMenu(pick: (models: CarModel[]) => Promise<CarModel 
     message = `Dagens besök: <span class="ahead">+${formatMoney(bonus.bonus)}</span>`;
   }
   for (;;) {
-    const champ = CHAMPIONSHIPS[0]!;
     const ongoing = loadChampionship();
-    const c = await showMenu<'stage' | 'championship' | 'garage' | 'dealer' | 'back'>({
+    const c = await showMenu<string>({
       title: 'Karriär',
       subtitle: `Kassa: ${formatMoney(career.money)}`,
       solid: true,
       body: `${message ? `<div>${message}</div>` : ''}<div>Enstaka etapp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`,
       items: [
         { label: 'Enstaka etapp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
-        {
-          label: ongoing ? `Fortsätt mästerskap: ${championshipById(ongoing.id)?.name}` : `Mästerskap: ${champ.name}`,
-          detail: ongoing ? `etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}` : `${champ.legs.length} etapper, upp till ${formatMoney(CHAMPIONSHIP_MEDALS[0].prize)}`,
-          value: 'championship',
-        },
+        ...(ongoing
+          ? [{ label: `Fortsätt mästerskap: ${championshipById(ongoing.id)?.name}`, detail: `etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'ongoing' }]
+          : CHAMPIONSHIPS.map((ch) => ({ label: `Mästerskap: ${ch.name}`, detail: `${ch.legs.length} etapper, upp till ${formatMoney(CHAMPIONSHIP_MEDALS[0].prize)}`, value: `champ:${ch.id}` }))),
         { label: 'Garage', detail: Object.keys(career.garage).length === 1 ? '1 bil' : `${Object.keys(career.garage).length} bilar`, value: 'garage' },
         { label: 'Bilhandlare', value: 'dealer' },
         { label: 'Tillbaka', value: 'back' },
@@ -129,8 +127,9 @@ export async function careerMenu(pick: (models: CarModel[]) => Promise<CarModel 
       const model = stage && (await pick(ownedModels(career)));
       if (stage && model) return { model, stage, championship: null };
     }
-    if (c === 'championship') {
-      const launch = ongoing ? await ongoingMenu() : await startChampionship(career, pick);
+    const def = c.startsWith('champ:') ? championshipById(c.slice('champ:'.length)) : null;
+    if (c === 'ongoing' || def) {
+      const launch = def ? await startChampionship(def, career, pick) : await ongoingMenu();
       if (launch) return launch;
     }
     if (c === 'garage') await garage();
@@ -240,8 +239,7 @@ async function ongoingMenu(): Promise<Launch | null> {
   return null;
 }
 
-async function startChampionship(career: CareerState, pick: (models: CarModel[]) => Promise<CarModel | null>): Promise<Launch | null> {
-  const def = CHAMPIONSHIPS[0]!;
+async function startChampionship(def: ChampionshipDef, career: CareerState, pick: (models: CarModel[]) => Promise<CarModel | null>): Promise<Launch | null> {
   const targets = championshipTargets(def);
   const c = await showMenu<'go' | 'back'>({
     title: def.name,
