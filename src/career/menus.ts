@@ -532,16 +532,17 @@ async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, s
     const cost = repairCost(damage);
     if (!atService) {
       const c = await showMenu<'service' | 'go' | 'abort'>({
-        title: `Nästa: ${nextName}`,
+        title: leg === 0 ? nextName : `Nästa: ${nextName}`,
         subtitle: `Etapp ${leg + 1} av ${def.legs.length}`,
         side: true,
         body: `<div>Väder: ${WEATHER_NAMES[weather]}.</div>${nextStage ? stagePreviewHtml(nextStage) : ''}`,
         items: [
-          { label: 'Till service', value: 'service' },
+          // Före första etappen är bilen ny, så ingen service.
+          ...(leg > 0 ? [{ label: 'Till service', value: 'service' as const }] : []),
           { label: 'Starta etappen', detail: cost > 0 ? 'utan att laga' : undefined, value: 'go' },
           { label: 'Avbryt mästerskapet', value: 'abort' },
         ],
-        cancel: 'service',
+        cancel: leg > 0 ? 'service' : 'abort',
       });
       if (c === 'go') break;
       if (c === 'abort') {
