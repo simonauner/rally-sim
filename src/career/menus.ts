@@ -487,18 +487,30 @@ const posBadge = (place: number) => `<span class="pos p${place}">${place}</span>
 /** Placeringen för tiden `t` bland `all` (som inkluderar t). */
 const rankOf = (t: number, all: number[]) => 1 + all.filter((x) => x < t).length;
 
-/** Ställningen: placering, namn, totaltid, lucka till ledaren och tid och placering på senaste etappen. */
+/** Ställningen i mästerskapet: placering, namn och totaltid, lucka till ledaren. */
 function standingsHtml(table: Standing[]) {
   const lead = table[0]!.total;
-  const lasts = table.map((s) => s.last);
   const rows = table
     .map((s, i) => {
       const name = s.player ? `<b>${s.name}</b>` : s.name;
       const gap = i === 0 ? formatTime(s.total) : `+${(s.total - lead).toFixed(2)}`;
-      return `<tr${s.player ? ' class="ahead"' : ''}><th>${trophy(i + 1)}${name}</th><td>${gap}</td><td>${formatTime(s.last)}${posBadge(rankOf(s.last, lasts))}</td></tr>`;
+      return `<tr${s.player ? ' class="ahead"' : ''}><th>${trophy(i + 1)}${name}</th><td>${gap}</td></tr>`;
     })
     .join('');
-  return `<table class="specs standings"><tr><th></th><td>totalt</td><td>etappen</td></tr>${rows}</table>`;
+  return `<table class="specs standings"><tr><th></th><td>totalt</td></tr>${rows}</table>`;
+}
+
+/** Resultatet på senaste etappen: placering, namn, tid och lucka till etappsegraren. */
+function legResultHtml(table: Standing[]) {
+  const byLeg = [...table].sort((a, b) => a.last - b.last);
+  const best = byLeg[0]!.last;
+  const rows = byLeg
+    .map((s, i) => {
+      const name = s.player ? `<b>${s.name}</b>` : s.name;
+      return `<tr${s.player ? ' class="ahead"' : ''}><th>${posBadge(i + 1)}${name}</th><td>${formatTime(s.last)}</td><td>${i === 0 ? '' : `+${(s.last - best).toFixed(2)}`}</td></tr>`;
+    })
+    .join('');
+  return `<table class="specs standings">${rows}</table>`;
 }
 
 export async function championshipLegDone(
@@ -528,6 +540,7 @@ export async function championshipLegDone(
       title: `${def.name}: klart`,
       side: true,
       body: `<div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ''}</div><div>Bilen lagas och står hel i garaget.</div>`,
+      aside: `<h1>${def.legs[times.length - 1]}</h1><div class="subtitle">Sista etappen</div><div class="body">${resultBody}${legResultHtml(table)}</div>`,
       items: [{ label: 'Avsluta mästerskapet', value: 0 }],
     });
     return { prize };
@@ -536,7 +549,10 @@ export async function championshipLegDone(
   await showMenu({
     title: `Etapp ${times.length} av ${def.legs.length}`,
     side: true,
-    body: `${resultBody}<div>Du ligger <b>${place}:a</b> av ${table.length} efter ${times.length} av ${def.legs.length} etapper.</div>${standingsHtml(table)}`,
+    subtitle: def.legs[times.length - 1],
+    body: `${resultBody}${legResultHtml(table)}`,
+    // Mästerskapsställningen i ett eget kort, så den inte blandas ihop med etappens resultat.
+    aside: `<h1>Ställning</h1><div class="subtitle">${def.name}</div><div class="body"><div>Du ligger <b>${place}:a</b> av ${table.length} efter ${times.length} av ${def.legs.length} etapper.</div>${standingsHtml(table)}</div>`,
     items: [{ label: 'Fortsätt', value: 0 }],
   });
 
