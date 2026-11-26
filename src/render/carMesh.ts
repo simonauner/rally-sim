@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { abs, attribute, color, select, vec3 } from 'three/tsl';
 import type { Car } from '../physics/car';
 import type { DamageEvent } from '../physics/collision';
 
@@ -95,22 +96,20 @@ function buildBody(): DeformablePart {
   g = mergeVertices(g, 1e-4);
   const pos = g.getAttribute('position') as THREE.BufferAttribute;
   roundBox(pos, 0.85, 0.31, 2.3, 0.2);
-  const colors = new Float32Array(pos.count * 3);
-  const c = new THREE.Color();
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i) - 0.0;
-    const z = pos.getZ(i);
-    pos.setY(i, y);
-    c.copy(PAINT);
-    if (y < -0.14) c.copy(DARK);
-    if (z > 2.12 && Math.abs(x) > 0.45 && y > -0.1 && y < 0.18) c.copy(LAMP);
-    if (z < -2.12 && Math.abs(x) > 0.4 && y > -0.1 && y < 0.2) c.copy(TAIL);
-    colors.set([c.r, c.g, c.b], i * 3);
-  }
-  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  // Färgen räknas per pixel från vilopositionen, så lyktornas kanter blir skarpa
+  // (hörnfärger tonas ut över en hel ruta) och följer med när plåten bucklas.
+  g.setAttribute('rest', pos.clone());
   g.computeVertexNormals();
-  return new DeformablePart(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }));
+  const p = attribute('rest', 'vec3');
+  const band = (lo: number, hi: number) => p.y.greaterThan(lo).and(p.y.lessThan(hi));
+  const lamp = p.z.greaterThan(2.12).and(abs(p.x).greaterThan(0.45)).and(band(-0.1, 0.18));
+  const tail = p.z.lessThan(-2.12).and(abs(p.x).greaterThan(0.4)).and(band(-0.1, 0.2));
+  const body = select(p.y.lessThan(-0.14), color(DARK), color(PAINT));
+  const mat = new THREE.MeshToonNodeMaterial();
+  mat.colorNode = select(lamp, color(LAMP), select(tail, color(TAIL), body));
+  // Lyktorna lyser lite själva, så de inte blir mörka i skugga.
+  mat.emissiveNode = select(lamp, color(LAMP).mul(0.5), select(tail, color(TAIL).mul(0.8), vec3(0)));
+  return new DeformablePart(g, mat);
 }
 
 function buildCabin(): DeformablePart {
@@ -120,8 +119,7 @@ function buildCabin(): DeformablePart {
   g = mergeVertices(g, 1e-4);
   const pos = g.getAttribute('position') as THREE.BufferAttribute;
   roundBox(pos, 0.75, 0.28, 1.2, 0.16);
-  const colors = new Float32Array(pos.count * 3);
-  const c = new THREE.Color();
+  g.setAttribute('rest', pos.clone());
   for (let i = 0; i < pos.count; i++) {
     let x = pos.getX(i);
     let y = pos.getY(i);
@@ -133,28 +131,28 @@ function buildCabin(): DeformablePart {
     y += 0.31 + 0.26;
     z += -0.2;
     pos.setXYZ(i, x, y, z);
-    c.copy(PAINT);
-    const side = Math.abs(x) > 0.58 * (1 - 0.14 * t);
-    const endFace = Math.abs(z + 0.2) > 1.0 * (1 - 0.16 * t);
-    if ((side || endFace) && t > 0.2 && t < 0.88) c.copy(GLASS);
-    colors.set([c.r, c.g, c.b], i * 3);
   }
-  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   g.computeVertexNormals();
-  return new DeformablePart(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }));
+  // Rutor räknas i lådans koordinater före avsmalningen, se buildBody.
+  const p = attribute('rest', 'vec3');
+  const t = p.y.add(0.28).div(0.56);
+  const glass = abs(p.x).greaterThan(0.58).or(abs(p.z).greaterThan(1.0)).and(t.greaterThan(0.2)).and(t.lessThan(0.88));
+  const mat = new THREE.MeshToonNodeMaterial();
+  mat.colorNode = select(glass, color(GLASS), color(PAINT));
+  return new DeformablePart(g, mat);
 }
 
 function buildWheel(radius: number): THREE.Group {
   const g = new THREE.Group();
   const tyre = new THREE.Mesh(
     new THREE.CylinderGeometry(radius, radius, 0.22, 28).rotateZ(Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: 0x242424, roughness: 1 }),
+    new THREE.MeshToonMaterial({ color: 0x242424 }),
   );
-  const hubMat = new THREE.MeshStandardMaterial({ color: 0xd6d6d6, roughness: 0.7 });
+  const hubMat = new THREE.MeshToonMaterial({ color: 0xd6d6d6 });
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.62, radius * 0.62, 0.235, 20).rotateZ(Math.PI / 2), hubMat);
   g.add(tyre, hub);
   // Ekrar visar rotationen
-  const spokeMat = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, roughness: 0.8 });
+  const spokeMat = new THREE.MeshToonMaterial({ color: 0x8a8a8a });
   for (let i = 0; i < 5; i++) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(0.245, radius * 1.1, 0.05), spokeMat);
     s.rotation.x = (i / 5) * Math.PI;

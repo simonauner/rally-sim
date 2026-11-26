@@ -63,21 +63,21 @@ export function buildTerrain(world: World): THREE.Group {
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeVertexNormals();
-  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  const ground = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ vertexColors: true }));
   ground.receiveShadow = true;
   group.add(ground);
 
   // Stort plan utanför
   const outer = new THREE.Mesh(
     new THREE.PlaneGeometry(2000, 2000).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: 0xa89a70, roughness: 1 }),
+    new THREE.MeshToonMaterial({ color: 0xa89a70 }),
   );
   outer.position.y = -0.4;
   outer.receiveShadow = true;
   group.add(outer);
 
   // Hinder
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xcfcfc8, roughness: 1 });
+  const wallMat = new THREE.MeshToonMaterial({ color: 0xcfcfc8 });
   for (const b of world.boxes) {
     const m = new THREE.Mesh(
       new THREE.BoxGeometry(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ),
@@ -89,7 +89,7 @@ export function buildTerrain(world: World): THREE.Group {
     group.add(m);
   }
   // Randiga varningsband på väggen
-  const stripeMat = new THREE.MeshStandardMaterial({ color: 0xe0a320, roughness: 1 });
+  const stripeMat = new THREE.MeshToonMaterial({ color: 0xe0a320 });
   for (let i = -38; i <= 38; i += 4) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.05), stripeMat);
     s.position.set(i, 0.7, 259.95);
@@ -99,7 +99,7 @@ export function buildTerrain(world: World): THREE.Group {
   // Avståndsstolpar var 20:e meter ger fartkänsla
   const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.4, 8);
   const poleCount = 2 * 17;
-  const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshStandardMaterial({ color: 0xffffff }), poleCount);
+  const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshToonMaterial({ color: 0xffffff }), poleCount);
   const mat = new THREE.Matrix4();
   let pi = 0;
   for (let z = 0; z <= 320; z += 20) {
@@ -119,8 +119,8 @@ export function buildTerrain(world: World): THREE.Group {
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
   const crownGeo = new THREE.ConeGeometry(1.6, 4.5, 9);
   const N = 220;
-  const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x6b4a32, roughness: 1 }), N);
-  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshStandardMaterial({ color: 0x4f7a4a, roughness: 1 }), N);
+  const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshToonMaterial({ color: 0x6b4a32 }), N);
+  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshToonMaterial({ color: 0x4f7a4a }), N);
   const s = new THREE.Vector3();
   const qq = new THREE.Quaternion();
   const p = new THREE.Vector3();

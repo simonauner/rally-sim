@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { toonOutlinePass } from 'three/tsl';
 import { Sound } from './audio';
 import { createGui } from './gui';
 import { Hud } from './hud';
@@ -41,6 +42,8 @@ async function main() {
   scene.background = new THREE.Color(0xcfe3ee);
   scene.fog = new THREE.Fog(0xcfe3ee, 120, 520);
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1500);
+  // Cel-shading: toon-material plus mörka konturer runt allt med toon-material.
+  const pipeline = new THREE.RenderPipeline(renderer, toonOutlinePass(scene, camera, new THREE.Color(0x1c1c24), 0.003));
 
   scene.add(new THREE.HemisphereLight(0xe8f3ff, 0x8a7a5a, 1.1));
   const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
@@ -231,7 +234,7 @@ async function main() {
     sun.position.set(car.pos.x + 40, car.pos.y + 70, car.pos.z - 30);
     sun.target.position.copy(car.pos);
     hud.update(car, input, CAMERAS[camMode]!);
-    renderer.render(scene, camera);
+    pipeline.render();
     (window as unknown as { __afterRender?: () => void }).__afterRender?.();
   });
 }
