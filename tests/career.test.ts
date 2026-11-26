@@ -1,6 +1,8 @@
 import { CAREER_KEY, isCareerState, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY } from '../src/career/career';
-import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, repairCost, type CarDamage } from '../src/career/championship';
+import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipTargets, isProgress, newProgress, raceRivals, repairCost, type CarDamage } from '../src/career/championship';
+import { RIVAL_COUNT, standings } from '../src/career/rivals';
+import { STAGE_TARGETS } from '../src/career/career';
 import { kvarn240 } from '../src/physics/params';
 import { STAGES } from '../src/physics/stage';
 import { carSpecs } from '../src/physics/specs';
@@ -78,7 +80,7 @@ const CAR = 'Kvarn 240 GL';
   const legsExist = CHAMPIONSHIPS.every((c) => c.legs.every((name) => STAGES.some((s) => s.name === name)) && !!championshipTargets(c));
   const targets = championshipTargets(def);
   check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 279 && def.legs.length === 3 && STAGES.every((s) => CHAMPIONSHIPS.some((c) => c.legs.includes(s.name))), `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
-  const prizes = [275, 300, 350, 400].map((t) => championshipPrize(def, t));
+  const prizes = [1, 2, 3, 4].map((place) => championshipPrize(def, place));
   check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize === 9000, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
   const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };
   const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
@@ -88,6 +90,39 @@ const CAR = 'Kvarn 240 GL';
   const next = afterLeg(start, 91.2, crashed, false);
   const fixed = afterLeg(start, 91.2, crashed, true);
   check('mästerskap: framsteg', isProgress(start) && isProgress(next) && next.leg === 1 && next.damage === crashed && fixed.damage === null && !isProgress({ ...next, leg: 3, times: [1, 2, 3] }) && isProgress(afterLeg(start, 91.2, noLamp, false)) && !isProgress(afterLeg(start, 91.2, { ...noLamp, lamps: [2, 0] }, false)) && !isProgress({ ...start, id: 'okänt' }), `etapp ${next.leg + 1}, tider ${next.times.join()}`);
+}
+
+// 6. Motståndarna: den som kör i guldfart slåss om pallen, den som kör mycket fortare än guld
+// vinner oftast men inte alltid, och den som kör i bronsfart vinner nästan aldrig.
+{
+  const def = CHAMPIONSHIPS[0]!;
+  const fresh = newProgress(def, 'Kvarn 240 GL', 42);
+  const names = new Set(fresh.rivals!.map((v) => v.name));
+  check('motståndare: ett fält', fresh.rivals!.length === RIVAL_COUNT && names.size === RIVAL_COUNT && Math.min(...fresh.rivals!.map((v) => v.pace)) <= 1 && isProgress(fresh), [...names].slice(0, 3).join(', ') + ' …');
+  const run = (pace: number, seed: number, known?: number) => {
+    let p = newProgress(def, 'Kvarn 240 GL', seed, known);
+    for (const leg of def.legs) {
+      const time = STAGE_TARGETS[leg]![0] * pace;
+      p = afterLeg(raceRivals(p, time), time, { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 }, true);
+    }
+    return { place: standings(p.rivals!, p.times).findIndex((s) => s.player) + 1, valid: isProgress({ ...p, leg: p.leg - 1, times: p.times.slice(0, -1), rivals: p.rivals!.map((v) => ({ ...v, times: v.times.slice(0, -1) })) }) };
+  };
+  const winRate = (pace: number, known?: number) => {
+    const results = Array.from({ length: 300 }, (_, seed) => run(pace, seed, known));
+    return { wins: results.filter((r) => r.place === 1).length / results.length, podium: results.filter((r) => r.place <= 3).length / results.length, valid: results.every((r) => r.valid) };
+  };
+  const gold = winRate(1);
+  // 20 % snabbare än guld: utan rekord hinner fältet inte ikapp efter första etappen; med
+  // rekord i samma fart möts spelaren av motstånd från start.
+  const fast = winRate(0.8);
+  const known = winRate(0.8, 0.8);
+  const slow = winRate(1.25);
+  const ok = gold.valid && gold.wins > 0.05 && gold.wins < 0.5 && gold.podium > 0.4 && fast.wins > 0.5 && known.wins > 0.2 && known.wins < 0.85 && slow.wins < 0.02;
+  check('motståndare: utmaning men går att vinna', ok, `vinst i guldfart ${(gold.wins * 100).toFixed(0)} % (pall ${(gold.podium * 100).toFixed(0)} %), 20 % snabbare ${(fast.wins * 100).toFixed(0)} %, dito med rekord ${(known.wins * 100).toFixed(0)} %, bronsfart ${(slow.wins * 100).toFixed(0)} %`);
+  // Gammalt framsteg utan motståndare får ett fält i efterhand.
+  const old = { id: def.id, car: 'Kvarn 240 GL', leg: 1, times: [91], damage: null };
+  const caught = raceRivals(old, 94);
+  check('motståndare: gammalt framsteg', caught.rivals!.length === RIVAL_COUNT && caught.rivals!.every((v) => v.times.length === 2), `${caught.rivals![0]!.times.join(', ')}`);
 }
 
 if (failures) {

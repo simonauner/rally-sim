@@ -7,6 +7,7 @@ import { showMenu } from '../menu';
 import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
 import { pickStage, stagePreviewHtml } from '../stageMenu';
+import { loadRecord } from '../records';
 import {
   applyUpgrades,
   buyCar,
@@ -28,13 +29,15 @@ import {
   CHAMPIONSHIPS,
   championshipById,
   championshipPrize,
-  championshipTargets,
+  newProgress,
+  raceRivals,
   championshipMedals,
   repairCost,
   type CarDamage,
   type ChampionshipDef,
   type ChampionshipProgress,
 } from './championship';
+import { goldTime, RIVAL_COUNT, standings, type Standing } from './rivals';
 import { formatTime, lampStatus } from '../hud';
 import { loadCareer, loadChampionship, saveCareer, saveChampionship } from './store';
 
@@ -316,13 +319,12 @@ async function ongoingMenu(): Promise<Launch | null> {
 }
 
 async function startChampionship(def: ChampionshipDef, career: CareerState, pick: Pick): Promise<Launch | null> {
-  const targets = championshipTargets(def);
   const c = await showMenu<'go' | 'back'>({
     title: def.name,
     solid: true,
-    body: `<div>Etapper: ${def.legs.join(', ')}.</div><div>Totaltiden avgör: ${
-      targets ? championshipMedals(def).map((m, i) => `${m.name} under ${targets[i]} s ger ${formatMoney(m.prize)}`).join(', ') : ''
-    }. Skador följer med mellan etapperna; på servicen lagar du för egna pengar eller kör vidare. Omstart finns inte.</div>`,
+    body: `<div>Etapper: ${def.legs.join(', ')}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen: ${championshipMedals(def)
+      .map((m, i) => `${i + 1}:a ger ${formatMoney(m.prize)}`)
+      .join(', ')}. Skador följer med mellan etapperna; på servicen lagar du för egna pengar eller kör vidare. Omstart finns inte.</div>`,
     items: [
       { label: 'Välj bil och starta', value: 'go' },
       { label: '← Tillbaka', value: 'back' },
@@ -333,7 +335,13 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
   const model = await pick(ownedModels(career));
   const stage = STAGES.find((s) => s.name === def.legs[0]);
   if (!model || !stage) return null;
-  const progress: ChampionshipProgress = { id: def.id, car: nameOf(model), leg: 0, times: [], damage: null };
+  // Spelarens bästa takt på mästerskapets etapper, från egna rekord, så fältet möter den.
+  const paces = def.legs.flatMap((leg) => {
+    const s = STAGES.find((x) => x.name === leg);
+    const best = s && loadRecord(s);
+    return best ? [best.time / goldTime(leg)] : [];
+  });
+  const progress = newProgress(def, nameOf(model), Math.floor(Math.random() * 2 ** 31), paces.length ? Math.min(...paces) : undefined);
   saveChampionship(progress);
   return { model, stage, championship: progress };
 }
@@ -357,6 +365,19 @@ function damageHtml(d: CarDamage) {
  * nästa etapp ska laddas, annars prispengarna (0 om spelaren avbryter) på väg till karriären. På servicen står bilen med sina skador på
  * vridbordet från showCar.
  */
+/** Ställningen: placering, namn, totaltid, lucka till ledaren och tid på senaste etappen. */
+function standingsHtml(table: Standing[]) {
+  const lead = table[0]!.total;
+  const rows = table
+    .map((s, i) => {
+      const name = s.player ? `<b>${s.name}</b>` : s.name;
+      const gap = i === 0 ? formatTime(s.total) : `+${(s.total - lead).toFixed(2)}`;
+      return `<tr${s.player ? ' class="ahead"' : ''}><th>${i + 1}. ${name}</th><td>${gap}</td><td>${formatTime(s.last)}</td></tr>`;
+    })
+    .join('');
+  return `<table class="specs"><tr><th></th><td>totalt</td><td>etappen</td></tr>${rows}</table>`;
+}
+
 export async function championshipLegDone(
   p: ChampionshipProgress,
   time: number,
@@ -368,16 +389,19 @@ export async function championshipLegDone(
   const times = [...p.times, time];
   const total = times.reduce((a, b) => a + b, 0);
   const legRows = times.map((t, i) => `<tr><th>${def.legs[i]}</th><td>${formatTime(t)}</td></tr>`).join('');
+  p = raceRivals(p, time);
+  const table = standings(p.rivals!, times);
+  const place = table.findIndex((s) => s.player) + 1;
 
   if (times.length === def.legs.length) {
-    const { medal, prize } = championshipPrize(def, total);
+    const { medal, prize } = championshipPrize(def, place);
     const career = loadCareer().career;
     commit({ ...career, money: career.money + prize });
     saveChampionship(null);
     await showMenu({
       title: `${def.name}: klart`,
       side: true,
-      body: `<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ''}</div><div>Bilen lagas och står hel i garaget.</div>`,
+      body: `<div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ''}</div><div>Bilen lagas och står hel i garaget.</div>`,
       items: [{ label: 'Till karriären', value: 0 }],
     });
     return { prize };
@@ -386,7 +410,7 @@ export async function championshipLegDone(
   await showMenu({
     title: `Etapp ${times.length} av ${def.legs.length}`,
     side: true,
-    body: `${resultBody}<div>Totalt hittills: <b>${formatTime(total)}</b></div>`,
+    body: `${resultBody}<div>Du ligger <b>${place}:a</b> av ${table.length} efter ${times.length} av ${def.legs.length} etapper.</div>${standingsHtml(table)}`,
     items: [{ label: 'Fortsätt', value: 0 }],
   });
 

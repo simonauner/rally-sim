@@ -131,8 +131,11 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
 - **Enstaka etapp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
   gratis efteråt, så bilarna i garaget tar aldrig skada.
-- **Mästerskap** (Skogsrallyt, Myrkullarallyt och Vinterrallyt, tre etapper vardera varav en i skymning, gryning respektive natt; prispengarna växer med antalet etapper): totaltiden avgör och
-  prispengarna är större. Skador följer med mellan etapperna; på servicen lagar man för egna
+- **Mästerskap** (Skogsrallyt, Myrkullarallyt och Vinterrallyt, tre etapper vardera varav en i skymning, gryning respektive natt; prispengarna växer med antalet etapper): man kör mot sju
+  slumpade fiktiva förare, och efter varje etapp visas ställningen. Placeringen avgör
+  prispengarna, som är större än för enstaka etapper. Fältets bästa kör på guldtid; har man
+  egna rekord på etapperna läggs de två snabbaste nära ens takt, och är man snabbare än hela
+  fältet hittar en eller två av dem samma fart till nästa etapp (`src/career/rivals.ts`). Skador följer med mellan etapperna; på servicen lagar man för egna
   pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis
   men inga prispengar. Framsteget sparas i webbläsaren, eftersom sidan laddas om mellan
   etapperna (`?mastarskap` laddar nästa etapp).
