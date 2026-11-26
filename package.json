@@ -1,0 +1,26 @@
+{
+  "name": "rally-sim",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test:physics": "tsx tests/physics.test.ts",
+    "preview": "vite preview",
+    "build:single": "vite build --config vite.single.config.ts"
+  },
+  "dependencies": {
+    "lil-gui": "^0.21.0",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "@types/three": "latest",
+    "tsx": "latest",
+    "typescript": "^7.0.2",
+    "vite": "^8.4.0",
+    "vite-plugin-singlefile": "latest"
+  }
+}

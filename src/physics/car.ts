@@ -1,0 +1,500 @@
+import { Quaternion, Vector3 } from 'three';
+import { collide, type DamageEvent } from './collision';
+import { Drivetrain, splitDiff } from './drivetrain';
+import type { CarParams } from './params';
+import { SURFACES, TYRE_GRIP, type SurfaceId } from './surfaces';
+import { tyreForce, type TyreOut } from './tires';
+import type { World } from './world';
+
+export interface Input {
+  throttle: number;
+  brake: number;
+  /** -1..1, vänster positiv. */
+  steer: number;
+  handbrake: number;
+}
+
+export interface Assists {
+  abs: boolean;
+  tc: boolean;
+  /** 0..1 motstyrningshjälp. */
+  steerAssist: number;
+}
+
+export class WheelState {
+  omega = 0;
+  spin = 0;
+  steer = 0;
+  /** Fjäderlängd (fäste till hjulcentrum). */
+  length = 0.13;
+  contact = false;
+  fz = 0;
+  fx = 0;
+  fy = 0;
+  kappa = 0;
+  tanAlpha = 0;
+  usage = 0;
+  surface: SurfaceId = 'gravel';
+  absFactor = 1;
+  damage = 0;
+  mountW = new Vector3();
+  centerW = new Vector3();
+  contactW = new Vector3();
+  tyreForceW = new Vector3();
+}
+
+export interface DamageState {
+  front: number;
+  rear: number;
+  left: number;
+  right: number;
+  roof: number;
+}
+
+const G = 9.81;
+const V_MIN = 1.5;
+
+const _fwd = new Vector3();
+const _up = new Vector3();
+const _left = new Vector3();
+const _n = new Vector3();
+const _fw = new Vector3();
+const _lw = new Vector3();
+const _vP = new Vector3();
+const _r = new Vector3();
+const _tmp = new Vector3();
+const _tmp2 = new Vector3();
+const _local = new Vector3();
+const _vMount = new Vector3();
+const _force = new Vector3();
+const _qInv = new Quaternion();
+
+export class Car {
+  pos = new Vector3(0, 1, 0);
+  quat = new Quaternion();
+  quatInv = new Quaternion();
+  vel = new Vector3();
+  angVel = new Vector3();
+  wheels: WheelState[];
+  drivetrain: Drivetrain;
+  assists: Assists = { abs: true, tc: true, steerAssist: 0.5 };
+  damage: DamageState = { front: 0, rear: 0, left: 0, right: 0, roof: 0 };
+  damageEvents: DamageEvent[] = [];
+  collisionPoints: Vector3[] = [];
+
+  // Avlästa värden för HUD och tester.
+  forwardSpeed = 0;
+  lateralSpeed = 0;
+  speed = 0;
+  gLong = 0;
+  gLat = 0;
+  steerAngle = 0;
+  tcActive = false;
+  absActive = false;
+  time = 0;
+  /** Ackumulerad kraft och moment under ett steg. */
+  private force = new Vector3();
+  private torque = new Vector3();
+  private lastVel = new Vector3();
+
+  constructor(
+    public params: CarParams,
+    public world: World,
+  ) {
+    this.wheels = params.wheels.map(() => new WheelState());
+    this.drivetrain = new Drivetrain(params.engine, params.gearbox);
+    const b = params.body;
+    for (const x of [-b.halfX, 0, b.halfX])
+      for (const y of [b.bottomY, (b.bottomY + b.topY) / 2, b.topY])
+        for (const z of [-b.halfZ, -b.halfZ / 2, 0, b.halfZ / 2, b.halfZ]) {
+          const interior = Math.abs(x) < 1e-6 && y > b.bottomY && y < b.topY && Math.abs(z) < b.halfZ - 1e-6;
+          if (!interior) this.collisionPoints.push(new Vector3(x, y, z));
+        }
+    this.reset(0, 0, 0, 0);
+  }
+
+  /** Placerar bilen på marken. Heading i radianer (0 = +Z, positiv mot vänster). */
+  reset(x: number, z: number, heading: number, speed: number, keepDamage = false) {
+    const p = this.params;
+    this.quat.setFromAxisAngle(_tmp.set(0, 1, 0), heading);
+    this.quatInv.copy(this.quat).invert();
+    const h = this.world.heightAt(x, z);
+    this.pos.set(x, h + p.cgHeight + 0.02, z);
+    this.vel.set(0, 0, speed).applyQuaternion(this.quat);
+    this.angVel.set(0, 0, 0);
+    this.lastVel.copy(this.vel);
+    for (const w of this.wheels) {
+      w.omega = speed / p.wheelRadius;
+      w.steer = 0;
+      w.absFactor = 1;
+    }
+    this.steerAngle = 0;
+    this.drivetrain.reset();
+    // Välj en växel som passar farten, så teleport i fart inte börjar i ettan.
+    const gb = p.gearbox;
+    let gear = 1;
+    while (gear < gb.ratios.length) {
+      const rpm = ((speed / p.wheelRadius) * gb.ratios[gear - 1]! * gb.final * 60) / (2 * Math.PI);
+      if (rpm < 5200) break;
+      gear++;
+    }
+    this.drivetrain.gear = gear;
+    this.drivetrain.rpm = Math.max(p.engine.idleRpm, ((speed / p.wheelRadius) * gb.ratios[gear - 1]! * gb.final * 60) / (2 * Math.PI));
+    if (!keepDamage) {
+      this.damage = { front: 0, rear: 0, left: 0, right: 0, roof: 0 };
+      for (const w of this.wheels) w.damage = 0;
+      this.drivetrain.powerFactor = 1;
+    }
+    this.updateWheelGeometry();
+  }
+
+  invInertiaWorld(v: Vector3, out: Vector3): Vector3 {
+    const [ix, iy, iz] = this.params.inertia;
+    _qInv.copy(this.quat).invert();
+    out.copy(v).applyQuaternion(_qInv);
+    out.set(out.x / ix, out.y / iy, out.z / iz);
+    return out.applyQuaternion(this.quat);
+  }
+
+  pointVelocity(r: Vector3, out: Vector3): Vector3 {
+    return out.crossVectors(this.angVel, r).add(this.vel);
+  }
+
+  applyImpulse(J: Vector3, r: Vector3) {
+    this.vel.addScaledVector(J, 1 / this.params.mass);
+    _tmp2.crossVectors(r, J);
+    this.invInertiaWorld(_tmp2, _tmp);
+    this.angVel.add(_tmp);
+  }
+
+  private addForceAt(F: Vector3, point: Vector3) {
+    this.force.add(F);
+    _r.copy(point).sub(this.pos);
+    this.torque.add(_tmp.crossVectors(_r, F));
+  }
+
+  registerDamage(local: Vector3, impulse: number, kind: 'object' | 'ground') {
+    const scale = (kind === 'ground' ? 0.35 : 1) * impulse / (this.params.mass * 14);
+    const d = this.damage;
+    const b = this.params.body;
+    if (local.z > b.halfZ * 0.6) d.front = Math.min(1, d.front + scale);
+    else if (local.z < -b.halfZ * 0.6) d.rear = Math.min(1, d.rear + scale);
+    else if (local.y > b.topY * 0.8) d.roof = Math.min(1, d.roof + scale);
+    else if (local.x > 0) d.left = Math.min(1, d.left + scale);
+    else d.right = Math.min(1, d.right + scale);
+    // Hörnskador som påverkar hjulen: närmaste hjul tar skada.
+    let best = 0;
+    let bd = Infinity;
+    this.params.wheels.forEach((w, i) => {
+      const dd = Math.hypot(w.mount[0] - local.x, w.mount[2] - local.z);
+      if (dd < bd) {
+        bd = dd;
+        best = i;
+      }
+    });
+    const wheel = this.wheels[best]!;
+    wheel.damage = Math.min(1, wheel.damage + scale * 0.8);
+    this.drivetrain.powerFactor = 1 - 0.4 * d.front;
+  }
+
+  private updateWheelGeometry() {
+    this.quatInv.copy(this.quat).invert();
+    _up.set(0, 1, 0).applyQuaternion(this.quat);
+    const p = this.params;
+    this.params.wheels.forEach((def, i) => {
+      const w = this.wheels[i]!;
+      _local.set(...def.mount).applyQuaternion(this.quat);
+      w.mountW.copy(this.pos).add(_local);
+      w.centerW.copy(w.mountW).addScaledVector(_up, -w.length);
+      w.contactW.copy(w.centerW).addScaledVector(_up, -p.wheelRadius);
+    });
+  }
+
+  step(dt: number, input: Input) {
+    const p = this.params;
+    const R = p.wheelRadius;
+    const wheels = this.wheels;
+    this.time += dt;
+    this.force.set(0, 0, 0);
+    this.torque.set(0, 0, 0);
+    this.quatInv.copy(this.quat).invert();
+
+    _fwd.set(0, 0, 1).applyQuaternion(this.quat);
+    _up.set(0, 1, 0).applyQuaternion(this.quat);
+    _left.set(1, 0, 0).applyQuaternion(this.quat);
+    this.forwardSpeed = this.vel.dot(_fwd);
+    this.lateralSpeed = this.vel.dot(_left);
+    this.speed = this.vel.length();
+
+    const dtn = this.drivetrain;
+
+    // --- Backväxel och pedaler -------------------------------------------------
+    if (dtn.autoShift && Math.abs(this.forwardSpeed) < 1.2) {
+      if (input.brake > 0.2 && input.throttle < 0.05 && dtn.gear >= 0) dtn.gear = -1;
+      else if (input.throttle > 0.2 && input.brake < 0.05 && dtn.gear <= 0) dtn.gear = 1;
+    }
+    const reversing = dtn.gear < 0;
+    let gas = reversing ? input.brake : input.throttle;
+    const brakePedal = reversing ? input.throttle : input.brake;
+
+    // --- Styrning ---------------------------------------------------------------
+    const v = Math.abs(this.forwardSpeed);
+    const maxAngle = p.steer.maxAngle / (1 + (v / p.steer.speedRef) ** 2);
+    let target = input.steer * maxAngle;
+    if (this.assists.steerAssist > 0 && v > 4) {
+      // Peka framhjulen mot färdriktningen: hjälper vid sladd.
+      const beta = Math.atan2(this.lateralSpeed, Math.abs(this.forwardSpeed)) * (this.forwardSpeed >= 0 ? 1 : -1);
+      target += Math.max(-0.3, Math.min(0.3, beta)) * this.assists.steerAssist;
+    }
+    const rateBase = Math.abs(target) > Math.abs(this.steerAngle) ? p.steer.rate : p.steer.centerRate;
+    const rate = rateBase / (1 + v / 12);
+    const dS = target - this.steerAngle;
+    this.steerAngle += Math.max(-rate * dt, Math.min(rate * dt, dS));
+
+    // Ackermann
+    const tanD = Math.tan(this.steerAngle);
+    const L = p.wheelbase;
+    const T = p.trackFront;
+    const innerOffset = L - (T / 2) * Math.abs(tanD);
+    const outerOffset = L + (T / 2) * Math.abs(tanD);
+    for (let i = 0; i < wheels.length; i++) {
+      const def = p.wheels[i]!;
+      const w = wheels[i]!;
+      if (!def.front) {
+        w.steer = 0;
+        continue;
+      }
+      const inner = def.left === this.steerAngle > 0;
+      const ang = Math.atan2(L * Math.abs(tanD), inner ? innerOffset : outerOffset) * Math.sign(this.steerAngle);
+      w.steer = ang + (def.left ? 1 : -1) * w.damage * 0.1;
+    }
+
+    // --- Fjädring: geometri och krafter ----------------------------------------
+    const s = p.susp;
+    const comp: number[] = [];
+    const tDist: number[] = [];
+    const vComp: number[] = [];
+    for (let i = 0; i < wheels.length; i++) {
+      const def = p.wheels[i]!;
+      const w = wheels[i]!;
+      _local.set(...def.mount).applyQuaternion(this.quat);
+      w.mountW.copy(this.pos).add(_local);
+
+      let t = w.mountW.y - this.world.heightAt(w.mountW.x, w.mountW.z);
+      if (_up.y > 0.15) {
+        for (let k = 0; k < 3; k++) {
+          _tmp.copy(w.mountW).addScaledVector(_up, -t);
+          const err = _tmp.y - this.world.heightAt(_tmp.x, _tmp.z);
+          t += err / Math.max(0.5, _up.y);
+        }
+      } else {
+        t = 99;
+      }
+      tDist.push(t);
+      const len = t - R;
+      w.contact = len <= s.maxLen;
+      w.length = Math.min(s.maxLen, Math.max(s.minLen, len));
+      comp.push(w.contact ? s.freeLen - len : 0);
+      this.pointVelocity(_r.copy(_local), _vMount);
+      vComp.push(-_vMount.dot(_up));
+    }
+
+    const normalForce: number[] = [];
+    for (let i = 0; i < wheels.length; i++) {
+      const def = p.wheels[i]!;
+      const w = wheels[i]!;
+      if (!w.contact) {
+        normalForce.push(0);
+        continue;
+      }
+      const k = def.front ? s.kFront : s.kRear;
+      const travel = s.freeLen - s.minLen;
+      const x = comp[i]!;
+      let F = k * Math.min(x, travel) + s.bumpStopK * Math.max(0, x - travel);
+      const vc = vComp[i]!;
+      F += (vc > 0 ? s.bump : s.rebound) * vc;
+      // Krängningshämmare mellan vänster och höger på samma axel
+      const other = i ^ 1;
+      const arb = def.front ? s.arbFront : s.arbRear;
+      F += arb * (x - comp[other]!);
+      F = Math.max(0, F);
+      normalForce.push(F);
+      this.addForceAt(_force.copy(_up).multiplyScalar(F), w.mountW);
+    }
+
+    // --- Drivlina ---------------------------------------------------------------
+    const driven: number[] = [];
+    p.wheels.forEach((def, i) => {
+      if (p.frontShare > 0 && def.front) driven.push(i);
+      if (p.frontShare < 1 && !def.front) driven.push(i);
+    });
+    let shaftOmega = 0;
+    for (const i of driven) shaftOmega += wheels[i]!.omega;
+    shaftOmega /= Math.max(1, driven.length);
+
+    // Traction control: begränsa gasen om drivhjulen slirar.
+    this.tcActive = false;
+    if (this.assists.tc && v > 1) {
+      let worst = 0;
+      for (const i of driven) {
+        const w = wheels[i]!;
+        const peak = SURFACES[w.surface].peakSlipRatio;
+        worst = Math.max(worst, (w.kappa - peak * 1.4) / peak);
+      }
+      if (worst > 0) {
+        gas *= Math.max(0.15, 1 - worst * 0.8);
+        this.tcActive = true;
+      }
+    }
+
+    const shaftTorque = dtn.update(dt, gas, shaftOmega);
+    const iRef = p.engine.inertia * dtn.ratio * dtn.ratio * dtn.engage * dtn.engage;
+
+    const axleTorque = [0, 0, 0, 0];
+    const frontT = shaftTorque * p.frontShare;
+    const rearT = shaftTorque * (1 - p.frontShare);
+    if (p.frontShare > 0) {
+      const [l, r] = splitDiff(frontT, wheels[0]!.omega, wheels[1]!.omega, p.diff);
+      axleTorque[0] = l;
+      axleTorque[1] = r;
+    }
+    if (p.frontShare < 1) {
+      const [l, r] = splitDiff(rearT, wheels[2]!.omega, wheels[3]!.omega, p.diff);
+      axleTorque[2] = l;
+      axleTorque[3] = r;
+    }
+
+    // --- Däck och hjul ----------------------------------------------------------
+    const out: TyreOut = { fx: 0, fy: 0, usage: 0 };
+    this.absActive = false;
+    for (let i = 0; i < wheels.length; i++) {
+      const def = p.wheels[i]!;
+      const w = wheels[i]!;
+      const fz = normalForce[i]!;
+      const isDriven = driven.includes(i);
+      let Iw = p.wheelInertia + (isDriven ? iRef / driven.length : 0);
+
+      let brake = brakePedal * p.brake.total * (def.front ? p.brake.bias / 2 : (1 - p.brake.bias) / 2);
+      if (!def.front) brake += input.handbrake * p.brake.handbrake / 2;
+      if (this.assists.abs && brakePedal > 0 && v > 3 && input.handbrake < 0.1) {
+        const peak = SURFACES[w.surface].peakSlipRatio;
+        if (w.kappa < -peak * 1.25) {
+          w.absFactor = Math.max(0.05, w.absFactor - dt * 25);
+          this.absActive = true;
+        } else {
+          w.absFactor = Math.min(1, w.absFactor + dt * 12);
+        }
+        brake *= w.absFactor;
+      } else {
+        w.absFactor = 1;
+      }
+
+      if (!w.contact) {
+        // Hjul i luften: bara drivning, broms och lite lagerfriktion.
+        const resist = brake + 2;
+        let om = w.omega + (dt * axleTorque[i]!) / Iw;
+        const dec = (dt * resist) / Iw;
+        om = Math.abs(om) <= dec ? 0 : om - Math.sign(om) * dec;
+        w.omega = om;
+        w.spin += om * dt;
+        w.fz = 0;
+        w.fx = 0;
+        w.fy = 0;
+        w.kappa = 0;
+        w.tanAlpha = 0;
+        w.usage = 0;
+        w.tyreForceW.set(0, 0, 0);
+        continue;
+      }
+
+      // Kontaktpunkt och markplan
+      w.contactW.copy(w.mountW).addScaledVector(_up, -(w.length + R));
+      const gy = this.world.heightAt(w.contactW.x, w.contactW.z);
+      const surf = this.world.surfaceAt(w.contactW.x, w.contactW.z);
+      w.surface = surf;
+      this.world.normalAt(w.contactW.x, w.contactW.z, _n);
+      // Hjulets riktning projicerad på markplanet
+      const sa = w.steer;
+      _fw.copy(_fwd).multiplyScalar(Math.cos(sa)).addScaledVector(_left, Math.sin(sa));
+      _fw.addScaledVector(_n, -_fw.dot(_n)).normalize();
+      _lw.crossVectors(_n, _fw);
+
+      _r.copy(w.contactW).sub(this.pos);
+      this.pointVelocity(_r, _vP);
+      const vx = _vP.dot(_fw);
+      const vy = _vP.dot(_lw);
+      const den = Math.max(Math.abs(vx), V_MIN);
+      const sp = SURFACES[surf];
+      const mu = TYRE_GRIP[p.tyre][surf] * p.gripScale * (1 - 0.15 * w.damage);
+      const tanA = vy / den;
+
+      const fxAt = (om: number) => {
+        const kappa = (om * R - vx) / den;
+        return tyreForce(kappa, tanA, fz, sp, mu, out).fx;
+      };
+      const om0 = w.omega;
+      const fx0 = fxAt(om0);
+      const kSlope = Math.max(0, (fxAt(om0 + 0.5) - fx0) / 0.5);
+      let om = om0 + (dt * (axleTorque[i]! - R * fx0)) / (Iw + dt * R * kSlope);
+      const resist = brake + sp.rolling * fz * R;
+      const dec = (dt * resist) / Iw;
+      om = Math.abs(om) <= dec ? 0 : om - Math.sign(om) * dec;
+      w.omega = om;
+      w.spin += om * dt;
+
+      const kappa = (om * R - vx) / den;
+      tyreForce(kappa, tanA, fz, sp, mu, out);
+      let fy = out.fy;
+      const maxFy = ((fz / G) * Math.abs(vy)) / dt * 0.5;
+      if (Math.abs(fy) > maxFy) fy = Math.sign(fy) * maxFy;
+      w.fx = out.fx;
+      w.fy = fy;
+      w.fz = fz;
+      w.kappa = kappa;
+      w.tanAlpha = tanA;
+      w.usage = out.usage;
+
+      w.tyreForceW.copy(_fw).multiplyScalar(out.fx).addScaledVector(_lw, fy);
+      this.addForceAt(w.tyreForceW, w.contactW);
+      void gy;
+      void def;
+    }
+
+    // --- Luftmotstånd, tyngdkraft, integrering ----------------------------------
+    const vl = this.speed;
+    if (vl > 0.01) this.force.addScaledVector(this.vel, -0.5 * p.aero.rho * p.aero.cdA * vl);
+    this.force.y -= p.mass * G;
+
+    // Gyroskopiskt bidrag
+    _tmp.copy(this.angVel).applyQuaternion(this.quatInv);
+    const [ix, iy, iz] = p.inertia;
+    _tmp2.set(ix * _tmp.x, iy * _tmp.y, iz * _tmp.z);
+    _tmp.cross(_tmp2).applyQuaternion(this.quat);
+    this.torque.sub(_tmp);
+
+    this.vel.addScaledVector(this.force, dt / p.mass);
+    this.invInertiaWorld(this.torque, _tmp);
+    this.angVel.addScaledVector(_tmp, dt);
+    // Vinkelhastighetsdämpning mot numeriskt brus
+    this.angVel.multiplyScalar(1 - 0.02 * dt);
+
+    this.pos.addScaledVector(this.vel, dt);
+    const wq = new Quaternion(this.angVel.x * dt * 0.5, this.angVel.y * dt * 0.5, this.angVel.z * dt * 0.5, 0);
+    wq.multiply(this.quat);
+    this.quat.set(this.quat.x + wq.x, this.quat.y + wq.y, this.quat.z + wq.z, this.quat.w + wq.w).normalize();
+    this.quatInv.copy(this.quat).invert();
+
+    collide(this, this.world, dt);
+
+    // g-krafter (lågpass)
+    _tmp.copy(this.vel).sub(this.lastVel).multiplyScalar(1 / (dt * G));
+    this.lastVel.copy(this.vel);
+    _fwd.set(0, 0, 1).applyQuaternion(this.quat);
+    _left.set(1, 0, 0).applyQuaternion(this.quat);
+    const a = Math.min(1, dt * 8);
+    this.gLong += (_tmp.dot(_fwd) - this.gLong) * a;
+    this.gLat += (_tmp.dot(_left) - this.gLat) * a;
+
+    this.updateWheelGeometry();
+  }
+}

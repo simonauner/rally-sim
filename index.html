@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rally – fysikprototyp</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #cfd8dc; font-family: ui-monospace, Menlo, Consolas, monospace; }
+      canvas#view { display: block; width: 100vw; height: 100vh; }
+      #hud { position: fixed; left: 12px; bottom: 12px; color: #1b1b1b; font-size: 13px; line-height: 1.35; pointer-events: none; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+      #hud .big { font-size: 34px; font-weight: 700; }
+      #bar { width: 220px; height: 10px; background: #0003; border-radius: 5px; overflow: hidden; margin: 4px 0; }
+      #bar > div { height: 100%; width: 0; background: #2e7d32; }
+      #wheels { margin-top: 6px; border-collapse: collapse; }
+      #wheels td, #wheels th { padding: 1px 6px 1px 0; text-align: right; font-weight: 400; }
+      #help { position: fixed; left: 12px; top: 12px; font-size: 12px; color: #1b1b1b; background: #fffb; padding: 8px 10px; border-radius: 8px; line-height: 1.5; pointer-events: none; }
+      #gg { position: fixed; right: 12px; bottom: 12px; width: 140px; height: 140px; background: #fff8; border-radius: 8px; pointer-events: none; }
+      #unsupported { display: none; position: fixed; inset: 0; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 18px; background: #eceff1; }
+      #damage { position: fixed; left: 12px; top: 112px; color: #1b1b1b; font-size: 12px; background: #fffb; padding: 8px 10px; border-radius: 8px; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="hud"></div>
+    <div id="help"></div>
+    <canvas id="gg" width="280" height="280"></canvas>
+    <div id="damage"></div>
+    <div id="unsupported">
+      <div>Det här spelet kräver WebGPU.<br />Uppdatera till Chrome/Edge, Firefox 141+ eller Safari 26.</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

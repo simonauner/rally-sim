@@ -1,0 +1,150 @@
+/** Motor, koppling, växellåda och differential. */
+
+export interface EngineParams {
+  idleRpm: number;
+  limiterRpm: number;
+  /** Rpm och moment (Nm), linjärt interpolerad. */
+  curveRpm: number[];
+  curveNm: number[];
+  /** Motorbroms vid släppt gas (Nm vid begränsarvarvet). */
+  engineBrakeNm: number;
+  /** Roterande tröghet motor + svänghjul (kg m²). */
+  inertia: number;
+  /** Rpm där kopplingen har tagit helt. */
+  clutchLockRpm: number;
+  /** Rpm vid gaspådrag från stillastående. */
+  launchRpm: number;
+}
+
+export interface GearboxParams {
+  /** Utväxling per växel 1..n. */
+  ratios: number[];
+  reverse: number;
+  final: number;
+  efficiency: number;
+  upshiftRpm: number;
+  downshiftRpm: number;
+  shiftTime: number;
+}
+
+export function interp(xs: number[], ys: number[], x: number): number {
+  if (x <= xs[0]!) return ys[0]!;
+  for (let i = 1; i < xs.length; i++) {
+    if (x <= xs[i]!) {
+      const t = (x - xs[i - 1]!) / (xs[i]! - xs[i - 1]!);
+      return ys[i - 1]! + t * (ys[i]! - ys[i - 1]!);
+    }
+  }
+  return ys[ys.length - 1]!;
+}
+
+export class Drivetrain {
+  gear = 1; // -1 back, 0 neutral, 1..n
+  rpm = 1000;
+  autoShift = true;
+  shiftTimer = 0;
+  /** Gasen efter hjälpmedel, för HUD. */
+  limiterCut = false;
+  /** Moment vid drivaxeln (Nm), för HUD/debug. */
+  shaftTorque = 0;
+  /** Ratio inklusive slututväxling med tecken. */
+  ratio = 0;
+  /** Kopplingsgrad 0..1. */
+  engage = 0;
+  /** Skadefaktor för effekt (1 = hel). */
+  powerFactor = 1;
+
+  constructor(
+    public engine: EngineParams,
+    public gearbox: GearboxParams,
+  ) {}
+
+  totalRatio(gear: number): number {
+    if (gear === 0) return 0;
+    if (gear < 0) return -this.gearbox.reverse * this.gearbox.final;
+    return this.gearbox.ratios[gear - 1]! * this.gearbox.final;
+  }
+
+  reset() {
+    this.gear = 1;
+    this.rpm = this.engine.idleRpm;
+    this.shiftTimer = 0;
+  }
+
+  shiftUp() {
+    if (this.gear < this.gearbox.ratios.length && this.shiftTimer <= 0) {
+      this.gear = this.gear <= 0 ? 1 : this.gear + 1;
+      this.shiftTimer = this.gearbox.shiftTime;
+    }
+  }
+
+  shiftDown() {
+    if (this.gear > 1 && this.shiftTimer <= 0) {
+      this.gear -= 1;
+      this.shiftTimer = this.gearbox.shiftTime * 0.6;
+    }
+  }
+
+  /**
+   * Räknar ut moment vid drivaxeln.
+   * @param throttle gaspedalen 0..1 (efter hjälpmedel)
+   * @param shaftOmega drivaxelns vinkelhastighet (rad/s), medel av drivhjulen
+   */
+  update(dt: number, throttle: number, shaftOmega: number): number {
+    const { engine, gearbox } = this;
+
+    this.ratio = this.totalRatio(this.gear);
+    const shaftRpmIn = Math.abs(shaftOmega * this.ratio) * (60 / (2 * Math.PI));
+
+    if (this.shiftTimer > 0) this.shiftTimer -= dt;
+
+    if (this.autoShift && this.gear >= 1 && this.shiftTimer <= 0) {
+      if (this.rpm > gearbox.upshiftRpm && throttle > 0.1 && this.gear < gearbox.ratios.length) this.shiftUp();
+      else if (this.rpm < gearbox.downshiftRpm && this.gear > 1) this.shiftDown();
+    }
+    this.ratio = this.totalRatio(this.gear);
+
+    // Motorvarv: följer axeln, eller kopplingsslirning vid start.
+    const launch = engine.idleRpm + (engine.launchRpm - engine.idleRpm) * throttle;
+    const target = this.gear === 0 ? engine.idleRpm + throttle * 3500 : Math.max(shaftRpmIn, launch, engine.idleRpm);
+    const follow = this.gear !== 0 && shaftRpmIn >= launch ? 1 : Math.min(1, dt * 18);
+    this.rpm += (target - this.rpm) * follow;
+    this.rpm = Math.min(this.rpm, engine.limiterRpm * 1.02);
+
+    // Kopplingen tar med fart. Vid start slirar den och för över ett begränsat moment.
+    const speedEngage = clamp01((shaftRpmIn - engine.idleRpm * 0.7) / (engine.clutchLockRpm - engine.idleRpm * 0.7));
+    const slipEngage = 0.75 * Math.min(1, throttle * 4);
+    this.engage = this.gear === 0 ? 0 : speedEngage + (1 - speedEngage) * slipEngage;
+    if (this.shiftTimer > 0) this.engage *= 0.1;
+
+    this.limiterCut = this.rpm >= engine.limiterRpm;
+    const thr = this.limiterCut ? 0 : throttle;
+    const full = interp(engine.curveRpm, engine.curveNm, this.rpm) * this.powerFactor;
+    const drive = full * thr;
+    const engineBrake = -engine.engineBrakeNm * (this.rpm / engine.limiterRpm) * (1 - throttle);
+    const tEng = drive + engineBrake;
+
+    const torque = tEng * this.engage * this.ratio * gearbox.efficiency;
+    this.shaftTorque = torque;
+    return torque;
+  }
+}
+
+const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+export interface DiffParams {
+  /** 0 = öppet, 1 = låst. */
+  lock: number;
+  /** Förspänning (Nm). */
+  preload: number;
+}
+
+/** Fördelar axelmoment på två hjul. Returnerar [vänster, höger]. */
+export function splitDiff(torque: number, wLeft: number, wRight: number, d: DiffParams): [number, number] {
+  const half = torque / 2;
+  const dw = wLeft - wRight;
+  const ramp = Math.min(1, Math.abs(dw) / 3);
+  const bias = (d.lock * Math.abs(half) + d.preload) * ramp * Math.sign(dw);
+  // Snabbare hjul får mindre moment, långsammare mer.
+  return [half - bias, half + bias];
+}
