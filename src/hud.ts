@@ -80,15 +80,16 @@ export class Hud {
 
   private drawGauges(params: CarParams, rpm: number, kmh: number, gearNo: number) {
     const g = params.gauges;
-    const h = this.gauges.height;
-    const r = h * 0.47;
-    const tacho = { x: h / 2, y: h / 2, r, min: 0, max: g.rpmMax, a0: 150, a1: 390 };
-    const speedo = { x: h * 1.5, y: h / 2, r, min: g.speedMin, max: g.speedMax, a0: 125, a1: 415 };
-    const shift = shiftPattern(params.gearbox.ratios.length, h * 2.45, h / 2, h * 0.36);
+    // Mätarna står under varandra: varvräknare, hastighetsmätare, växelspak.
+    const w = this.gauges.width;
+    const r = w * 0.47;
+    const tacho = { x: w / 2, y: w / 2, r, min: 0, max: g.rpmMax, a0: 150, a1: 390 };
+    const speedo = { x: w / 2, y: w * 1.5, r, min: g.speedMin, max: g.speedMax, a0: 125, a1: 415 };
+    const shift = shiftPattern(params.gearbox.ratios.length, w / 2, w * 2.45, w * 0.36);
     if (this.faces?.params !== params) {
       const canvas = document.createElement('canvas');
-      canvas.width = this.gauges.width;
-      canvas.height = h;
+      canvas.width = w;
+      canvas.height = this.gauges.height;
       const c = canvas.getContext('2d')!;
       drawFace(c, tacho, 500, 1000, (v) => String(v / 1000), g.rpmRed, '1/min x1000');
       drawFace(c, speedo, 10, 20, String, null, 'km/h');
@@ -96,7 +97,7 @@ export class Hud {
       this.faces = { params, canvas };
     }
     const ctx = this.gctx;
-    ctx.clearRect(0, 0, this.gauges.width, h);
+    ctx.clearRect(0, 0, w, this.gauges.height);
     ctx.drawImage(this.faces.canvas, 0, 0);
     drawNeedle(ctx, tacho, rpm);
     drawNeedle(ctx, speedo, kmh);
