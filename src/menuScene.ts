@@ -16,6 +16,16 @@ const DT = 1 / 240;
 const RUN_IN = 150;
 const RUN_OUT = 220;
 
+// Lucides volume-2 och volume-x (lucide-static 1.81.0, ISC).
+const icon = (paths: string) =>
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const VOLUME_ON = icon(
+  '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
+);
+const VOLUME_OFF = icon(
+  '<path d="M11 4.702a.7.7 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.7.7 0 0 0 11 19.298z"/><path d="m16.5 14.5 5-5"/><path d="m16.5 9.5 5 5"/>',
+);
+
 export interface MenuScene {
   /** Visar scenen bakom menyerna och kör loopen. */
   play(): void;
@@ -76,7 +86,7 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   const mute = document.createElement('button');
   mute.id = 'menu-cars-mute';
   const showMute = () => {
-    mute.textContent = settings.menuCars ? '🔊' : '🔇';
+    mute.innerHTML = settings.menuCars ? VOLUME_ON : VOLUME_OFF;
     mute.title = mute.ariaLabel = settings.menuCars ? 'Stäng av bilarnas ljud' : 'Sätt på bilarnas ljud';
   };
   mute.onclick = () => {

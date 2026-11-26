@@ -32,7 +32,7 @@
       /* Huvudmenyn visar kurvan med bilarna (menuScene.ts) bakom sig. */
       body.menu-scene #menu.solid { background: none; }
       /* Ovanför #menu (z-index 2000). */
-      #menu-cars-mute { position: fixed; left: 12px; top: 12px; z-index: 2001; width: 44px; height: 44px; padding: 0; font-size: 22px; border: none; border-radius: 50%; background: #fffc; box-shadow: 0 2px 8px #0003; cursor: pointer; }
+      #menu-cars-mute { position: fixed; left: 12px; top: 12px; z-index: 2001; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; color: #1b1b1b; border: none; border-radius: 50%; background: #fffc; box-shadow: 0 2px 8px #0003; cursor: pointer; }
       #menu-cars-mute[hidden] { display: none; }
       /* Hudens rutor är tomma tills spelet startat; annars syns tomma vita rutor över menyscenen. */
       :is(#help, #damage):empty { display: none; }
