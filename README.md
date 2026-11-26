@@ -1,4 +1,4 @@
-# Rally – fysikprototyp (fas 0)
+# Rally
 
 Webbläsarspel i tidig utveckling. Målet är en rallysimulator med Colin McRae 2005-känsla:
 realistisk bilfysik, karriär med pengar och uppgraderingar, fiktiva bilar och märken.

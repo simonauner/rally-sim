@@ -150,7 +150,7 @@ async function main() {
       const best = loadRecord(STAGE_SKOGSBERG);
       choice = await showMenu<MainChoice>({
         title: 'RALLY',
-        subtitle: 'Kvarn 240 GL · fysikprototyp',
+        subtitle: 'Kvarn 240 GL',
         solid: true,
         items: [
           { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
