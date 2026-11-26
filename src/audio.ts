@@ -32,16 +32,16 @@ interface EngineSound {
   rasp: [number, number, number];
 }
 
-/** Stor lågvarvig radfyra med grov, dieselaktig ton. En radfyra domineras av ordning 2, 4, 6, 8; halvordningarna ger ojämnheten. */
+/** Stor lågvarvig radfyra: mjukt mullrande avgaston med tändfrekvensen och dess andra överton, svaga halvordningar. */
 const BIG_FOUR: EngineSound = {
-  harmonic: (k) => (k % 4 === 0 ? 1 : k % 2 === 0 ? 0.25 : 0.12) / Math.pow(k / 4, 0.9),
-  drive: [1, 1],
-  filter: [180, 14, 30],
-  gain: [0.16, 0.2, 0],
+  harmonic: (k) => (k === 4 ? 1 : k === 8 ? 0.35 : k % 4 === 0 ? 0.4 / k : k % 2 === 0 ? 0.02 : 0.006),
+  drive: [0.3, 0.5],
+  filter: [400, 20, 10],
+  gain: [0.08, 0.18, 0.3],
   intakeHz: [350, 600, 0],
-  intake: [0.03, 0.12, 0.1],
-  raspHz: 900,
-  rasp: [0.25, 0.5, 0.6],
+  intake: [0.01, 0.04, 0.1],
+  raspHz: 2200,
+  rasp: [0.25, 0.1, 0.6],
 };
 
 /** Liten tvärställd förgasarfyra: tunn, surrig ton där tändfrekvensen dominerar och volymen följer varvet. */
