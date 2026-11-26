@@ -7,6 +7,8 @@ export interface MenuItem<T> {
   detail?: string;
   /** Liten rad under texten, t.ex. vad en del gör. */
   note?: string;
+  /** Bild (URL) som fyller knappen, t.ex. en vy från mästerskapets etapper. */
+  image?: string;
   value: T;
   /** Sant om valet inte går, t.ex. för lite pengar: då låter det duh-duh i stället för klick. Läses vid klicket. */
   denied?: () => boolean;
@@ -108,7 +110,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       ${opts.body ? `<div class="body">${opts.body}</div>` : ''}
       ${opts.input ? `<input type="text" autocomplete="off" spellcheck="false" placeholder="${opts.input.placeholder}" />` : ''}
       <div class="items">${opts.items
-        .map((it, i) => `<button data-i="${i}"><span>${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
+        .map((it, i) => `<button data-i="${i}"${it.image ? ` class="pic" style="--img: url('${it.image}')"` : ''}><span>${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
         .join('')}</div>
     </div>
     ${opts.aside ? `<div class="panel aside">${opts.aside}</div>` : ''}

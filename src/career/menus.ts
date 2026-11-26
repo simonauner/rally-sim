@@ -4,6 +4,9 @@ import type { CareerState, HistoryEntry } from '../account/protocol';
 import { localChanged } from '../account/sync';
 import type { PickOptions, Showroom } from '../carSelect';
 import { applause, showMenu } from '../menu';
+import skogsrallytImg from '../assets/champ-skogsrallyt.webp';
+import myrkullarallytImg from '../assets/champ-myrkullarallyt.webp';
+import vinterrallytImg from '../assets/champ-vinterrallyt.webp';
 import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
 import { pickStage, stagePreviewHtml } from '../stageMenu';
@@ -170,6 +173,13 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
   }
 }
 
+/** En vy från en etapp i varje mästerskap, tagen i spelet. */
+const CHAMPIONSHIP_IMAGES: Record<string, string> = {
+  skogsrallyt: skogsrallytImg,
+  myrkullarallyt: myrkullarallytImg,
+  vinterrallyt: vinterrallytImg,
+};
+
 /** Mästerskapen att välja mellan. */
 async function championshipMenu(career: CareerState, pick: Pick, showCar: ShowCar): Promise<Launch | null> {
   for (;;) {
@@ -179,7 +189,7 @@ async function championshipMenu(career: CareerState, pick: Pick, showCar: ShowCa
       solid: true,
       body: '<div>Flera etapper i följd med samma bil mot ett fält av andra förare. Skador följer med mellan etapperna; du kan göra service mellan etapperna och laga bilen om du behöver.</div>',
       items: [
-        ...CHAMPIONSHIPS.map((ch) => ({ label: ch.name, note: ch.legs.join(', '), detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: ch.id })),
+        ...CHAMPIONSHIPS.map((ch) => ({ label: ch.name, image: CHAMPIONSHIP_IMAGES[ch.id], detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: ch.id })),
         { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
@@ -390,9 +400,9 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
   const c = await showMenu<'go' | 'back'>({
     title: def.name,
     solid: true,
-    body: `<div>Etapper: ${def.legs.join(', ')}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen: ${championshipMedals(def)
-      .map((m, i) => `${i + 1}:a ger ${formatMoney(m.prize)}`)
-      .join(', ')}. Omstart finns inte.</div>`,
+    body: `<img class="banner" src="${CHAMPIONSHIP_IMAGES[def.id]}" alt=""><div>Etapper: ${def.legs.join(', ')}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen. Omstart finns inte.</div><table class="specs">${championshipMedals(def)
+      .map((m, i) => `<tr><th>${trophy(i + 1)}${i + 1}:a</th><td>${formatMoney(m.prize)}</td></tr>`)
+      .join('')}</table>`,
     items: [
       { label: 'Välj bil och starta', value: 'go' },
       { label: '← Tillbaka', value: 'back' },
