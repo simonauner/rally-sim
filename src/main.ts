@@ -14,6 +14,7 @@ import { Car } from './physics/car';
 import { CARS } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
+import { pickTyre } from './tyreMenu';
 import type { CarDamage, ChampionshipProgress } from './career/championship';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
@@ -222,6 +223,8 @@ async function main() {
     }
     choice = 'controls';
   }
+  // Däcken väljs före varje etapp, även mellan mästerskapets etapper.
+  const tyre = choice === 'test' ? null : await pickTyre(stageDef);
   // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
   let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : stageDef.name);
   const stage = choice === 'test' ? null : new Stage(stageDef);
@@ -232,6 +235,7 @@ async function main() {
   if (barrierMeshes) scene.add(barrierMeshes.group);
 
   const car = new Car(model.make(), world);
+  if (tyre) car.params.tyre = tyre;
   const carMesh = new CarMesh(car, model);
   carMesh.addTo(scene);
   const dust = new Dust();

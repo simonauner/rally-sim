@@ -5,6 +5,8 @@ import { COLORS } from './terrain';
 
 const VERGE = 0x6f5a3e;
 const FOREST = 0x6f7d4c;
+/** Snötäckt skogsmark på vinteretapper. */
+const WINTER_FOREST = 0xdfe6ea;
 const STEP = 0.75;
 
 /**
@@ -38,6 +40,7 @@ export function buildStage(stage: Stage): THREE.Group {
   const road = new THREE.Color();
   const side = new THREE.Color();
   const rand = rng(11);
+  const forest = stage.def.winter ? WINTER_FOREST : FOREST;
   let count = 0;
   for (let j = 0; j <= nz; j++) {
     for (let i = 0; i <= nx; i++) {
@@ -47,7 +50,7 @@ export function buildStage(stage: Stage): THREE.Group {
       if (d > STAGE_CORRIDOR) continue;
       const hw = width / 2;
       road.setHex(COLORS[surface]!);
-      side.setHex(surface === 'snow' ? COLORS.snow! : VERGE).lerp(c.setHex(FOREST), smooth(hw + 2, hw + 6, d));
+      side.setHex(surface === 'snow' || stage.def.winter ? COLORS.snow! : VERGE).lerp(c.setHex(forest), smooth(hw + 2, hw + 6, d));
       c.copy(road).lerp(side, smooth(hw - 0.2, hw + 0.4, d)).multiplyScalar(0.93 + rand() * 0.14);
       positions.push(x, stage.heightAt(x, z), z);
       colors.push(c.r, c.g, c.b);
@@ -75,7 +78,7 @@ export function buildStage(stage: Stage): THREE.Group {
 
   const outer = new THREE.Mesh(
     new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2),
-    new THREE.MeshToonMaterial({ color: FOREST }),
+    new THREE.MeshToonMaterial({ color: forest }),
   );
   outer.position.set((minX + maxX) / 2, minY - 3, (minZ + maxZ) / 2);
   outer.receiveShadow = true;
@@ -90,7 +93,7 @@ export function buildStage(stage: Stage): THREE.Group {
   const mat = new THREE.Matrix4();
   const poleGeo = new THREE.CylinderGeometry(0.07, 0.07, 1.1, 6);
   const nPoles = Math.floor(stage.length / 25) * 2;
-  const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshToonMaterial({ color: 0xffffff }), nPoles);
+  const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshToonMaterial({ color: stage.def.winter ? 0xd8432f : 0xffffff }), nPoles);
   let pi = 0;
   for (let s = 0; s < stage.length && pi < nPoles - 1; s += 25) {
     const p = sideOf(s);

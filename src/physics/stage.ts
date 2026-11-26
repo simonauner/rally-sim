@@ -1,5 +1,5 @@
 import { CatmullRomCurve3, Vector3 } from 'three';
-import type { SurfaceId } from './surfaces';
+import { TYRE_GRIP, type SurfaceId, type TyreType } from './surfaces';
 import { rng } from './rng';
 import { World } from './world';
 
@@ -35,6 +35,8 @@ export interface StageDef {
   recordsSince: string;
   points: StagePoint[];
   spurs?: Spur[];
+  /** Vinteretapp: snö utanför vägen och i skogen, även där vägen är plogad till grus. */
+  winter?: boolean;
 }
 
 /** Resultat av att projicera en punkt på vägens mittlinje. */
@@ -298,8 +300,8 @@ export class Stage extends World {
   override surfaceAt(x: number, z: number): SurfaceId {
     const { d, width, surface } = this.roadAt(x, z);
     if (d <= width / 2 + 0.3) return surface;
-    // Vägkanten: lös jord, eller snö om vägen är snöig.
-    return surface === 'snow' ? 'snow' : 'mud';
+    // Vägkanten: lös jord, eller snö om vägen är snöig eller det är vinter.
+    return surface === 'snow' || this.def.winter ? 'snow' : 'mud';
   }
 }
 
@@ -409,6 +411,51 @@ export const STAGE_MYRKULLA: StageDef = {
 };
 
 /**
+ * Vinteretapp: fiktiv, ca 2 km på packad snö, med en plogad grusväg på mitten. Vinterdäck
+ * greppar nästan dubbelt så bra som grusdäck på snön.
+ */
+export const STAGE_FROSTBERGA: StageDef = {
+  name: 'Frostberga',
+  version: '1.0.0',
+  recordsSince: '1.0.0',
+  winter: true,
+  points: [
+    { x: 0, z: -20, y: 0, width: 6.5, surface: 'snow' },
+    { x: 0, z: 0, y: 0, width: 6.5, surface: 'snow' },
+    { x: 0, z: 90, y: 1, width: 6.5, surface: 'snow' },
+    { x: 40, z: 180, y: 2, width: 6.5, surface: 'snow' },
+    { x: 130, z: 230, y: 3, width: 6.5, surface: 'snow' },
+    { x: 240, z: 240, y: 5, width: 6.5, surface: 'snow' },
+    { x: 330, z: 300, y: 7, width: 6.5, surface: 'snow' },
+    { x: 360, z: 400, y: 9, width: 6.5, surface: 'snow' },
+    // Krön
+    { x: 330, z: 500, y: 10, width: 6.5, surface: 'snow' },
+    { x: 250, z: 570, y: 9, width: 6.5, surface: 'snow' },
+    { x: 220, z: 680, y: 7, width: 6.5, surface: 'snow' },
+    // Korsning: snövägen fortsätter, etappen svänger vänster ut på den plogade grusvägen
+    { x: 230, z: 760, y: 6, width: 6.5, surface: 'snow' },
+    { x: 250, z: 780, y: 6, width: 7, surface: 'gravel' },
+    { x: 350, z: 800, y: 5, width: 7, surface: 'gravel' },
+    { x: 470, z: 790, y: 5, width: 7, surface: 'gravel' },
+    // Korsning: grusvägen fortsätter, etappen svänger höger in på snön igen
+    { x: 560, z: 810, y: 5, width: 6, surface: 'snow' },
+    { x: 590, z: 840, y: 6, width: 6, surface: 'snow' },
+    { x: 600, z: 950, y: 9, width: 6, surface: 'snow' },
+    { x: 560, z: 1060, y: 11, width: 6, surface: 'snow' },
+    { x: 600, z: 1170, y: 10, width: 6.5, surface: 'snow' },
+    { x: 680, z: 1240, y: 8, width: 6.5, surface: 'snow' },
+    { x: 700, z: 1340, y: 6, width: 6.5, surface: 'snow' },
+    { x: 700, z: 1380, y: 6, width: 6.5, surface: 'snow' },
+    // Utrullning efter mål
+    { x: 700, z: 1440, y: 6, width: 6.5, surface: 'snow' },
+  ],
+  spurs: [
+    { points: [{ x: 230, z: 760 }, { x: 222, z: 850 }], width: 6.5, surface: 'snow' },
+    { points: [{ x: 560, z: 810 }, { x: 650, z: 800 }], width: 7, surface: 'gravel' },
+  ],
+};
+
+/**
  * Samma väg körd åt andra hållet. Underlaget gäller från en punkt fram till nästa, så varje
  * vänd punkt får underlaget från segmentet som nu ligger framför den. Den gamla utrullningen
  * blir startraka och den gamla startraka blir utrullning efter mål.
@@ -425,6 +472,29 @@ export function reversed(def: StageDef, name: string): StageDef {
 
 export const STAGE_SKOGSBERG_BACK = reversed(STAGE_SKOGSBERG, 'Skogsberg baklänges');
 export const STAGE_MYRKULLA_BACK = reversed(STAGE_MYRKULLA, 'Myrkulla baklänges');
+export const STAGE_FROSTBERGA_BACK = reversed(STAGE_FROSTBERGA, 'Frostberga baklänges');
 
 /** Alla etapper, i den ordning menyerna visar dem. */
-export const STAGES: StageDef[] = [STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK, STAGE_MYRKULLA, STAGE_MYRKULLA_BACK];
+export const STAGES: StageDef[] = [STAGE_SKOGSBERG, STAGE_SKOGSBERG_BACK, STAGE_MYRKULLA, STAGE_MYRKULLA_BACK, STAGE_FROSTBERGA, STAGE_FROSTBERGA_BACK];
+
+/** Andel av etappen per underlag, mätt längs raka linjer mellan stödpunkterna. */
+export function surfaceShares(def: StageDef): Partial<Record<SurfaceId, number>> {
+  const len: Partial<Record<SurfaceId, number>> = {};
+  let total = 0;
+  for (let i = 0; i + 1 < def.points.length; i++) {
+    const a = def.points[i]!;
+    const b = def.points[i + 1]!;
+    const d = Math.hypot(b.x - a.x, b.z - a.z);
+    len[a.surface] = (len[a.surface] ?? 0) + d;
+    total += d;
+  }
+  for (const k of Object.keys(len) as SurfaceId[]) len[k]! /= total;
+  return len;
+}
+
+/** Däcket med bäst grepp i snitt över etappens underlag. */
+export function bestTyre(def: StageDef): TyreType {
+  const shares = Object.entries(surfaceShares(def)) as [SurfaceId, number][];
+  const grip = (t: TyreType) => shares.reduce((sum, [surf, share]) => sum + share * TYRE_GRIP[t][surf], 0);
+  return (Object.keys(TYRE_GRIP) as TyreType[]).reduce((best, t) => (grip(t) > grip(best) ? t : best));
+}

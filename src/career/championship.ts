@@ -17,6 +17,7 @@ export interface ChampionshipDef {
 export const CHAMPIONSHIPS: ChampionshipDef[] = [
   { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges'] },
   { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Myrkulla', 'Myrkulla baklänges'] },
+  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges'] },
 ];
 
 /** Det som följer med bilen mellan etapperna. */

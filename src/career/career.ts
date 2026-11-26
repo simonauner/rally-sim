@@ -259,6 +259,9 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   'Skogsberg baklänges': [93, 103, 118],
   Myrkulla: [128, 142, 163],
   'Myrkulla baklänges': [128, 142, 163],
+  // Med vinterdäck tar testföraren cirka 122 s åt båda hållen.
+  Frostberga: [123, 136, 156],
+  'Frostberga baklänges': [123, 136, 156],
 };
 
 /** Prispengarna för ett enstaka åk. */

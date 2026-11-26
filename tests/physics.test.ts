@@ -2,8 +2,8 @@ import { Quaternion, Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
 import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
-import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
-import type { TyreType } from '../src/physics/surfaces';
+import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
+import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
 import { generateNotes, NoteCaller, type PaceNote } from '../src/physics/pacenotes';
@@ -387,7 +387,10 @@ for (const def of STAGES) {
     check(`${def.name}: underlaget speglat`, mirrored, back.map(([i, , to]) => `${to}@${i}`).join(' '));
   }
 
-  const car = makeCar(stage, 'gravel');
+  const tyre = bestTyre(def);
+  const car = makeCar(stage, tyre);
+  // Lägre fart där greppet är sämre, som en förare som anpassar sig efter underlaget.
+  const gripK = (surf: SurfaceId) => Math.sqrt(TYRE_GRIP[tyre][surf] / TYRE_GRIP.gravel.gravel);
   const p0 = stage.poseAt(START_S - 8);
   car.reset(p0.x, p0.z, p0.heading, 0);
   const finish = stage.length - FINISH_MARGIN;
@@ -403,7 +406,7 @@ for (const def of STAGES) {
     const err = Math.atan2(look.x - c.pos.x, look.z - c.pos.z) - Math.atan2(f.x, f.z);
     const a = stage.poseAt(hit.s + 10).heading;
     const b = stage.poseAt(hit.s + 40).heading;
-    const target = Math.max(9, 24 - Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) * 18);
+    const target = Math.max(9, 24 - Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) * 18) * gripK(hit.surface);
     return {
       ...idle,
       steer: Math.max(-1, Math.min(1, Math.atan2(Math.sin(err), Math.cos(err)) * 4)),
@@ -411,7 +414,14 @@ for (const def of STAGES) {
       brake: c.forwardSpeed > target + 2 ? 0.6 : 0,
     };
   });
-  check(`${def.name}: förare når målet på vägen`, time > 60 && time < 200 && maxOver < 1, `${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
+  check(`${def.name}: förare når målet på vägen`, time > 60 && time < 200 && maxOver < 1, `${TYRE_NAMES[tyre]}, ${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
+}
+
+// 14. Däckrådet: grusdäck på grusetapperna, vinterdäck på snön.
+{
+  const advice = STAGES.map((d) => `${d.name}: ${bestTyre(d)}`);
+  const ok = STAGES.every((d) => bestTyre(d) === (d.winter ? 'snow' : 'gravel'));
+  check('däckråd per etapp', ok, advice.join(', '));
 }
 
 if (failures) {
