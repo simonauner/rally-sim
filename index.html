@@ -43,7 +43,8 @@
       #menu .result { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
       #menu.side { justify-content: flex-end; align-items: flex-start; padding: 12vh max(16px, 4vw) 0; background: none; }
       /* Fast bredd så panelen inte hoppar när innehållet byts; höjden animeras i carSelect.ts. */
-      #menu.side .panel { width: 460px; box-sizing: border-box; overflow: hidden; }
+      /* Scrollar när innehållet inte får plats under 12vh-marginalen. */
+      #menu.side .panel { width: 460px; box-sizing: border-box; max-height: calc(88vh - 16px); overflow: hidden auto; }
       /* Två lika höga paneler bredvid varandra, under varandra på smala skärmar. */
       #menu.pair { flex-wrap: wrap; align-content: safe center; padding: 16px 0; box-sizing: border-box; align-items: stretch; gap: 16px; overflow-y: auto; }
       #menu.pair .panel { width: 460px; max-height: none; }
