@@ -1,18 +1,8 @@
 /**
- * Bästa tid per etapp, sparad i webbläsaren tills konto och sparning finns.
- * shortcut: bara lokalt i den här webbläsaren; flytta till kontot när det byggs.
+ * Bästa tid per etapp i webbläsaren. Kontot (account/sync.ts) synkar dem mellan enheter.
  */
-import type { GhostData } from './physics/ghost';
+import { isStageRecord, type StageRecord } from './account/protocol';
 import type { StageDef } from './physics/stage';
-
-export interface StageRecord {
-  time: number;
-  splits: number[];
-  /** Saknas i rekord sparade innan ghosten fanns. */
-  ghost?: GhostData;
-  /** Banversionen rekordet sattes på. Saknas i rekord från innan banor versionerades. */
-  version?: string;
-}
 
 /** Gäller ett rekord satt på `version` för banan i dess nuvarande version? */
 export function recordValid(version: string | undefined, stage: StageDef): boolean {
@@ -26,12 +16,9 @@ export function recordValid(version: string | undefined, stage: StageDef): boole
 
 export function loadRecord(stage: StageDef): StageRecord | null {
   try {
-    const r = JSON.parse(localStorage.getItem(`rally.best.${stage.name}`) ?? 'null') as StageRecord | null;
-    if (!r || typeof r.time !== 'number' || !Array.isArray(r.splits)) return null;
+    const r: unknown = JSON.parse(localStorage.getItem(`rally.best.${stage.name}`) ?? 'null');
     // Rekord från en äldre banversion skrivs över av nästa åk i mål.
-    if (!recordValid(r.version, stage)) return null;
-    if (r.ghost && !(typeof r.ghost.hz === 'number' && Array.isArray(r.ghost.frames))) delete r.ghost;
-    return r;
+    return isStageRecord(r) && recordValid(r.version, stage) ? r : null;
   } catch {
     return null;
   }

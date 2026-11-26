@@ -14,7 +14,8 @@ import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG } from './physics/stage'
 import { GhostRecorder, sampleGhost, sectionLosses, timeAlongStage } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
-import { loadRecord, saveRecord, type StageRecord } from './records';
+import type { StageRecord } from './account/protocol';
+import { loadRecord, saveRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
 import { DebugVectors } from './render/debug';

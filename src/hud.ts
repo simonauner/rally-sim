@@ -3,7 +3,7 @@ import type { CarParams } from './physics/params';
 import { SURFACES, TYRE_NAMES } from './physics/surfaces';
 import type { PaceNote } from './physics/pacenotes';
 import type { StageTimer } from './physics/timing';
-import type { StageRecord } from './records';
+import type { StageRecord } from './account/protocol';
 
 const WHEEL_NAMES = ['VF', 'HF', 'VB', 'HB'];
 
