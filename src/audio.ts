@@ -15,6 +15,7 @@ const SURFACE_SOUND: Record<SurfaceId, { roll: number; slip: number; q: number; 
 export class Sound {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
+  private panner!: StereoPannerNode;
   private engOsc!: OscillatorNode;
   private raspGain!: GainNode;
   private raspDepth!: GainNode;
@@ -28,23 +29,45 @@ export class Sound {
   private slipFilter!: BiquadFilterNode;
   private noise!: AudioBuffer;
   muted = false;
+  /** Avståndsdämpning, 0–1, t.ex. för bilarna bakom huvudmenyn. */
+  private volume = 1;
+
+  // Webbläsare kräver en användargest innan ljud får starta. Capture: menyerna stoppar tangenttrycken.
+  private start = () => {
+    this.stopListening();
+    this.init();
+  };
 
   constructor() {
-    // Webbläsare kräver en användargest innan ljud får starta.
-    const start = () => {
-      this.init();
-      removeEventListener('keydown', start);
-      removeEventListener('pointerdown', start);
-    };
-    addEventListener('keydown', start);
-    addEventListener('pointerdown', start);
+    addEventListener('keydown', this.start, true);
+    addEventListener('pointerdown', this.start);
+  }
+
+  private stopListening() {
+    removeEventListener('keydown', this.start, true);
+    removeEventListener('pointerdown', this.start);
+  }
+
+  /** Stänger av ljudet för gott. */
+  close() {
+    this.stopListening();
+    void this.ctx?.close();
+    this.ctx = null;
+  }
+
+  /** pan: -1 = vänster, 1 = höger. */
+  setVolume(v: number, pan = 0) {
+    this.volume = v;
+    if (this.ctx) this.panner.pan.setTargetAtTime(pan, this.ctx.currentTime, 0.05);
+    if (this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.5 * v, this.ctx.currentTime, 0.05);
   }
 
   private init() {
     const ctx = (this.ctx = new AudioContext());
     this.master = ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.5;
-    this.master.connect(ctx.destination);
+    this.master.gain.value = this.muted ? 0 : 0.5 * this.volume;
+    this.panner = ctx.createStereoPanner();
+    this.master.connect(this.panner).connect(ctx.destination);
 
     // Vitt brus i loop, delat av motorrasp, rull-, slir- och krockljud.
     this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -117,7 +140,7 @@ export class Sound {
 
   toggleMute() {
     this.muted = !this.muted;
-    if (this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.5, this.ctx.currentTime, 0.05);
+    this.setVolume(this.volume);
   }
 
   /** Anropas en gång per bildruta. */

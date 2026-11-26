@@ -2,9 +2,9 @@ import { Quaternion, Vector3 } from 'three';
 import { Car, LAMP_BROKEN, type Input } from '../src/physics/car';
 import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
-import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
+import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
-import { brakeAlongRoad } from '../src/physics/autopilot';
+import { brakeAlongRoad, driveAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
 import { generateNotes, NoteCaller, type PaceNote } from '../src/physics/pacenotes';
 import { StageTimer } from '../src/physics/timing';
@@ -460,6 +460,25 @@ for (const def of STAGES) {
   check('strålkastare går sönder', ok, `knuff ${light.map((l) => l.toFixed(2)).join('/')}, smäll ${car.lamps.map((l) => l.toFixed(2)).join('/')}`);
   car.reset(0, 0, 0, 0);
   check('strålkastare lagas vid omstart', car.lamps.every((l) => l === 0), car.lamps.join('/'));
+}
+
+// 17. Huvudmenyns autopilot: alla bilar kör genom Myrkullas gruskurva (s ≈ 1750) utan att lämna vägen.
+{
+  const stage = new Stage(STAGE_MYRKULLA);
+  const runs = CARS.map((m) => {
+    const car = new Car(m.make(), stage);
+    const p = stage.poseAt(1600);
+    car.reset(p.x, p.z, p.heading, 20);
+    let off = 0;
+    let t = 0;
+    for (; t < 40 && stage.project(car.pos.x, car.pos.z).s < 1970; t += 1 / 240) {
+      car.step(1 / 240, driveAlongRoad(stage, car));
+      const h = stage.project(car.pos.x, car.pos.z);
+      off = Math.max(off, h.d - h.width / 2);
+    }
+    return { t, off };
+  });
+  check('menyns autopilot håller vägen', runs.every((r) => r.t < 40 && r.off < 1), runs.map((r) => `${r.t.toFixed(1)} s, ${r.off.toFixed(1)} m utanför`).join(' · '));
 }
 
 if (failures) {

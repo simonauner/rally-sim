@@ -29,6 +29,10 @@
       #notes .icon { display: inline-block; min-width: 1.2em; }
       #menu { display: none; position: fixed; inset: 0; z-index: 2000; align-items: center; justify-content: center; background: #1b1b2499; }
       #menu.solid { background: linear-gradient(160deg, #cfe3ee, #a9c3a0); }
+      /* Huvudmenyn visar kurvan med bilarna (menuScene.ts) bakom sig. */
+      body.menu-scene #menu.solid { background: none; }
+      /* Hudens rutor är tomma tills spelet startat; annars syns tomma vita rutor över menyscenen. */
+      :is(#help, #damage):empty { display: none; }
       #menu .panel { max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; min-width: 320px; max-width: min(560px, calc(100vw - 32px)); background: #fffe; border-radius: 12px; padding: 24px 28px; box-shadow: 0 8px 32px #0003; color: #1b1b1b; }
       #menu h1 { margin: 0; font-size: 34px; letter-spacing: 0.08em; }
       #menu .subtitle { margin-top: 2px; opacity: 0.7; font-size: 13px; }

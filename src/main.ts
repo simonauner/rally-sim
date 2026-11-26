@@ -7,6 +7,7 @@ import { CoDriver } from './codriver';
 import { settings, showSettings } from './settings';
 import { Controls } from './input';
 import { showLoading, showMenu } from './menu';
+import { menuScene, type MenuScene } from './menuScene';
 import { account, localChanged, restore, startSync, syncAvailable, syncStatus } from './account/sync';
 import { recoveryKey, secretFromKey } from './account/recoveryKey';
 import { brakeAlongRoad } from './physics/autopilot';
@@ -180,12 +181,18 @@ async function main() {
     ({ model, stage: stageDef, championship: champ } = resumed);
     choice = 'stage';
   }
+  /** Kurvan med bilarna bakom huvudmenyn; byggs första gången menyn visas. */
+  let backdrop: MenuScene | null = null;
   while (!resumed) {
+    if (choice === 'controls') {
+      backdrop ??= menuScene(renderer);
+      backdrop.play();
+    }
     while (choice === 'settings' || choice === 'controls' || choice === 'account') {
       choice = await showMenu<MainChoice>({
         title: 'RALLY',
         subtitle: 'Kvarn 240 GL',
-        solid: true,
+        side: true,
         items: [
           { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
           { label: 'Fri körning', detail: `${STAGES.length} etapper, alla bilar`, value: 'stage' },
@@ -200,6 +207,7 @@ async function main() {
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
     }
+    backdrop?.stop();
     if (choice === 'career') {
       const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts), gained);
       gained = 0;
@@ -228,6 +236,7 @@ async function main() {
     }
     choice = 'controls';
   }
+  backdrop?.dispose();
   // Däcken väljs före varje etapp, även mellan mästerskapets etapper.
   const tyre = choice === 'test' ? null : await pickTyre(stageDef);
   // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
