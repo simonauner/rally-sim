@@ -12,12 +12,64 @@ const SURFACE_SOUND: Record<SurfaceId, { roll: number; slip: number; q: number; 
   snowbank: { roll: 700, slip: 1200, q: 0.6, level: 0.9 },
 };
 
+/** Motorljudets klang. Övertonen k ligger på k × halva vevaxelvarvet, alltså motorordning k/2. */
+interface EngineSound {
+  /** Amplitud för överton k. */
+  harmonic: (k: number) => number;
+  /** Hur hårt tonen mättas i distorsionen, utan respektive med full gas. */
+  drive: [number, number];
+  /** Avgasfiltrets brytfrekvens: bas + halva varvtalet × (utan gas, extra med gas). */
+  filter: [number, number, number];
+  /** Volym: grund, extra med full gas och extra vid begränsaren (stiger med varvet i kvadrat). */
+  gain: [number, number, number];
+  /** Insugets resonansfrekvens: Hz + Hz vid begränsaren + gånger halva varvtalet. */
+  intakeHz: [number, number, number];
+  /** Insugets volym med full gas: grund, per varv och per ansträngning. */
+  intake: [number, number, number];
+  /** Raspets mittfrekvens i Hz. */
+  raspHz: number;
+  /** Raspets styrka: grund, per gas och per ansträngning över 4 500 rpm. */
+  rasp: [number, number, number];
+}
+
+/** Stor lågvarvig radfyra med grov, dieselaktig ton. En radfyra domineras av ordning 2, 4, 6, 8; halvordningarna ger ojämnheten. */
+const BIG_FOUR: EngineSound = {
+  harmonic: (k) => (k % 4 === 0 ? 1 : k % 2 === 0 ? 0.25 : 0.12) / Math.pow(k / 4, 0.9),
+  drive: [1, 1],
+  filter: [180, 14, 30],
+  gain: [0.16, 0.2, 0],
+  intakeHz: [350, 600, 0],
+  intake: [0.03, 0.12, 0.1],
+  raspHz: 900,
+  rasp: [0.25, 0.5, 0.6],
+};
+
+/** Liten tvärställd förgasarfyra: tunn, surrig ton där tändfrekvensen dominerar och volymen följer varvet. */
+const SMALL_FOUR: EngineSound = {
+  harmonic: (k) => (k === 4 ? 1 : k % 4 === 0 ? 0.12 : k % 2 === 0 ? 0.08 : 0.03),
+  drive: [0.35, 0.6],
+  filter: [3000, 20, 20],
+  gain: [0.07, 0.08, 0.8],
+  // Insuget förstärker tändfrekvensens andra överton när motorn drar.
+  intakeHz: [0, 0, 8],
+  intake: [0.5, 1, 0],
+  raspHz: 1400,
+  rasp: [0.3, 0.4, 0.4],
+};
+
+const ENGINE_SOUND: Record<string, EngineSound> = {
+  'Ljung 1600 S': SMALL_FOUR,
+};
+
 /** Syntetiserat ljud med Web Audio: motor, däck/underlag och krockar. */
 export class Sound {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
   private panner!: StereoPannerNode;
   private engOsc!: OscillatorNode;
+  private engDrive!: GainNode;
+  private raspBand!: BiquadFilterNode;
+  private engSound: EngineSound | null = null;
   private raspGain!: GainNode;
   private raspDepth!: GainNode;
   private intakeFilter!: BiquadFilterNode;
@@ -79,24 +131,18 @@ export class Sound {
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
 
-    // Motor: stor lågvarvig radfyra med grov, dieselaktig ton.
-    // Grundtonen är halva vevaxelvarvet, så övertonen k motsvarar motorordning k/2.
-    // En radfyra domineras av ordning 2, 4, 6, 8; halvordningarna ger ojämnheten.
-    const real = new Float32Array(41);
-    const imag = new Float32Array(41);
-    for (let k = 1; k <= 40; k++) imag[k] = (k % 4 === 0 ? 1 : k % 2 === 0 ? 0.25 : 0.12) / Math.pow(k / 4, 0.9);
+    // Motor: klangen sätts per bil i update().
     this.engOsc = ctx.createOscillator();
-    this.engOsc.setPeriodicWave(ctx.createPeriodicWave(real, imag));
     const shaper = ctx.createWaveShaper();
     const curve = new Float32Array(256);
     for (let i = 0; i < 256; i++) curve[i] = Math.tanh(((i / 255) * 2 - 1) * 3);
     shaper.curve = curve;
-    this.engOsc.connect(shaper);
+    this.engDrive = ctx.createGain();
+    this.engOsc.connect(this.engDrive).connect(shaper);
 
     // Rasp: brus som pulsar i takt med tändningarna.
-    const raspBand = ctx.createBiquadFilter();
+    const raspBand = (this.raspBand = ctx.createBiquadFilter());
     raspBand.type = 'bandpass';
-    raspBand.frequency.value = 900;
     raspBand.Q.value = 0.7;
     this.raspGain = ctx.createGain();
     this.raspGain.gain.value = 0;
@@ -156,6 +202,16 @@ export class Sound {
     const tau = 0.03;
     const dtn = car.drivetrain;
 
+    const es = ENGINE_SOUND[car.params.name] ?? BIG_FOUR;
+    if (es !== this.engSound) {
+      this.engSound = es;
+      const real = new Float32Array(41);
+      const imag = new Float32Array(41);
+      for (let k = 1; k <= 40; k++) imag[k] = es.harmonic(k);
+      this.engOsc.setPeriodicWave(ctx.createPeriodicWave(real, imag));
+      this.raspBand.frequency.value = es.raspHz;
+    }
+
     const half = dtn.rpm / 120;
     const thr = dtn.limiterCut ? 0 : throttle;
     // 0 vid tomgång, 1 vid begränsaren. Motorn trivs inte över ~4500 rpm, så den låter ansträngd där.
@@ -164,13 +220,14 @@ export class Sound {
     const strain = Math.max(0, (dtn.rpm - 4500) / (limiterRpm - 4500));
     // Liten slumpvis varvtalsvariation så tonen inte blir helt jämn.
     this.engOsc.frequency.setTargetAtTime(half * (1 + (Math.random() - 0.5) * 0.012), t, tau);
-    this.engFilter.frequency.setTargetAtTime(180 + half * (14 + 30 * thr), t, tau);
-    this.engGain.gain.setTargetAtTime(0.16 + 0.2 * thr, t, tau);
-    const rasp = 0.25 + 0.5 * thr + 0.6 * strain;
+    this.engDrive.gain.setTargetAtTime(es.drive[0] + (es.drive[1] - es.drive[0]) * thr, t, tau);
+    this.engFilter.frequency.setTargetAtTime(es.filter[0] + half * (es.filter[1] + es.filter[2] * thr), t, tau);
+    this.engGain.gain.setTargetAtTime(es.gain[0] + es.gain[1] * thr + es.gain[2] * rev * rev, t, tau);
+    const rasp = es.rasp[0] + es.rasp[1] * thr + es.rasp[2] * strain;
     this.raspGain.gain.setTargetAtTime(rasp, t, tau);
     this.raspDepth.gain.setTargetAtTime(rasp, t, tau);
-    this.intakeFilter.frequency.setTargetAtTime(350 + 600 * rev, t, tau);
-    this.intakeGain.gain.setTargetAtTime(thr * (0.03 + 0.12 * rev + 0.1 * strain), t, tau);
+    this.intakeFilter.frequency.setTargetAtTime(es.intakeHz[0] + es.intakeHz[1] * rev + es.intakeHz[2] * half, t, tau);
+    this.intakeGain.gain.setTargetAtTime(thr * (es.intake[0] + es.intake[1] * rev + es.intake[2] * strain), t, tau);
 
     // Däck: rullbrus efter fart, slirljud efter hur mycket hjulen glider.
     let slip = 0;
