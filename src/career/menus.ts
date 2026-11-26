@@ -61,6 +61,8 @@ function ownedModels(career: CareerState): CarModel[] {
 }
 
 type Pick = (models: CarModel[], opts?: PickOptions) => Promise<CarModel | null>;
+/** Öppnar vridbordet med bilen och dess skador. */
+export type ShowCar = (model: CarModel, damage: CarDamage) => Showroom;
 
 const buyMessage = (result: BuyResult, price: number | undefined, done: string) =>
   result === 'poor' ? `<div class="behind">Du har inte råd: det kostar ${formatMoney(price ?? 0)}.</div>` : typeof result === 'object' ? done : '';
@@ -101,7 +103,7 @@ export async function confirmAbort(): Promise<boolean> {
  * köras, eller null om spelaren backar. Med `gained` (t.ex. prispengar från ett avslutat mästerskap)
  * räknar kassan upp från det gamla beloppet första gången menyn visas.
  */
-export async function careerMenu(pick: Pick, gained = 0): Promise<Launch | null> {
+export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Promise<Launch | null> {
   let career = loadCareer().career;
   const bonus = claimDailyBonus(career, localDay());
   let message = '';
@@ -155,7 +157,7 @@ export async function careerMenu(pick: Pick, gained = 0): Promise<Launch | null>
     }
     const def = c.startsWith('champ:') ? championshipById(c.slice('champ:'.length)) : null;
     if (c === 'ongoing' || def) {
-      const launch = def ? await startChampionship(def, career, pick) : await ongoingMenu();
+      const launch = def ? await startChampionship(def, career, pick, showCar) : await ongoingMenu();
       if (launch) return launch;
     }
     if (c === 'garage') await garage(pick);
@@ -322,7 +324,7 @@ async function ongoingMenu(): Promise<Launch | null> {
   return null;
 }
 
-async function startChampionship(def: ChampionshipDef, career: CareerState, pick: Pick): Promise<Launch | null> {
+async function startChampionship(def: ChampionshipDef, career: CareerState, pick: Pick, showCar: ShowCar): Promise<Launch | null> {
   const c = await showMenu<'go' | 'back'>({
     title: def.name,
     solid: true,
@@ -339,6 +341,9 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
   const model = await pick(ownedModels(career));
   const stage = STAGES.find((s) => s.name === def.legs[0]);
   if (!model || !stage) return null;
+  // Samma förhandsvisning och service som mellan etapperna, med hel bil.
+  const whole: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1, lamps: [0, 0] };
+  if (!(await beforeLeg(def, 0, whole, (d) => showCar(model, d)))) return null;
   // Spelarens bästa takt på mästerskapets etapper, från egna rekord, så fältet möter den.
   const paces = def.legs.flatMap((leg) => {
     const s = STAGES.find((x) => x.name === leg);
@@ -443,7 +448,18 @@ export async function championshipLegDone(
     items: [{ label: 'Fortsätt', value: 0 }],
   });
 
-  const nextName = def.legs[times.length]!;
+  const left = await beforeLeg(def, times.length, damage, showCar);
+  if (!left) return { prize: 0 };
+  saveChampionship(afterLeg(p, time, left, repairCost(left) === 0));
+  return 'next';
+}
+
+/**
+ * Före etapp `leg` (0-baserad): förhandsvisning av etappen och service där spelaren lagar för egna pengar,
+ * kör vidare skadad eller avbryter. Returnerar skadan bilen startar med, eller null om mästerskapet avbröts.
+ */
+async function beforeLeg(def: ChampionshipDef, leg: number, damage: CarDamage, showCar: (d: CarDamage) => Showroom): Promise<CarDamage | null> {
+  const nextName = def.legs[leg]!;
   const nextStage = STAGES.find((s) => s.name === nextName);
   // Vridbordet öppnas vid första besöket på servicen och står kvar bakom förhandsvisningen.
   let room: Showroom | null = null;
@@ -454,7 +470,7 @@ export async function championshipLegDone(
     if (!atService) {
       const c = await showMenu<'service' | 'go' | 'abort'>({
         title: `Nästa: ${nextName}`,
-        subtitle: `Etapp ${times.length + 1} av ${def.legs.length}`,
+        subtitle: `Etapp ${leg + 1} av ${def.legs.length}`,
         side: true,
         body: nextStage ? stagePreviewHtml(nextStage) : '',
         items: [
@@ -468,7 +484,7 @@ export async function championshipLegDone(
       if (c === 'abort') {
         if (await confirmAbort()) {
           room?.close();
-          return { prize: 0 };
+          return null;
         }
         continue;
       }
@@ -513,6 +529,5 @@ export async function championshipLegDone(
     break;
   }
   room?.close();
-  saveChampionship(afterLeg(p, time, damage, repairCost(damage) === 0));
-  return 'next';
+  return damage;
 }

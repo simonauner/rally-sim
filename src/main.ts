@@ -13,7 +13,7 @@ import { recoveryKey, secretFromKey } from './account/recoveryKey';
 import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
-import { CARS } from './physics/params';
+import { CARS, type CarModel } from './physics/params';
 import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
 import { pickTyre } from './tyreMenu';
@@ -181,6 +181,12 @@ async function main() {
     ({ model, stage: stageDef, championship: champ } = resumed);
     choice = 'stage';
   }
+  /** Bilen på vridbordet, t.ex. på mästerskapets service. */
+  const showCar = (m: CarModel, d: CarDamage) => {
+    const room = showroom(renderer);
+    room.show(m, d);
+    return room;
+  };
   /** Kurvan med bilarna bakom huvudmenyn; byggs första gången menyn visas. */
   let backdrop: MenuScene | null = null;
   while (!resumed) {
@@ -210,7 +216,7 @@ async function main() {
     }
     backdrop?.stop();
     if (choice === 'career') {
-      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts), gained);
+      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts), showCar, gained);
       gained = 0;
       if (launch) {
         ({ model, stage: stageDef, championship: champ } = launch);
@@ -482,11 +488,7 @@ async function main() {
   const showFinish = async () => {
     if (!stage || !timer) return;
     if (champ) {
-      const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), readDamage(), (d) => {
-        const room = showroom(renderer);
-        room.show(model, d);
-        return room;
-      });
+      const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), readDamage(), (d) => showCar(model, d));
       return next === 'next' ? goToNextLeg() : goToCareer(next.prize);
     }
     const c = await showMenu<'again' | 'menu'>({
