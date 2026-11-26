@@ -45,6 +45,8 @@ export interface CarParams {
   tyre: TyreType;
   /** Global grepp-multiplikator för trimning. */
   gripScale: number;
+  /** Skalorna på varvräknaren och hastighetsmätaren, som i bilens egen instrumentpanel. */
+  gauges: { rpmMax: number; rpmRed: number; speedMin: number; speedMax: number };
 }
 
 function boxInertia(m: number, l: number, w: number, h: number, k: number): [number, number, number] {
@@ -114,5 +116,7 @@ export function kvarn240(): CarParams {
     },
     tyre: 'gravel',
     gripScale: 1,
+    // Varvräknare 0–7 med orange fält från 6 250, hastighetsmätare 20–200 km/h.
+    gauges: { rpmMax: 7000, rpmRed: 6250, speedMin: 20, speedMax: 200 },
   };
 }
