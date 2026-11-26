@@ -9,6 +9,7 @@ import { CarMesh } from './render/carMesh';
 import { Dust } from './render/dust';
 import { buildStage } from './render/stage';
 import { applyLight, LIGHTS } from './render/lighting';
+import { settings } from './settings';
 
 const DT = 1 / 240;
 /** Bilen startar så här långt före kurvan och byts ut så här långt efter den (m). */
@@ -71,6 +72,18 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   let lapTime = 0;
   let throttle = 0;
   let sound: Sound | null = null;
+  // Högtalaren stänger av bara bilarna; döljs när allt ljud redan är av.
+  const mute = document.createElement('button');
+  mute.id = 'menu-cars-mute';
+  const showMute = () => {
+    mute.textContent = settings.menuCars ? '🔊' : '🔇';
+    mute.title = mute.ariaLabel = settings.menuCars ? 'Stäng av bilarnas ljud' : 'Sätt på bilarnas ljud';
+  };
+  mute.onclick = () => {
+    settings.menuCars = !settings.menuCars;
+    showMute();
+  };
+  showMute();
   const nextCar = () => {
     const model = CARS[lap++ % CARS.length]!;
     car = new Car(model.make(), stage);
@@ -110,7 +123,8 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
     // Motorljudet tonar in när bilen närmar sig kameran och följer den från sida till sida.
     toCar.subVectors(car.pos, camera.position);
     const dist = toCar.length();
-    sound?.setVolume(Math.min(1, (30 / dist) ** 2), toCar.dot(right) / dist);
+    sound?.setVolume(settings.menuCars ? Math.min(1, (30 / dist) ** 2) : 0, toCar.dot(right) / dist);
+    mute.hidden = !settings.sound;
     sound?.update(car, throttle);
     pipeline.render();
   };
@@ -122,12 +136,14 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
       document.body.classList.add('menu-scene');
       last = performance.now();
       sound = new Sound();
+      document.body.append(mute);
       renderer.setAnimationLoop(frame);
     },
     stop() {
       renderer.setAnimationLoop(null);
       sound?.close();
       sound = null;
+      mute.remove();
       removeEventListener('resize', resize);
       document.body.classList.remove('menu-scene');
     },

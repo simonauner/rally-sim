@@ -31,6 +31,9 @@
       #menu.solid { background: linear-gradient(160deg, #cfe3ee, #a9c3a0); }
       /* Huvudmenyn visar kurvan med bilarna (menuScene.ts) bakom sig. */
       body.menu-scene #menu.solid { background: none; }
+      /* Ovanför #menu (z-index 2000). */
+      #menu-cars-mute { position: fixed; left: 12px; top: 12px; z-index: 2001; width: 44px; height: 44px; padding: 0; font-size: 22px; border: none; border-radius: 50%; background: #fffc; box-shadow: 0 2px 8px #0003; cursor: pointer; }
+      #menu-cars-mute[hidden] { display: none; }
       /* Hudens rutor är tomma tills spelet startat; annars syns tomma vita rutor över menyscenen. */
       :is(#help, #damage):empty { display: none; }
       #menu .panel { max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; min-width: 320px; max-width: min(560px, calc(100vw - 32px)); background: #fffe; border-radius: 12px; padding: 24px 28px; box-shadow: 0 8px 32px #0003; color: #1b1b1b; }

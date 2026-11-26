@@ -5,6 +5,7 @@ import { showMenu } from './menu';
 const VOICE_KEY = 'rally.codriver';
 const SOUND_KEY = 'rally.sound';
 const MENU_SOUND_KEY = 'rally.menusound';
+const MENU_CARS_KEY = 'rally.menucars';
 
 function read(key: string) {
   try {
@@ -25,6 +26,7 @@ function write(key: string, value: string) {
 let voice = read(VOICE_KEY) !== 'off';
 let sound = read(SOUND_KEY);
 let menuSound = read(MENU_SOUND_KEY) !== 'off';
+let menuCars = read(MENU_CARS_KEY) !== 'off';
 
 export const settings = {
   /** Om kartläsaren läser upp noterna; de visas på skärmen ändå. */
@@ -51,6 +53,14 @@ export const settings = {
   set menuSound(on: boolean) {
     menuSound = on;
     write(MENU_SOUND_KEY, on ? 'on' : 'off');
+  },
+  /** Motorljudet från bilarna bakom huvudmenyn; högtalaren uppe till vänster växlar det. */
+  get menuCars() {
+    return menuCars;
+  },
+  set menuCars(on: boolean) {
+    menuCars = on;
+    write(MENU_CARS_KEY, on ? 'on' : 'off');
   },
   /** Ingen har svarat på välkomstfrågorna än. */
   get firstVisit() {
