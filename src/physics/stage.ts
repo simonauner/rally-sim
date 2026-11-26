@@ -135,8 +135,12 @@ export class Stage extends World {
     return { x: this.xs[i]!, z: this.zs[i]!, heading: Math.atan2(this.xs[j]! - this.xs[i]!, this.zs[j]! - this.zs[i]!) };
   }
 
-  /** Närmaste punkt på mittlinjen. Resultatobjektet återanvänds mellan anrop. */
-  project(x: number, z: number): StageHit {
+  /**
+   * Närmaste punkt på mittlinjen. Resultatobjektet återanvänds mellan anrop.
+   * Med maxD ger punkter längre bort än så d = Infinity (övriga fält gäller då inte), utan att
+   * söka igenom hela etappen; det gör terrängbygget många gånger snabbare.
+   */
+  project(x: number, z: number, maxD = Infinity): StageHit {
     const cx = Math.floor(x / CELL);
     const cz = Math.floor(z / CELL);
     let best = -1;
@@ -160,6 +164,10 @@ export class Stage extends World {
         }
       }
       if (best >= 0 && Math.sqrt(bestD2) <= r * CELL) break;
+      if (r * CELL >= maxD) {
+        this.hit.d = Infinity;
+        return this.hit;
+      }
     }
     if (best < 0) best = 0;
 

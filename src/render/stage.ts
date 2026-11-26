@@ -42,7 +42,7 @@ export function buildStage(stage: Stage): THREE.Group {
     for (let i = 0; i <= nx; i++) {
       const x = x0 + i * STEP;
       const z = z0 + j * STEP;
-      const { d, width, surface } = stage.project(x, z);
+      const { d, width, surface } = stage.project(x, z, STAGE_CORRIDOR);
       if (d > STAGE_CORRIDOR) continue;
       const hw = width / 2;
       road.setHex(COLORS[surface]!);
@@ -144,7 +144,7 @@ export function buildStage(stage: Stage): THREE.Group {
   for (let tries = 0; tries < N * 20 && ti < N; tries++) {
     const x = minX - STAGE_CORRIDOR + r() * (maxX - minX + 2 * STAGE_CORRIDOR);
     const z = minZ - STAGE_CORRIDOR + r() * (maxZ - minZ + 2 * STAGE_CORRIDOR);
-    const { d, width } = stage.project(x, z);
+    const { d, width } = stage.project(x, z, STAGE_CORRIDOR);
     if (d < width / 2 + 7 || d > STAGE_CORRIDOR - 2) continue;
     const k = 0.7 + r() * 0.9;
     scale.set(k, k, k);
