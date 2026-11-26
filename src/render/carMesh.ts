@@ -4,8 +4,6 @@ import { abs, attribute, color, fract, select, vec3 } from 'three/tsl';
 import type { Car } from '../physics/car';
 import type { DamageEvent } from '../physics/collision';
 
-const PAINT = new THREE.Color(0xc4553a);
-const PAINT_SEAM = new THREE.Color(0x8e3b27);
 const GLASS = new THREE.Color(0x2b3a42);
 const DARK = new THREE.Color(0x3a3a3a);
 const BLACK = new THREE.Color(0x1b1b1b);
@@ -113,7 +111,7 @@ function roundedBox(w: number, h: number, l: number, segs: [number, number, numb
 }
 
 /** Fiktiv kantig 80-talssedan: platt motorhuv och baklucka, stora fyrkantiga lyktor. */
-function buildBody(): DeformablePart {
+function buildBody(paint: THREE.Color): DeformablePart {
   const g = roundedBox(1.7, 0.62, 4.6, [12, 10, 60], 0.07);
   // Hjulhus: lyft plåten ytterst över hjulen upp till en båge, så hela hjulet syns.
   // Bara |x| > 0.5 lyfts, så kvarvarande plåt innanför bildar hjulhusets innervägg.
@@ -160,8 +158,8 @@ function buildBody(): DeformablePart {
   // Motorhuvens skarv framför vindrutan.
   const hoodSeam = p.y.greaterThan(0.29).and(abs(p.z.sub(1.04)).lessThan(0.01));
 
-  const paint = select(seam.or(hoodSeam), color(PAINT_SEAM), color(PAINT));
-  const body = select(p.y.lessThan(-0.22).or(strip).or(archs), color(BLACK), paint);
+  const painted = select(seam.or(hoodSeam), color(paint.clone().multiplyScalar(0.72)), color(paint));
+  const body = select(p.y.lessThan(-0.22).or(strip).or(archs), color(BLACK), painted);
   const tail = select(tailReverse, color(REVERSE), select(tailAmber, color(AMBER), color(TAIL)));
   const mat = new THREE.MeshToonNodeMaterial();
   mat.colorNode = select(
@@ -187,7 +185,7 @@ function buildBody(): DeformablePart {
 }
 
 /** Upprätt kupé med tunna stolpar, svarta fönsterlister och tjock C-stolpe. */
-function buildCabin(): DeformablePart {
+function buildCabin(paint: THREE.Color): DeformablePart {
   const g = roundedBox(1.48, 0.56, 2.3, [10, 5, 16], 0.1);
   const pos = g.getAttribute('position') as THREE.BufferAttribute;
   for (let i = 0; i < pos.count; i++) {
@@ -220,7 +218,7 @@ function buildCabin(): DeformablePart {
   const glass = sideGlass.or(endGlass);
   const trim = sideTrim.or(endTrim);
   const mat = new THREE.MeshToonNodeMaterial();
-  mat.colorNode = select(glass, color(GLASS), select(trim, color(BLACK), color(PAINT)));
+  mat.colorNode = select(glass, color(GLASS), select(trim, color(BLACK), color(paint)));
   return new DeformablePart(g, mat);
 }
 
@@ -283,8 +281,12 @@ export class CarMesh {
   private yAxis = new THREE.Vector3(0, 1, 0);
   private xAxis = new THREE.Vector3(1, 0, 0);
 
-  constructor(private car: Car) {
-    this.parts = [buildBody(), buildCabin(), buildBumper(2.33), buildBumper(-2.33)];
+  constructor(
+    private car: Car,
+    paint: number,
+  ) {
+    const c = new THREE.Color(paint);
+    this.parts = [buildBody(c), buildCabin(c), buildBumper(2.33), buildBumper(-2.33)];
     this.parts.forEach((p) => this.group.add(p.mesh));
     this.group.add(buildDetails());
     for (let i = 0; i < 4; i++) {

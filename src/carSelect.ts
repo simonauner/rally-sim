@@ -69,7 +69,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[]):
     const car = new Car(p, new FlatWorld('asphalt'));
     for (let i = 0; i < 480; i++) car.step(1 / 240, { throttle: 0, brake: 1, steer: 0, handbrake: 1 });
     holder.clear();
-    const mesh = new CarMesh(car);
+    const mesh = new CarMesh(car, m.paint);
     mesh.addTo(holder);
     mesh.update();
     center = car.pos.clone();

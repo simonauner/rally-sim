@@ -121,13 +121,39 @@ export function kvarn240(): CarParams {
   };
 }
 
+/** Samma kaross med turbomotor: segt i botten, sedan kommer allt på en gång. */
+export function kvarn240Turbo(): CarParams {
+  const p = kvarn240();
+  return {
+    ...p,
+    name: 'Kvarn 240 Turbo',
+    mass: 1310,
+    inertia: boxInertia(1310, 4.7, 1.7, 1.4, 0.8),
+    engine: {
+      ...p.engine,
+      curveRpm: [900, 1500, 2500, 3000, 3500, 4500, 5500, 6200, 6800],
+      curveNm: [100, 125, 160, 230, 275, 285, 255, 215, 160],
+      launchRpm: 4200,
+    },
+    gearbox: { ...p.gearbox, final: 4.1 },
+    brake: { ...p.brake, total: 5000 },
+  };
+}
+
 export interface CarModel {
   make: () => CarParams;
   /** En rad om bilen i bilväljaren. */
   blurb: string;
+  /** Lackfärg. */
+  paint: number;
 }
 
 /** Bilarna man kan välja före en etapp. */
 export const CARS: CarModel[] = [
-  { make: kvarn240, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
+  { make: kvarn240, paint: 0xc4553a, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
+  {
+    make: kvarn240Turbo,
+    paint: 0x24365c,
+    blurb: 'Samma kaross med turbo. Seg under 3 000 rpm, sedan kommer allt på en gång.',
+  },
 ];

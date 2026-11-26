@@ -175,7 +175,7 @@ async function main() {
   if (barrierMeshes) scene.add(barrierMeshes.group);
 
   const car = new Car(model.make(), world);
-  const carMesh = new CarMesh(car);
+  const carMesh = new CarMesh(car, model.paint);
   carMesh.addTo(scene);
   const dust = new Dust();
   scene.add(dust.mesh);

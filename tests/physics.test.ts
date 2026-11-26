@@ -1,6 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
 import { Car, type Input } from '../src/physics/car';
-import { kvarn240 } from '../src/physics/params';
+import { CARS, kvarn240 } from '../src/physics/params';
 import { Barriers } from '../src/physics/barriers';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_SKOGSBERG } from '../src/physics/stage';
 import type { TyreType } from '../src/physics/surfaces';
@@ -77,6 +77,12 @@ for (const [surface, tyre, lo, hi] of [
   check('data: toppfart', s.topSpeedKmh > 150 && s.topSpeedKmh < 200, `${s.topSpeedKmh.toFixed(0)} km/h`);
   check('data: viktfördelning', Math.abs(s.frontWeight - 0.55) < 0.01, `${(s.frontWeight * 100).toFixed(0)} % fram`);
   check('data: snabb nog för menyn', ms < 400, `${ms.toFixed(0)} ms`);
+}
+// Alla valbara bilar ska gå att köra: når 100 och har rimlig toppfart.
+for (const m of CARS) {
+  const p = m.make();
+  const s = carSpecs(p);
+  check(`data: ${p.name}`, s.zeroTo100 < 15 && s.topSpeedKmh > 150 && s.topSpeedKmh < 240, `${(s.powerKw * 1.36).toFixed(0)} hk, 0-100 ${s.zeroTo100.toFixed(1)} s, ${s.topSpeedKmh.toFixed(0)} km/h`);
 }
 
 // 3. Bromssträcka 100 -> 0
