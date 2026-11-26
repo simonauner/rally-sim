@@ -2,6 +2,8 @@ export interface MenuItem<T> {
   label: string;
   /** Liten text till höger, t.ex. bästa tid. */
   detail?: string;
+  /** Liten rad under texten, t.ex. vad en del gör. */
+  note?: string;
   value: T;
 }
 
@@ -42,7 +44,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       ${opts.body ? `<div class="body">${opts.body}</div>` : ''}
       ${opts.input ? `<input type="text" autocomplete="off" spellcheck="false" placeholder="${opts.input.placeholder}" />` : ''}
       <div class="items">${opts.items
-        .map((it, i) => `<button data-i="${i}"><span>${it.label}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
+        .map((it, i) => `<button data-i="${i}"><span>${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`)
         .join('')}</div>
     </div>
     ${opts.footer ? `<div class="corner">${opts.footer}</div>` : ''}`;

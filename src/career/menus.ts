@@ -182,9 +182,9 @@ async function parts(car: string, group: string) {
       title: group,
       subtitle: `${car} · Kassa: ${formatMoney(career.money)}`,
       side: true,
-      body: `${message}<table class="specs">${parts.map((u) => `<tr><th>${u.name}</th><td>${u.effect}</td></tr>`).join('')}</table>`,
+      body: message,
       items: [
-        ...parts.map((u) => ({ label: u.name, detail: levelOf(career, car, u.id) ? 'monterad' : formatMoney(u.price), value: u.id })),
+        ...parts.map((u) => ({ label: u.name, note: u.effect, detail: levelOf(career, car, u.id) ? 'monterad' : formatMoney(u.price), value: u.id })),
         { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
