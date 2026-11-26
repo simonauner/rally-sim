@@ -22,7 +22,7 @@ import type { StageRecord } from './account/protocol';
 import { loadRecord, saveRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
-import { pickCar } from './carSelect';
+import { pickCar, showroom } from './carSelect';
 import { formatMoney } from './career/career';
 import { awardPrize, careerMenu, championshipLegDone, confirmAbort, resumeChampionship } from './career/menus';
 import { loadCareer } from './career/store';
@@ -315,13 +315,13 @@ async function main() {
     carMesh.repair();
   };
   place(spawn, false);
-  // Mästerskapets skador följer med från förra etappen.
-  // shortcut: bara siffrorna; plåtens bucklor ritas inte om efter omladdningen.
+  // Mästerskapets skador följer med från förra etappen; bucklorna ritas från siffrorna.
   const readDamage = (): CarDamage => ({ body: { ...car.damage }, wheels: car.wheels.map((w) => w.damage), powerFactor: car.drivetrain.powerFactor });
   if (champ?.damage) {
     Object.assign(car.damage, champ.damage.body);
     car.wheels.forEach((w, i) => (w.damage = champ!.damage!.wheels[i] ?? 0));
     car.drivetrain.powerFactor = champ.damage.powerFactor;
+    carMesh.dentFrom(champ.damage.body);
   }
   createGui(car, places, {
     teleport: (name) => place(spawns[name]!, true),
@@ -431,7 +431,11 @@ async function main() {
   const showFinish = async () => {
     if (!stage || !timer) return;
     if (champ) {
-      const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), readDamage());
+      const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), readDamage(), (d) => {
+        const room = showroom(renderer);
+        room.show(model, d);
+        return room;
+      });
       return next === 'next' ? goToNextLeg() : goToMainMenu();
     }
     const c = await showMenu<'again' | 'menu'>({

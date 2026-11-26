@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { abs, attribute, color, fract, positionGeometry, select, vec3 } from 'three/tsl';
-import type { Car } from '../physics/car';
+import type { Car, DamageState } from '../physics/car';
 import type { DamageEvent } from '../physics/collision';
 
 const GLASS = new THREE.Color(0x2b3a42);
@@ -97,6 +97,12 @@ class DeformablePart {
     this.disp.fill(0);
     this.commit();
   }
+
+  /** Krymper bucklorna mot k (0 = hel), för en lagning man ser. */
+  scale(k: number) {
+    for (let i = 0; i < this.disp.length; i++) this.disp[i]! *= k;
+    this.commit();
+  }
 }
 
 /** Uppdelad låda med rundade kanter, centrerad i `c`. */
@@ -127,6 +133,15 @@ const SCREEN = [0.546, 0.123] as const; // vindrutans fot och topp
 const BACKLIGHT = [-1.67, -1.318] as const; // bakrutans fot och topp
 const ROOF = 0.83;
 const CREASE = 0.19; // sidolisten
+
+// Var skadezonerna träffas när bucklorna ritas från siffrorna: punkt och riktningen plåten trycks.
+const ZONE_HITS: Record<keyof DamageState, [number, number, number, number, number, number][]> = {
+  front: [[0.45, -0.1, NOSE, 0, 0, -1], [-0.35, 0.05, NOSE, 0, 0, -1]],
+  rear: [[-0.4, -0.05, TAIL_Z, 0, 0, 1], [0.35, 0.1, TAIL_Z, 0, 0, 1]],
+  left: [[0.85, 0.1, 0.9, -1, 0, 0], [0.85, 0, -1.1, -1, 0, 0]],
+  right: [[-0.85, 0.1, 0.7, 1, 0, 0], [-0.85, 0, -1.3, 1, 0, 0]],
+  roof: [[0.2, ROOF, -0.4, 0, -1, 0], [-0.25, ROOF, -0.9, 0, -1, 0]],
+};
 
 /** Fiktiv kantig 80-talssedan: lång flat huv och baklucka, rak gördellinje, stora fyrkantiga lyktor. */
 function buildBody(paint: THREE.Color): DeformablePart {
@@ -378,6 +393,28 @@ export class CarMesh {
 
   repair() {
     for (const p of this.parts) p.reset();
+  }
+
+  /**
+   * Bucklor som motsvarar skadesiffrorna, när de riktiga träffarna inte finns kvar
+   * (t.ex. efter omladdningen mellan etapperna). Samma impuls som gav siffran i Car.registerDamage.
+   */
+  dentFrom(d: DamageState) {
+    const events: DamageEvent[] = [];
+    for (const zone of Object.keys(ZONE_HITS) as (keyof DamageState)[]) {
+      if (d[zone] <= 0) continue;
+      const hits = ZONE_HITS[zone];
+      const impulse = (d[zone] * this.car.params.mass * 14) / hits.length;
+      for (const [x, y, z, nx, ny, nz] of hits) {
+        events.push({ local: new THREE.Vector3(x, y, z), normal: new THREE.Vector3(nx, ny, nz), impulse, kind: 'object' });
+      }
+    }
+    this.applyDamage(events);
+  }
+
+  /** Krymper bucklorna mot k; anropas varje bildruta under en lagning. */
+  heal(k: number) {
+    for (const p of this.parts) p.scale(k);
   }
 
   update() {

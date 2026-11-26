@@ -2,7 +2,7 @@
 
 import type { CareerState } from '../account/protocol';
 import { localChanged } from '../account/sync';
-import type { PickOptions } from '../carSelect';
+import type { PickOptions, Showroom } from '../carSelect';
 import { showMenu } from '../menu';
 import { CARS, type CarModel } from '../physics/params';
 import { STAGES, type StageDef } from '../physics/stage';
@@ -323,9 +323,16 @@ function damageHtml(d: CarDamage) {
 /**
  * Efter en etapp i mästerskapet. Mellan etapperna: service där spelaren lagar för egna pengar,
  * kör vidare skadad eller avbryter. Efter sista: totaltid och prispengar. Returnerar 'next' när
- * nästa etapp ska laddas och 'menu' för huvudmenyn.
+ * nästa etapp ska laddas och 'menu' för huvudmenyn. På servicen står bilen med sina skador på
+ * vridbordet från showCar.
  */
-export async function championshipLegDone(p: ChampionshipProgress, time: number, resultBody: string, damage: CarDamage): Promise<'next' | 'menu'> {
+export async function championshipLegDone(
+  p: ChampionshipProgress,
+  time: number,
+  resultBody: string,
+  damage: CarDamage,
+  showCar: (d: CarDamage) => Showroom,
+): Promise<'next' | 'menu'> {
   const def = championshipById(p.id)!;
   const times = [...p.times, time];
   const total = times.reduce((a, b) => a + b, 0);
@@ -349,18 +356,20 @@ export async function championshipLegDone(p: ChampionshipProgress, time: number,
     title: `Etapp ${times.length} av ${def.legs.length}`,
     side: true,
     body: `${resultBody}<div>Totalt hittills: <b>${formatTime(total)}</b></div>`,
-    items: [{ label: 'Till service', value: 0 }],
+    items: [{ label: 'Fortsätt, till service', value: 0 }],
   });
 
+  const room = showCar(damage);
   let message = '';
+  let repaired = false;
   for (;;) {
-    const cost = repairCost(damage);
+    const cost = repaired ? 0 : repairCost(damage);
     const money = loadCareer().career.money;
     const c = await showMenu<'repair' | 'go' | 'abort'>({
       title: 'Service',
       subtitle: `Kassa: ${formatMoney(money)} · nästa: ${def.legs[times.length]}`,
-      solid: true,
-      body: `${message}${damageHtml(damage)}${cost > 0 ? `<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : '<div>Bilen är hel.</div>'}`,
+      side: true,
+      body: `${message}${repaired ? '' : damageHtml(damage)}${cost > 0 ? `<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : '<div>Bilen är hel.</div>'}`,
       items: [
         ...(cost > 0 ? [{ label: 'Laga allt', detail: formatMoney(cost), value: 'repair' as const }] : []),
         { label: cost > 0 ? 'Kör vidare utan att laga' : 'Kör nästa etapp', value: 'go' },
@@ -368,7 +377,10 @@ export async function championshipLegDone(p: ChampionshipProgress, time: number,
       ],
     });
     if (c === 'abort') {
-      if (await confirmAbort()) return 'menu';
+      if (await confirmAbort()) {
+        room.close();
+        return 'menu';
+      }
       continue;
     }
     if (c === 'repair') {
@@ -377,8 +389,13 @@ export async function championshipLegDone(p: ChampionshipProgress, time: number,
         continue;
       }
       commit({ ...loadCareer().career, money: money - cost });
+      repaired = true;
+      room.repair();
+      message = `<div class="ahead">Lagad för ${formatMoney(cost)}.</div>`;
+      continue;
     }
-    saveChampionship(afterLeg(p, time, damage, c === 'repair'));
+    room.close();
+    saveChampionship(afterLeg(p, time, damage, repaired));
     return 'next';
   }
 }

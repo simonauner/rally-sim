@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { toonOutlinePass } from 'three/tsl';
+import type { CarDamage } from './career/championship';
 import { showMenu } from './menu';
 import { Car } from './physics/car';
 import type { CarModel, CarParams } from './physics/params';
@@ -59,11 +60,16 @@ export interface PickOptions {
   compare?: CarModel[];
 }
 
-/**
- * Bilväljaren: bilen står på ett vridbord bakom menyn och snurrar sakta, och går att
- * vrida med musen. Returnerar vald bil, eller null om spelaren backar.
- */
-export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], opts: PickOptions = {}): Promise<CarModel | null> {
+export interface Showroom {
+  /** Ställer bilen på vridbordet, med bucklor och snedställda hjul om den är skadad. */
+  show(m: CarModel, damage?: CarDamage | null): void;
+  /** Lagar bilen på vridbordet: hjulen rätas och bucklorna slätas ut. */
+  repair(): void;
+  close(): void;
+}
+
+/** Vridbordet bakom menyn: bilen snurrar sakta och går att vrida med musen. */
+export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcfe3ee);
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
@@ -90,6 +96,104 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   addEventListener('resize', resize);
 
   let center = new THREE.Vector3();
+  let car: Car | null = null;
+  let mesh: CarMesh | null = null;
+  /** Sekunder kvar av en pågående lagning. */
+  let healing = 0;
+  // Låt bilen sätta sig på fjädringen så hjulen hamnar rätt.
+  const settle = (c: Car) => {
+    for (let i = 0; i < 480; i++) c.step(1 / 240, { throttle: 0, brake: 1, steer: 0, handbrake: 1 });
+  };
+  const show = (m: CarModel, damage?: CarDamage | null) => {
+    car = new Car(m.make(), new FlatWorld('asphalt'));
+    if (damage) {
+      Object.assign(car.damage, damage.body);
+      car.wheels.forEach((w, i) => (w.damage = damage.wheels[i] ?? 0));
+    }
+    settle(car);
+    holder.clear();
+    mesh = new CarMesh(car, m.paint);
+    mesh.addTo(holder);
+    if (damage) mesh.dentFrom(damage.body);
+    mesh.update();
+    healing = 0;
+    center = car.pos.clone();
+    turntable.position.set(center.x, -0.05, center.z);
+    sun.position.set(center.x + 5, center.y + 10, center.z + 6);
+    sun.target.position.copy(center);
+  };
+  const repair = () => {
+    if (!car || !mesh) return;
+    car.wheels.forEach((w) => (w.damage = 0));
+    settle(car);
+    mesh.update();
+    healing = 0.9;
+  };
+
+  // Vridbordet: snurrar av sig själv och följer musen när man drar.
+  let yaw = 0.7;
+  let pitch = 0.18;
+  let dragging = false;
+  let idle = 0;
+  const menu = document.getElementById('menu')!;
+  const down = (e: PointerEvent) => {
+    if (e.target !== menu) return;
+    dragging = true;
+    menu.setPointerCapture(e.pointerId);
+  };
+  const move = (e: PointerEvent) => {
+    if (!dragging) return;
+    yaw -= e.movementX * 0.008;
+    pitch = Math.min(0.9, Math.max(0.02, pitch + e.movementY * 0.004));
+    idle = 0;
+  };
+  const up = () => (dragging = false);
+  menu.addEventListener('pointerdown', down);
+  menu.addEventListener('pointermove', move);
+  menu.addEventListener('pointerup', up);
+
+  let last = performance.now();
+  renderer.setAnimationLoop((now: number) => {
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    last = now;
+    idle += dt;
+    if (healing > 0 && mesh) {
+      healing -= dt;
+      if (healing > 0) mesh.heal(Math.exp(-dt * 5));
+      else mesh.repair();
+    }
+    // Börja snurra igen en stund efter att man släppt.
+    if (!dragging && idle > 2) yaw += dt * 0.35;
+    const d = 14;
+    camera.position.set(
+      center.x + Math.sin(yaw) * Math.cos(pitch) * d,
+      center.y + Math.sin(pitch) * d,
+      center.z + Math.cos(yaw) * Math.cos(pitch) * d,
+    );
+    camera.lookAt(center.x, center.y - 0.1, center.z);
+    pipeline.render();
+  });
+
+  return {
+    show,
+    repair,
+    close() {
+      renderer.setAnimationLoop(null);
+      removeEventListener('resize', resize);
+      menu.removeEventListener('pointerdown', down);
+      menu.removeEventListener('pointermove', move);
+      menu.removeEventListener('pointerup', up);
+      pipeline.dispose();
+    },
+  };
+}
+
+/**
+ * Bilväljaren: bilen står på vridbordet bakom menyn. Returnerar vald bil, eller null om
+ * spelaren backar.
+ */
+export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], opts: PickOptions = {}): Promise<CarModel | null> {
+  const room = showroom(renderer);
   const cmp = opts.compare ?? [];
   let current = 0;
   let compared = 0;
@@ -140,44 +244,12 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   const show = (m: CarModel) => {
     if (m === shown) return;
     shown = m;
-    const p = m.make();
-    // Låt bilen sätta sig på fjädringen så hjulen hamnar rätt.
-    const car = new Car(p, new FlatWorld('asphalt'));
-    for (let i = 0; i < 480; i++) car.step(1 / 240, { throttle: 0, brake: 1, steer: 0, handbrake: 1 });
-    holder.clear();
-    const mesh = new CarMesh(car, m.paint);
-    mesh.addTo(holder);
-    mesh.update();
-    center = car.pos.clone();
-    turntable.position.set(center.x, -0.05, center.z);
-    sun.position.set(center.x + 5, center.y + 10, center.z + 6);
-    sun.target.position.copy(center);
+    room.show(m);
     render();
   };
   show(cars[0]!);
 
-  // Vridbordet: snurrar av sig själv och följer musen när man drar.
-  let yaw = 0.7;
-  let pitch = 0.18;
-  let dragging = false;
-  let idle = 0;
   const menu = document.getElementById('menu')!;
-  const down = (e: PointerEvent) => {
-    if (e.target !== menu) return;
-    dragging = true;
-    menu.setPointerCapture(e.pointerId);
-  };
-  const move = (e: PointerEvent) => {
-    if (!dragging) return;
-    yaw -= e.movementX * 0.008;
-    pitch = Math.min(0.9, Math.max(0.02, pitch + e.movementY * 0.004));
-    idle = 0;
-  };
-  const up = () => (dragging = false);
-  menu.addEventListener('pointerdown', down);
-  menu.addEventListener('pointermove', move);
-  menu.addEventListener('pointerup', up);
-
   let browsing = true; // av medan en undermeny visas
   const step = (d: number) => {
     current = (current + d + cars.length) % cars.length;
@@ -204,23 +276,6 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   menu.addEventListener('click', click);
   addEventListener('keydown', key, true);
 
-  let last = performance.now();
-  renderer.setAnimationLoop((now: number) => {
-    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
-    last = now;
-    idle += dt;
-    // Börja snurra igen en stund efter att man släppt.
-    if (!dragging && idle > 2) yaw += dt * 0.35;
-    const d = 14;
-    camera.position.set(
-      center.x + Math.sin(yaw) * Math.cos(pitch) * d,
-      center.y + Math.sin(pitch) * d,
-      center.z + Math.cos(yaw) * Math.cos(pitch) * d,
-    );
-    camera.lookAt(center.x, center.y - 0.1, center.z);
-    pipeline.render();
-  });
-
   let pick: 'pick' | 'back';
   for (;;) {
     const m = cars[current]!;
@@ -245,13 +300,8 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     show(m);
   }
 
-  renderer.setAnimationLoop(null);
-  removeEventListener('resize', resize);
-  menu.removeEventListener('pointerdown', down);
-  menu.removeEventListener('pointermove', move);
-  menu.removeEventListener('pointerup', up);
+  room.close();
   menu.removeEventListener('click', click);
   removeEventListener('keydown', key, true);
-  pipeline.dispose();
   return pick === 'back' ? null : cars[current]!;
 }
