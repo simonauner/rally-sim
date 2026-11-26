@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { Quaternion, Vector3 } from 'three';
 import type { Car } from './car';
 import type { World } from './world';
 
@@ -30,6 +30,8 @@ const tmpW = new Vector3();
 const tmpA = new Vector3();
 const tmpB = new Vector3();
 const tmpC = new Vector3();
+const tmpQ = new Quaternion();
+const tmpL = new Vector3();
 
 function invMassTerm(car: Car, r: Vector3, n: Vector3): number {
   // 1/m + n · ((I^-1 (r × n)) × r)
@@ -70,6 +72,7 @@ export function collide(car: Car, world: World, dt: number) {
       pushContact(car, contacts, lp, pw, n, d[k]!, 0.4, 'object');
     }
   }
+  collideTrunks(car, world, contacts);
   if (contacts.length === 0) return;
 
   for (const c of contacts) {
@@ -124,6 +127,50 @@ export function collide(car: Car, world: World, dt: number) {
     const localN = c.n.clone().applyQuaternion(car.quatInv.copy(car.quat).invert());
     car.damageEvents.push({ local: c.rLocal.clone(), normal: localN, impulse: c.lambda, kind: c.kind });
     car.registerDamage(c.rLocal, c.lambda, c.kind);
+  }
+}
+
+/**
+ * Trädstammar mot karossen sedd uppifrån som en rektangel. Stammarna är smalare än avståndet
+ * mellan kollisionspunkterna, så punkterna räcker inte.
+ */
+function collideTrunks(car: Car, world: World, contacts: Contact[]) {
+  const b = car.params.body;
+  const reach = Math.hypot(b.halfX, b.halfZ) + 1;
+  const inv = tmpQ.copy(car.quat).invert();
+  for (const t of world.trunks) {
+    if (Math.abs(t.x - car.pos.x) > reach || Math.abs(t.z - car.pos.z) > reach) continue;
+    // Stammens mitt i bilens ram (lutningen ignoreras; stammen är lodrät och hög).
+    const c = tmpL.set(t.x - car.pos.x, 0, t.z - car.pos.z).applyQuaternion(inv);
+    const px = Math.min(b.halfX, Math.max(-b.halfX, c.x));
+    const pz = Math.min(b.halfZ, Math.max(-b.halfZ, c.z));
+    const dx = px - c.x;
+    const dz = pz - c.z;
+    const dist = Math.hypot(dx, dz);
+    let depth: number;
+    const n = new Vector3();
+    const lp = new Vector3(px, (b.bottomY + b.topY) / 2, pz);
+    if (dist > 1e-6) {
+      if (dist >= t.r) continue;
+      depth = t.r - dist;
+      n.set(dx / dist, 0, dz / dist);
+    } else if (b.halfX - Math.abs(c.x) < b.halfZ - Math.abs(c.z)) {
+      // Stammens mitt är inne i karossen: ut genom närmaste sida.
+      const sx = Math.sign(c.x) || 1;
+      depth = b.halfX - Math.abs(c.x) + t.r;
+      n.set(-sx, 0, 0);
+      lp.x = sx * b.halfX;
+    } else {
+      const sz = Math.sign(c.z) || 1;
+      depth = b.halfZ - Math.abs(c.z) + t.r;
+      n.set(0, 0, -sz);
+      lp.z = sz * b.halfZ;
+    }
+    n.applyQuaternion(car.quat);
+    n.y = 0;
+    n.normalize();
+    const pw = lp.clone().applyQuaternion(car.quat).add(car.pos);
+    pushContact(car, contacts, lp, pw, n, depth, 0.4, 'object');
   }
 }
 

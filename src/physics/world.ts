@@ -15,6 +15,17 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
+/** En trädstam: lodrät cylinder från marken. Bilen studsar mot den som mot en vägg. */
+export interface Trunk {
+  x: number;
+  z: number;
+  /** Markhöjd vid stammen. */
+  y: number;
+  r: number;
+  /** Storlek för grafiken; 1 = normalträd. */
+  scale: number;
+}
+
 /**
  * Testbanan: en lekplats längs +Z med olika underlag och hinder.
  *  z   0..40   grus, accelerationssträcka
@@ -30,6 +41,7 @@ export class World {
     { minX: -7.5, maxX: -6, minY: -2, maxY: 2, minZ: 220, maxZ: 221.5 },
     { minX: 6, maxX: 7.5, minY: -2, maxY: 2, minZ: 220, maxZ: 221.5 },
   ];
+  readonly trunks: Trunk[] = [];
 
   heightAt(x: number, z: number): number {
     // Mjuka kullar, men platt i början så accelerationstester blir rena.

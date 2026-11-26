@@ -236,6 +236,28 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   check('etapp: avspärrningar ger efter', ok, `${results.filter((x) => x.past).length}/${results.length} genom, fartförlust ${(r0.loss * 100).toFixed(1)} %, ${r0.flown} delar iväg, framskada ${(r0.front * 100).toFixed(0)} %`);
 }
 
+// 8c. Träden står kvar: bilen stannar mot stammen och tar skada, även när stammen träffar
+// mellan kollisionspunkterna.
+{
+  const stage = new Stage(STAGE_SKOGSBERG);
+  const results = [0, 0.4, -0.7].map((offset) => {
+    const t = stage.trunks[0]!;
+    // Kör mot stammen från vägen, förskjuten i sidled.
+    const hit = stage.project(t.x, t.z);
+    const p = stage.poseAt(hit.s);
+    const heading = Math.atan2(t.x - p.x, t.z - p.z);
+    const fx = Math.sin(heading);
+    const fz = Math.cos(heading);
+    const car = makeCar(stage, 'gravel');
+    car.reset(t.x - fx * 8 - fz * offset, t.z - fz * 8 + fx * offset, heading, 15);
+    run(car, 2, () => idle);
+    const past = (car.pos.x - t.x) * fx + (car.pos.z - t.z) * fz;
+    return { past, damage: car.damage.front };
+  });
+  const ok = results.every((x) => x.past < 0 && x.damage > 0.2);
+  check('etapp: träd ger inte vika', ok && stage.trunks.length > 1000, results.map((x) => `${x.past.toFixed(1)} m, framskada ${(x.damage * 100).toFixed(0)} %`).join(' · '));
+}
+
 // 9. Etapp: en enkel förare kör hela vägen utan att hamna i diket.
 {
   const stage = new Stage(STAGE_SKOGSBERG);

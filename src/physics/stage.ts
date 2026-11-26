@@ -1,5 +1,6 @@
 import { CatmullRomCurve3, Vector3 } from 'three';
 import type { SurfaceId } from './surfaces';
+import { rng } from './rng';
 import { World } from './world';
 
 /** En stödpunkt på etappen. Underlaget gäller från punkten fram till nästa. */
@@ -53,6 +54,7 @@ const SAMPLE_STEP = 1;
 export const START_S = 20;
 export const FINISH_MARGIN = 80;
 const CELL = 20;
+const TREES = 2500;
 /** Bortom detta avstånd från vägen är terrängen bara utfyllnad. */
 export const STAGE_CORRIDOR = 45;
 
@@ -144,6 +146,7 @@ export class Stage extends World {
       list.push(i);
     }
     this.spurs = (def.spurs ?? []).map((sp) => ({ ...sp, y: this.project(sp.points[0]!.x, sp.points[0]!.z).roadY }));
+    this.placeTrees();
     this.barriers = this.spurs.map((sp) => {
       const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
       const len = Math.hypot(b.x - a.x, b.z - a.z);
@@ -157,6 +160,29 @@ export class Stage extends World {
       const z = a.z + dz * t;
       return { x, z, y: this.heightAt(x, z), yaw: Math.atan2(dx, dz), halfWidth: sp.width / 2 + 0.6 };
     });
+  }
+
+  /** Skog i korridoren längs vägarna, minst 7 m från vägkanten. */
+  private placeTrees() {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (let i = 0; i < this.xs.length; i++) {
+      minX = Math.min(minX, this.xs[i]!);
+      maxX = Math.max(maxX, this.xs[i]!);
+      minZ = Math.min(minZ, this.zs[i]!);
+      maxZ = Math.max(maxZ, this.zs[i]!);
+    }
+    const r = rng(99);
+    for (let tries = 0; tries < TREES * 20 && this.trunks.length < TREES; tries++) {
+      const x = minX - STAGE_CORRIDOR + r() * (maxX - minX + 2 * STAGE_CORRIDOR);
+      const z = minZ - STAGE_CORRIDOR + r() * (maxZ - minZ + 2 * STAGE_CORRIDOR);
+      const { d, width } = this.roadAt(x, z, STAGE_CORRIDOR);
+      if (d < width / 2 + 7 || d > STAGE_CORRIDOR - 2) continue;
+      const scale = 0.7 + r() * 0.9;
+      this.trunks.push({ x, z, y: this.heightAt(x, z), r: 0.33 * scale, scale });
+    }
   }
 
   private key(cx: number, cz: number) {

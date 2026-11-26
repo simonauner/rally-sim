@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, type Stage } from '../physics/stage';
-import { COLORS, rng } from './terrain';
+import { rng } from '../physics/rng';
+import { COLORS } from './terrain';
 
 const VERGE = 0x6f5a3e;
 const FOREST = 0x6f7d4c;
@@ -131,33 +132,22 @@ export function buildStage(stage: Stage): THREE.Group {
     group.add(gate);
   });
 
-  // Skog längs vägen
-  const r = rng(99);
+  // Skog längs vägen (placerad i fysiken, där stammarna kolliderar)
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
   const crownGeo = new THREE.ConeGeometry(1.6, 4.5, 9);
-  const N = 2500;
+  const N = stage.trunks.length;
   const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshToonMaterial({ color: 0x6b4a32 }), N);
   const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshToonMaterial({ color: 0x4f7a4a }), N);
   const scale = new THREE.Vector3();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
-  let ti = 0;
-  for (let tries = 0; tries < N * 20 && ti < N; tries++) {
-    const x = minX - STAGE_CORRIDOR + r() * (maxX - minX + 2 * STAGE_CORRIDOR);
-    const z = minZ - STAGE_CORRIDOR + r() * (maxZ - minZ + 2 * STAGE_CORRIDOR);
-    const { d, width } = stage.roadAt(x, z, STAGE_CORRIDOR);
-    if (d < width / 2 + 7 || d > STAGE_CORRIDOR - 2) continue;
-    const k = 0.7 + r() * 0.9;
-    scale.set(k, k, k);
-    const y = stage.heightAt(x, z);
-    pos.set(x, y + 1.1 * k, z);
-    trunks.setMatrixAt(ti, mat.compose(pos, q, scale));
-    pos.set(x, y + (2.2 + 2.0) * k, z);
-    crowns.setMatrixAt(ti, mat.compose(pos, q, scale));
-    ti++;
-  }
-  trunks.count = ti;
-  crowns.count = ti;
+  stage.trunks.forEach((t, i) => {
+    scale.setScalar(t.scale);
+    pos.set(t.x, t.y + 1.1 * t.scale, t.z);
+    trunks.setMatrixAt(i, mat.compose(pos, q, scale));
+    pos.set(t.x, t.y + (2.2 + 2.0) * t.scale, t.z);
+    crowns.setMatrixAt(i, mat.compose(pos, q, scale));
+  });
   trunks.castShadow = true;
   crowns.castShadow = true;
   group.add(trunks, crowns);
