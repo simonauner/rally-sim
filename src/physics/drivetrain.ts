@@ -100,7 +100,9 @@ export class Drivetrain {
 
     if (this.autoShift && this.gear >= 1 && this.shiftTimer <= 0) {
       if (this.rpm > gearbox.upshiftRpm && throttle > 0.1 && this.gear < gearbox.ratios.length) this.shiftUp();
-      else if (this.rpm < gearbox.downshiftRpm && this.gear > 1) this.shiftDown();
+      // Nedväxling även när kopplingen slirar och håller motorvarvet uppe men hjulen nästan står,
+      // t.ex. efter hjulspinn i en brant snöbacke; annars fastnar bilen på en hög växel.
+      else if (Math.min(this.rpm, shaftRpmIn) < gearbox.downshiftRpm && this.gear > 1) this.shiftDown();
     }
     this.ratio = this.totalRatio(this.gear);
 
