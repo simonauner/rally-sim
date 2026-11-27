@@ -2,9 +2,13 @@ import * as THREE from 'three/webgpu';
 import { STAGE_CORRIDOR, START_S, type Stage } from '../physics/stage';
 import { rng } from '../physics/rng';
 import { COLORS } from './terrain';
+import { buildLandmarks } from './landmarks';
 
 const VERGE = 0x6f5a3e;
 const FOREST = 0x6f7d4c;
+/** Åker i sensommar och klippt gräs på gårdstomter. */
+const FIELD = 0xaaa65c;
+const YARD = 0x86a04e;
 /** Snötäckt skogsmark på vinteretapper. */
 const WINTER_FOREST = 0xf2f5f7;
 const BANK_SHADE = 0xaab9cd;
@@ -47,11 +51,13 @@ export function buildStage(stage: Stage): THREE.Group {
     for (let i = 0; i <= nx; i++) {
       const x = x0 + i * STEP;
       const z = z0 + j * STEP;
-      const { d, width, surface } = stage.roadAt(x, z, STAGE_CORRIDOR);
+      const { d, width, surface, s, side: lr } = stage.roadAt(x, z, STAGE_CORRIDOR);
       if (d > STAGE_CORRIDOR) continue;
       const hw = width / 2;
+      const area = stage.def.winter ? null : stage.areaAt(s, lr);
       road.setHex(COLORS[surface]!);
       side.setHex(stage.def.winter ? COLORS.snowbank! : surface === 'snow' ? COLORS.snow! : VERGE).lerp(c.setHex(forest), smooth(hw + 2, hw + 6, d));
+      if (area && area.lm.kind !== 'lake') side.lerp(c.setHex(area.lm.kind === 'field' ? FIELD : YARD), area.t * smooth(hw + 3, hw + 7, d));
       c.copy(road).lerp(side, smooth(hw - 0.2, hw + 0.4, d)).multiplyScalar(0.93 + rand() * 0.14);
       // Snövallens insida mot vägen ligger i blå skugga, som i lågt vintersolljus.
       if (stage.def.winter) c.lerp(side.setHex(BANK_SHADE), 0.9 * smooth(hw + 0.1, hw + 0.7, d) * (1 - smooth(hw + 1.3, hw + 1.9, d)));
@@ -90,6 +96,7 @@ export function buildStage(stage: Stage): THREE.Group {
   group.add(outer);
 
   group.add(buildWater(stage));
+  group.add(buildLandmarks(stage));
 
   // Kantpinnar var 25:e meter
   const sideOf = (s: number) => {
@@ -144,7 +151,8 @@ export function buildStage(stage: Stage): THREE.Group {
 
   // Skog längs vägen (placerad i fysiken, där stammarna kolliderar)
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
-  const N = stage.trunks.length;
+  const trees = stage.trunks.filter((t) => !t.hidden);
+  const N = trees.length;
   const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshToonMaterial({ color: 0x6b4a32 }), N);
   // Kronan som kon(er) runt stammen: y = konens mitt, i trädets skala. Vintergranar har tre
   // våningar med snö ovanpå varje, så grönt syns i kanterna och undertill.
@@ -171,7 +179,7 @@ export function buildStage(stage: Stage): THREE.Group {
   const pos = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
   const tr = rng(47);
-  stage.trunks.forEach((t, i) => {
+  trees.forEach((t, i) => {
     scale.setScalar(t.scale);
     q.setFromAxisAngle(up, tr() * Math.PI * 2);
     pos.set(t.x, t.y + 1.1 * t.scale, t.z);

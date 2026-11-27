@@ -9,6 +9,7 @@ import { GARDSJO } from './real/gardsjo';
 import { OLME } from './real/olme';
 import { ROYAL_FOREST } from './real/royalForest';
 import { VARMSKOG } from './real/varmskog';
+import { LANDMARKS } from './real/landmarks';
 import { rng } from './rng';
 import { World } from './world';
 
@@ -22,6 +23,31 @@ export interface StagePoint {
   width: number;
   surface: SurfaceId;
 }
+
+/**
+ * Något längs vägen ur kartdatan, som sträcka längs etappen (m från start). Ytor (åker, gård, sjö)
+ * ligger på en sida: 1 = vänster i färdriktningen, -1 = höger. Punkter (kraftledning, bro, krön)
+ * har from = to och side 0.
+ */
+export interface Landmark {
+  kind: 'field' | 'farm' | 'lake' | 'power' | 'bridge' | 'crest';
+  side: -1 | 0 | 1;
+  from: number;
+  to: number;
+}
+
+/** Hus, ladugårdar, stolpar, räcken och balar längs etappen. Kolliderar; ritas av renderaren. */
+export interface Prop {
+  kind: 'house' | 'barn' | 'pylon' | 'rail' | 'bale' | 'fence';
+  x: number;
+  z: number;
+  y: number;
+  /** Rotation runt y (rad). Hus står i 0 eller 90°, så kollisionslådan är axelparallell. */
+  yaw: number;
+}
+
+/** Husens mått (halva bredden i x, halva djupet i z, vägghöjd), före rotation. */
+export const HOUSE_SIZE = { house: [4.5, 3, 3.2], barn: [7, 4, 4.5] } as const;
 
 /**
  * En korsande väg som etappen inte kör på, avspärrad vid etappen. Följer höjden från etappens
@@ -52,6 +78,7 @@ export interface StageDef {
   credit?: string;
   /** Väg efter mål att stanna på (m); FINISH_MARGIN om inget anges. */
   runout?: number;
+  landmarks?: Landmark[];
 }
 
 export type Light = 'day' | 'dawn' | 'dusk' | 'night';
@@ -87,6 +114,8 @@ export interface StageHit {
   roadY: number;
   width: number;
   surface: SurfaceId;
+  /** Sida om etappens mittlinje: 1 = vänster i färdriktningen, -1 = höger. */
+  side: number;
 }
 
 const SAMPLE_STEP = 1;
@@ -126,7 +155,13 @@ export class Stage extends World {
   /** Avspärrningar tvärs över de korsande vägarna, en per väg. Lokalt x går tvärs över vägen. */
   readonly barriers: { x: number; z: number; y: number; yaw: number; halfWidth: number }[];
   private grid = new Map<number, number[]>();
-  private hit: StageHit = { s: 0, d: 0, roadY: 0, width: 0, surface: 'gravel' };
+  private hit: StageHit = { s: 0, d: 0, roadY: 0, width: 0, surface: 'gravel', side: 1 };
+  readonly landmarks: Landmark[];
+  /** Ytan per meter och sida (index i landmarks, -1 = skog): [vänster, höger]. */
+  private area: [Int16Array, Int16Array];
+  /** Sjöarnas vattennivå, per landmärke. */
+  readonly lakeLevel = new Map<Landmark, number>();
+  readonly props: Prop[] = [];
 
   constructor(def: StageDef) {
     super();
@@ -193,7 +228,20 @@ export class Stage extends World {
       list.push(i);
     }
     this.spurs = def.spurs ?? [];
+    this.landmarks = def.landmarks ?? [];
+    this.area = [new Int16Array(xs.length).fill(-1), new Int16Array(xs.length).fill(-1)];
+    this.landmarks.forEach((lm, k) => {
+      if (lm.side === 0) return;
+      const a = this.area[lm.side > 0 ? 0 : 1];
+      for (let i = Math.max(0, Math.round(lm.from)); i <= Math.min(xs.length - 1, Math.round(lm.to)); i++) a[i] = k;
+      if (lm.kind === 'lake') {
+        let y = Infinity;
+        for (let i = Math.max(0, Math.round(lm.from)); i <= Math.min(xs.length - 1, Math.round(lm.to)); i++) y = Math.min(y, ys[i]!);
+        this.lakeLevel.set(lm, y - 1.2);
+      }
+    });
     this.placeTrees();
+    this.placeProps();
     this.barriers = this.spurs.map((sp) => {
       const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
       const len = Math.hypot(b.x - a.x, b.z - a.z);
@@ -253,10 +301,101 @@ export class Stage extends World {
     for (let tries = 0; tries < count * 20 && this.trunks.length < count; tries++) {
       const x = minX - STAGE_CORRIDOR + r() * (maxX - minX + 2 * STAGE_CORRIDOR);
       const z = minZ - STAGE_CORRIDOR + r() * (maxZ - minZ + 2 * STAGE_CORRIDOR);
-      const { d, width } = this.roadAt(x, z, STAGE_CORRIDOR);
-      if (d < width / 2 + 7 || d > STAGE_CORRIDOR - 2) continue;
+      const { d, width, s, side } = this.roadAt(x, z, STAGE_CORRIDOR);
+      if (d < width / 2 + 7 || d > STAGE_CORRIDOR - 2 || !this.wooded(s, side, d - width / 2)) continue;
       const scale = 0.7 + r() * 0.9;
       this.trunks.push({ x, z, y: this.heightAt(x, z), r: 0.33 * scale, scale });
+    }
+  }
+
+  /** Ytan (åker, gård, sjö) vid sträckan s på en sida, och hur långt in i den (0–1, mjukt i ändarna). */
+  areaAt(s: number, side: number): { lm: Landmark; t: number } | null {
+    const k = this.area[side > 0 ? 0 : 1][Math.min(this.xs.length - 1, Math.max(0, Math.round(s)))]!;
+    if (k < 0) return null;
+    const lm = this.landmarks[k]!;
+    const ramp = lm.kind === 'lake' ? 25 : 12;
+    return { lm, t: smooth(lm.from, lm.from + ramp, s) * (1 - smooth(lm.to - ramp, lm.to, s)) };
+  }
+
+  /** Växer det skog här? `edge` är avståndet från vägkanten. */
+  private wooded(s: number, side: number, edge: number): boolean {
+    if (this.areaAt(s, side)) return false;
+    for (const lm of this.landmarks) {
+      const ds = Math.abs(s - lm.from);
+      if (lm.kind === 'power' && ds < 16) return false; // ledningsgatan
+      if (lm.kind === 'bridge' && ds < 10) return false;
+      if (lm.kind === 'crest' && ds < 50 && edge < 18) return false; // plats för publiken
+    }
+    return true;
+  }
+
+  /** Punkt `off` m till vänster (negativt = höger) om vägen vid s. */
+  private beside(s: number, off: number) {
+    const p = this.poseAt(s);
+    return { x: p.x + Math.cos(p.heading) * off, z: p.z - Math.sin(p.heading) * off, heading: p.heading };
+  }
+
+  /** Hus på gårdarna, balar och gärdsgård på åkrarna, kraftledningsstolpar och broräcken. */
+  private placeProps() {
+    const r = rng(61);
+    const hidden = (x: number, z: number, rad: number) => this.trunks.push({ x, z, y: this.heightAt(x, z), r: rad, scale: 0, hidden: true });
+    const free = (x: number, z: number, clear: number) => {
+      const h = this.roadAt(x, z);
+      return h.d > h.width / 2 + clear;
+    };
+    for (const lm of this.landmarks) {
+      const hw = (s: number) => this.widths[Math.min(this.xs.length - 1, Math.max(0, Math.round(s)))]! / 2;
+      if (lm.kind === 'farm') {
+        const n = Math.max(1, Math.floor((lm.to - lm.from) / 45));
+        for (let i = 0; i < n; i++) {
+          const s = lm.from + ((i + 0.3 + r() * 0.4) * (lm.to - lm.from)) / n;
+          const kind = r() < 0.35 ? 'barn' : 'house';
+          const [hx, hz, wall] = HOUSE_SIZE[kind];
+          const p = this.beside(s, lm.side * (hw(s) + 13 + r() * 12));
+          const yaw = r() < 0.5 ? 0 : Math.PI / 2;
+          const ax = yaw ? hz : hx;
+          const az = yaw ? hx : hz;
+          if (!free(p.x, p.z, Math.hypot(ax, az) + 3)) continue;
+          // Huset står på den lägsta hörnpunkten, så det aldrig svävar; grunden går ner i marken.
+          let y = Infinity;
+          for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) y = Math.min(y, this.heightAt(p.x + cx * ax, p.z + cz * az));
+          this.props.push({ kind, x: p.x, z: p.z, y, yaw });
+          this.boxes.push({ minX: p.x - ax, maxX: p.x + ax, minY: y - 1, maxY: y + wall + 2.5, minZ: p.z - az, maxZ: p.z + az });
+        }
+      } else if (lm.kind === 'field') {
+        for (let s = lm.from + 4; s < lm.to - 4; s += 2.5) {
+          const p = this.beside(s, lm.side * (hw(s) + 6));
+          if (!free(p.x, p.z, 5)) continue;
+          this.props.push({ kind: 'fence', x: p.x, z: p.z, y: this.heightAt(p.x, p.z), yaw: p.heading });
+          hidden(p.x, p.z, 0.12);
+        }
+        for (let s = lm.from + 15; s < lm.to - 15; s += 30) {
+          if (r() < 0.45) continue;
+          const n = 1 + Math.floor(r() * 3);
+          const off = lm.side * (hw(s) + 11 + r() * 22);
+          for (let k = 0; k < n; k++) {
+            const p = this.beside(s + k * 1.7, off + (r() - 0.5) * 1.5);
+            if (!free(p.x, p.z, 9)) continue;
+            this.props.push({ kind: 'bale', x: p.x, z: p.z, y: this.heightAt(p.x, p.z), yaw: r() * Math.PI });
+            hidden(p.x, p.z, 0.75);
+          }
+        }
+      } else if (lm.kind === 'power') {
+        for (const side of [-1, 1]) {
+          const p = this.beside(lm.from, side * (hw(lm.from) + 17));
+          if (!free(p.x, p.z, 10)) continue;
+          this.props.push({ kind: 'pylon', x: p.x, z: p.z, y: this.heightAt(p.x, p.z), yaw: p.heading });
+          hidden(p.x, p.z, 1.3);
+        }
+      } else if (lm.kind === 'bridge') {
+        for (const side of [-1, 1]) {
+          for (let s = lm.from - 7; s <= lm.from + 7; s += 1.4) {
+            const p = this.beside(s, side * (hw(s) + 0.45));
+            this.props.push({ kind: 'rail', x: p.x, z: p.z, y: this.heightAt(p.x, p.z), yaw: p.heading });
+            hidden(p.x, p.z, 0.15);
+          }
+        }
+      }
     }
   }
 
@@ -332,6 +471,9 @@ export class Stage extends World {
     h.roadY = this.ys[seg]! + (this.ys[b]! - this.ys[seg]!) * u;
     h.width = this.widths[seg]! + (this.widths[b]! - this.widths[seg]!) * u;
     h.surface = this.surfaces[seg]!;
+    const ex = this.xs[b]! - this.xs[seg]!;
+    const ez = this.zs[b]! - this.zs[seg]!;
+    h.side = (x - this.xs[seg]!) * ez - (z - this.zs[seg]!) * ex >= 0 ? 1 : -1;
     return h;
   }
 
@@ -367,6 +509,8 @@ export class Stage extends World {
   override heightAt(x: number, z: number): number {
     const stage = this.project(x, z);
     const stageD = stage.d;
+    const stageS = stage.s;
+    const area = this.landmarks.length ? this.areaAt(stage.s, stage.side) : null;
     const stageHw = stage.width / 2;
     const nearY = stage.roadY;
     const { d, width } = this.withSpurs(stage, x, z);
@@ -381,7 +525,28 @@ export class Stage extends World {
     const edge = this.def.winter ? SNOWBANK_HEIGHT * smooth(hw + 0.3, hw + 1.4, d) * (1 - smooth(hw + 2.4, hw + 4.5, d)) : -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
     const bank = smooth(hw + 2.5, hw + 8, d) * 0.12 * (d - hw - 2.5);
     const hills = smooth(hw + 4, hw + 30, d) * (1.8 * Math.sin(x * 0.021 + 1) * Math.cos(z * 0.017) + 0.9 * Math.sin(z * 0.043 + x * 0.029));
-    return roadY + edge + bank + hills;
+    let h = roadY + edge + bank + hills;
+    if (area) {
+      // Åkrar och gårdstomter är flackare än skogen; sjöns botten ligger under vattenytan ut till
+      // horisonten, med en lång strand så att det inte blir någon brant kant.
+      if (area.lm.kind === 'lake') h -= Math.max(h - (this.lakeLevel.get(area.lm)! - 1.6), 0) * area.t * smooth(stageHw + 3, stageHw + 16, stageD);
+      else h -= hills * 0.75 * area.t * smooth(stageHw + 3, stageHw + 12, stageD);
+    }
+    for (const lm of this.landmarks) {
+      if (lm.kind !== 'bridge' || Math.abs(stageS - lm.from) > 10) continue;
+      // Ån under bron: en fåra tvärs över, högst 2,2 m djup, med vägen som brobana (bortom snövallen på vintern).
+      const t = (1 - smooth(4, 10, Math.abs(stageS - lm.from))) * smooth(stageHw + (this.def.winter ? 3 : 1), stageHw + 8, stageD);
+      h -= Math.min(Math.max(h - (this.ys[Math.round(lm.from)]! - 2.4), 0), 2.2) * t;
+    }
+    return h;
+  }
+
+  /** Vattenytan i en sjö eller å vid (x, z), eller null. */
+  waterAt(x: number, z: number): number | null {
+    const h = this.project(x, z);
+    const area = this.areaAt(h.s, h.side);
+    if (area?.lm.kind === 'lake' && h.d > h.width / 2 + 8) return this.lakeLevel.get(area.lm)!;
+    return null;
   }
 
   override surfaceAt(x: number, z: number): SurfaceId {
@@ -389,6 +554,7 @@ export class Stage extends World {
     if (d <= width / 2 + 0.3) return surface;
     // Utanför vinterväg är det vallar och sedan djup snö: hjulen gräver ner sig.
     if (this.def.winter) return 'snowbank';
+    if (this.landmarks.length && this.waterAt(x, z) !== null) return 'water';
     // Vägkanten: lös jord, eller snö om vägen är snöig.
     return surface === 'snow' ? 'snow' : 'mud';
   }
@@ -419,13 +585,14 @@ export interface RealStagePart {
 /**
  * Etapper från en verklig sträcka i delar, med källan angiven: snöig vinterväg eller sommargrus.
  * `light` ger ljuset per del (dag om inget anges); `version` och `recordsSince` gäller alla delar.
+ * 1.1.0: landmärken ur kartdatan (åkrar, gårdar, sjöar, kraftledningar, broar); rekorden gäller.
  */
 function realStages(
   source: string,
   parts: RealStagePart[],
   winter: boolean,
   light: (Light | undefined)[] = [],
-  version = '1.0.1',
+  version = '1.1.0',
   recordsSince = '1.0.0',
 ): StageDef[] {
   const surface = winter ? ('snow' as const) : ('gravel' as const);
@@ -439,32 +606,34 @@ function realStages(
     points: withRunout(part.road).map(([x, z, y, width = 6]) => ({ x, z, y, width, surface })),
     spurs: part.spurs.map((points) => ({ points, width: 5, surface })),
     runout: FINISH_MARGIN + RUNOUT_EXTRA,
+    ...(LANDMARKS[part.name] ? { landmarks: LANDMARKS[part.name] } : {}),
   }));
 }
 
 /**
  * Andersvattnet ur Rally Sweden i fyra delar (se andersvattnet.ts). Sista delen körs i skymning,
  * som eftermiddagens omgång i rallyt. 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte.
+ * 1.2.0: landmärken.
  */
 export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLARKAN] = realStages(
   'Andersvattnet i Rally Sweden',
   ANDERSVATTNET,
   true,
   [undefined, undefined, undefined, 'dusk'],
-  '1.1.0',
+  '1.2.0',
   '1.1.0',
 ) as [StageDef, StageDef, StageDef, StageDef];
 
 /**
  * Bygdsiljum ur Rally Sweden i fem delar (se bygdsiljum.ts). Sista delen körs på natten.
- * 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte.
+ * 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte. 1.2.0: landmärken.
  */
 export const [STAGE_ASJON, STAGE_ALTARLIDEN, STAGE_BERGTJARNEN, STAGE_TORPET, STAGE_TROLLBERGET] = realStages(
   'Bygdsiljum i Rally Sweden',
   BYGDSILJUM,
   true,
   [undefined, undefined, undefined, undefined, 'night'],
-  '1.1.0',
+  '1.2.0',
   '1.1.0',
 ) as [StageDef, StageDef, StageDef, StageDef, StageDef];
 

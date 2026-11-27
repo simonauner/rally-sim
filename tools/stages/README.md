@@ -51,5 +51,15 @@ punkt) och `elev_full.json`, därefter `gen_ts.py` och `cap_grade.py` som ovan.
 `<beskrivning>` är första stycket i filens kommentar; ta det från den befintliga filen. Efter en ändrad
 väg: uppdatera `src/physics/real/lengths.ts` (fysiktestet skriver ut rätt värde) och höj etappens version.
 
+## Landmärken
+
+`landmarks.py` hämtar OSM-objekt runt varje rutt (åkrar, gårdar och hus, sjöar, kraftledningar,
+åar och namngivna krön) via Overpass till `<etapp>/features.json` och skriver dem som sträckor längs
+vägen:
+
+```sh
+python3 -I tools/stages/landmarks.py > src/physics/real/landmarks.ts
+```
+
 Med dagens `route.json`, `elev.json` och OSM-uttagen från november 2026 ger skripten exakt de
 incheckade filerna. Ett nytt OSM-uttag kan ge andra korsningar eller en annan rutt.

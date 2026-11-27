@@ -65,6 +65,8 @@ lutningen på grusetapperna är begränsad till 12 % (höjddatan tar annars med 
 vägen), och efter mål finns 240 m att stanna på. Utanför vägkanten följer terrängen ett medel av
 vägen runt omkring, så det blir inga kanter på insidan av snäva kurvor. Vägdata © OpenStreetMap
 contributors, ODbL 1.0; den härledda datan i `src/physics/real/` delas under samma licens.
+Längs vägen står det som kartan visar: åkrar med gärdsgård och balar, röda gårdar, sjöar och
+tjärnar, kraftledningar, broar över åar och publiken vid Colin's Crest (`src/physics/real/landmarks.ts`).
 Skripten som genererar etapperna, med var på kartan varje sträcka ligger, finns i
 `tools/stages/` (se README där).
 Testerna kör dessutom två fiktiva etapper med kända korsningar och underlag (`tests/stages.ts`).

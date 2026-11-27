@@ -25,6 +25,8 @@ export interface Trunk {
   r: number;
   /** Storlek för grafiken; 1 = normalträd. */
   scale: number;
+  /** Bara kollision: stolpe, räcke eller bal som ritas för sig, inget träd. */
+  hidden?: boolean;
 }
 
 /**
