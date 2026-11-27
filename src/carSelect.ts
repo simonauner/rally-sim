@@ -54,7 +54,7 @@ export interface PickOptions {
    * visas bilväljaren igen med bilen byggd på nytt (t.ex. med nya uppgraderingar).
    * Returnerar run true stängs väljaren och bilen returneras.
    */
-  action?: { label: string; denied?: (m: CarModel) => boolean; run: (m: CarModel) => Promise<boolean | void> };
+  action?: { label: string; denied?: (m: CarModel) => boolean; confirm?: (m: CarModel) => string; run: (m: CarModel) => Promise<boolean | void> };
   /** Liten text bredvid bilnamnet, t.ex. priset. */
   detail?: (m: CarModel) => string;
   /** Låsta bilar går att bläddra till men inte köra; Kör blir då en hänvisning till karriären. */
@@ -274,6 +274,8 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   /** Vad ← → styr; null medan en undermeny visas. */
   let view: 'browse' | 'compare' | null = 'browse';
   const step = (d: number) => {
+    // Medan köpraden är vänd för att bekräftas står bilen still: ← → väljer Ja/Nej.
+    if (menu.querySelector('button.flipped')) return;
     current = (current + d + cars.length) % cars.length;
     show(cars[current]!);
   };
@@ -305,7 +307,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
       side: true,
       body: bodyHtml(cars[current]!),
       items: [
-        { label: pickLabel(cars[current]!), value: 'pick', locked: locked(cars[current]!), denied: () => locked(cars[current]!) || (opts.action?.denied?.(cars[current]!) ?? false) },
+        { label: pickLabel(cars[current]!), value: 'pick', locked: locked(cars[current]!), denied: () => locked(cars[current]!) || (opts.action?.denied?.(cars[current]!) ?? false), confirm: opts.action?.confirm && (() => opts.action!.confirm!(cars[current]!)) },
         ...(cmp.length ? [{ label: 'Jämför', value: 'compare' as const }] : []),
         { label: '← Tillbaka', value: 'back' },
       ],

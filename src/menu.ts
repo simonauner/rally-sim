@@ -15,6 +15,8 @@ export interface MenuItem<T> {
   denied?: () => boolean;
   /** Låst: grå text med hänglås, och duh-duh vid klick om inte denied säger annat. Värdet returneras ändå. */
   locked?: boolean;
+  /** Frågan när raden vänds för att bekräftas, t.ex. vid köp. Läses vid klicket; Ja ger värdet, Nej vänder tillbaka. */
+  confirm?: () => string;
 }
 
 /** Lucides lock (lucide-static 1.81.0, ISC). */
@@ -140,8 +142,42 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   el.style.display = 'flex';
   const buttons = [...el.querySelectorAll('button')];
   let sel = 0;
+  // Den vända raden (index) och om Ja är markerat; vid sidan om ligger radens vanliga innehåll.
+  let flipped: { i: number; yes: boolean; html: string } | null = null;
+  const unflip = () => {
+    if (!flipped) return;
+    const b = buttons[flipped.i]!;
+    b.innerHTML = flipped.html;
+    b.classList.remove('flipped');
+    // Vänds tillbaka med samma rörelse; omstart av animationen kräver en omritning emellan.
+    b.classList.remove('unflip');
+    void b.offsetWidth;
+    b.classList.add('unflip');
+    flipped = null;
+  };
+  const choose = (yes: boolean) => {
+    if (!flipped) return;
+    if (yes !== flipped.yes) click(3000);
+    flipped.yes = yes;
+    buttons[flipped.i]!.querySelectorAll('.choices b').forEach((c, j) => c.classList.toggle('on', (j === 0) === yes));
+  };
+  const flip = (i: number, question: string) => {
+    unflip();
+    click(4500);
+    const b = buttons[i]!;
+    flipped = { i, yes: true, html: b.innerHTML };
+    b.innerHTML = `<span>${question}</span><span class="choices"><b data-c="yes">Ja</b><b data-c="no">Nej</b></span>`;
+    // Samma animation som unflip: utan omritning emellan startar den inte om.
+    b.classList.remove('unflip');
+    void b.offsetWidth;
+    b.classList.add('flipped');
+    choose(true);
+  };
   const select = (i: number) => {
-    if ((i + buttons.length) % buttons.length !== sel) click(3000);
+    if ((i + buttons.length) % buttons.length !== sel) {
+      click(3000);
+      unflip();
+    }
     sel = (i + buttons.length) % buttons.length;
     buttons.forEach((b, j) => b.classList.toggle('selected', j === sel));
     buttons[sel]?.scrollIntoView({ block: 'nearest' });
@@ -152,9 +188,23 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   input?.focus();
 
   return new Promise<T>((resolve) => {
+    let closing = false;
     const done = (value: T, item?: MenuItem<T>) => {
+      if (closing) return;
+      const denied = item?.denied ? item.denied() : item?.locked;
+      // Första valet av en rad som ska bekräftas vänder den i stället för att välja.
+      if (item?.confirm && !denied && flipped?.i !== opts.items.indexOf(item)) {
+        flip(opts.items.indexOf(item), item.confirm());
+        return;
+      }
+      if (flipped && item && flipped.i === opts.items.indexOf(item) && !flipped.yes) {
+        click(2600);
+        click(1400, 0.06);
+        unflip();
+        return;
+      }
       // Duh-duh: två låga, fallande toner när valet inte går.
-      if (item?.denied ? item.denied() : item?.locked) {
+      if (denied) {
         blip(220, 0.14);
         blip(165, 0.22, 0.17);
       } else if (value === opts.cancel) {
@@ -164,9 +214,17 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       } else click(4500);
       opts.input?.onDone(input?.value ?? '');
       removeEventListener('keydown', onKey, true);
-      el.style.display = 'none';
-      el.innerHTML = '';
-      resolve(value);
+      const close = () => {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        resolve(value);
+      };
+      // Efter Ja syns raden vändas tillbaka innan menyn stängs.
+      if (flipped) {
+        closing = true;
+        unflip();
+        setTimeout(close, 220);
+      } else close();
     };
     const onKey = (e: KeyboardEvent) => {
       e.stopImmediatePropagation();
@@ -174,7 +232,13 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       if (e.target === input && e.code !== 'Enter' && e.code !== 'Escape') return;
       e.preventDefault();
       if (e.repeat && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) return;
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') select(sel - 1);
+      if (flipped && (e.code === 'ArrowLeft' || e.code === 'KeyA')) choose(true);
+      else if (flipped && (e.code === 'ArrowRight' || e.code === 'KeyD')) choose(false);
+      else if (flipped && e.code === 'Escape') {
+        click(2600);
+        click(1400, 0.06);
+        unflip();
+      } else if (e.code === 'ArrowUp' || e.code === 'KeyW') select(sel - 1);
       else if (e.code === 'ArrowDown' || e.code === 'KeyS') select(sel + 1);
       else if (e.code === 'Enter' || e.code === 'Space') done(opts.items[sel]!.value, opts.items[sel]);
       else if (e.code === 'Escape' && opts.cancel !== undefined) done(opts.cancel);
@@ -183,7 +247,15 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     addEventListener('keydown', onKey, true);
     buttons.forEach((b, i) => {
       b.addEventListener('mouseenter', () => select(i));
-      b.addEventListener('click', () => done(opts.items[i]!.value, opts.items[i]));
+      b.addEventListener('click', (e) => {
+        const c = (e.target as HTMLElement).closest<HTMLElement>('.choices b');
+        if (c && flipped?.i === i) choose(c.dataset.c === 'yes');
+        done(opts.items[i]!.value, opts.items[i]);
+      });
+      b.addEventListener('mousemove', (e) => {
+        const c = (e.target as HTMLElement).closest<HTMLElement>('.choices b');
+        if (c && flipped?.i === i) choose(c.dataset.c === 'yes');
+      });
     });
   });
 }

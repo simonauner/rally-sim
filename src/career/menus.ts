@@ -37,7 +37,6 @@ import {
   upgradesFor,
   type BuyResult,
   type Tier,
-  type Upgrade,
 } from "./career";
 import {
   afterLeg,
@@ -491,11 +490,13 @@ async function upgrades(car: string) {
 async function parts(car: string, group: string) {
   const parts = upgradesFor(car).filter((u) => u.group === group);
   let message = "";
+  let chosen: string | undefined;
   let countFrom = loadCareer().career.money;
   for (;;) {
     const career = loadCareer().career;
     const menu = showMenu<string>({
       title: group,
+      initial: chosen,
       subtitle: `${car} · Kassa: ${formatMoney(countFrom)}`,
       side: true,
       body: message,
@@ -508,6 +509,9 @@ async function parts(car: string, group: string) {
             : formatMoney(u.price),
           value: u.id,
           denied: () => buyUpgrade(career, car, u.id) === "poor",
+          confirm: levelOf(career, car, u.id)
+            ? undefined
+            : () => `Köpa för ${formatMoney(u.price)}?`,
         })),
         { label: "← Tillbaka", value: "" },
       ],
@@ -518,12 +522,9 @@ async function parts(car: string, group: string) {
     countFrom = career.money;
     const id = await menu;
     if (!id) return;
+    chosen = id;
     const u = parts.find((x) => x.id === id)!;
     const result = buyUpgrade(career, car, id);
-    if (typeof result === "object" && !(await confirmPart(u, career.money))) {
-      message = "";
-      continue;
-    }
     if (typeof result === "object") {
       commit(result);
       coins();
@@ -535,24 +536,6 @@ async function parts(car: string, group: string) {
     );
   }
 }
-
-/** Frågar om köpet: pris, kassa, vad som blir kvar och vad delen gör. */
-const confirmPart = (u: Upgrade, money: number) =>
-  showMenu<boolean>({
-    title: u.name,
-    subtitle: u.group,
-    side: true,
-    body: `<div>${u.effect}</div><table class="specs">
-      <tr><th>Pris</th><td>${formatMoney(u.price)}</td></tr>
-      <tr><th>Kassa</th><td>${formatMoney(money)}</td></tr>
-      <tr><th>Kvar efter köpet</th><td>${formatMoney(money - u.price)}</td></tr>
-    </table>`,
-    items: [
-      { label: `Köp för ${formatMoney(u.price)}`, value: true },
-      { label: "← Tillbaka", value: false },
-    ],
-    cancel: false,
-  });
 
 /** Bilhandlaren: samma vridbord som bilväljaren, med ägda bilar att jämföra med. */
 async function dealer(pick: Pick) {
@@ -581,6 +564,8 @@ async function dealer(pick: Pick) {
       action: {
         label: "Köp",
         denied: (m) => buyCar(loadCareer().career, nameOf(m)) === "poor",
+        confirm: (m) =>
+          `Köpa ${nameOf(m)} för ${formatMoney(CAR_PRICES[nameOf(m)] ?? 0)}?`,
         run: async (m) => {
           const name = nameOf(m);
           const before = loadCareer().career.money;
@@ -947,6 +932,8 @@ async function beforeLeg(
   let room: Showroom | null = null;
   let message = "";
   let atService = false;
+  // Raden som valdes senast i servicen, så att markeringen står kvar efter en lagning.
+  let chosen: RepairPart | "all" | "go" | "back" | undefined;
   let countFrom = loadCareer().career.money;
   const start = async () => {
     const tyre = await pickTyre(nextStage!, weather);
@@ -1006,6 +993,7 @@ async function beforeLeg(
     );
     const menu = showMenu<RepairPart | "all" | "go" | "back">({
       title: "Service",
+      initial: chosen,
       subtitle: `Kassa: ${formatMoney(countFrom)} · nästa: ${nextName}`,
       side: true,
       body: `${message}${cost > 0 ? `${damageHtml(damage)}<div>Att laga allt kostar ${formatMoney(cost)}.</div>` : "<div>Bilen är hel.</div>"}`,
@@ -1017,6 +1005,7 @@ async function beforeLeg(
                 detail: formatMoney(cost),
                 value: "all" as const,
                 denied: () => money < cost,
+                confirm: () => `Laga allt för ${formatMoney(cost)}?`,
               },
             ]
           : []),
@@ -1025,6 +1014,7 @@ async function beforeLeg(
           detail: formatMoney(parts[k]),
           value: k,
           denied: () => money < parts[k],
+          confirm: () => `Laga ${PART_NAMES[k]} för ${formatMoney(parts[k])}?`,
         })),
         {
           label: cost > 0 ? "Kör vidare utan att laga" : "Kör nästa etapp",
@@ -1038,6 +1028,7 @@ async function beforeLeg(
       countUp(countFrom, money, (m) => `Kassa: ${m} · nästa: ${nextName}`);
     countFrom = money;
     const c = await menu;
+    chosen = c === "back" ? undefined : c;
     if (c === "back") {
       atService = false;
       message = "";

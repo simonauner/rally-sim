@@ -56,6 +56,13 @@
       #menu .items { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
       #menu button { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font: inherit; font-size: 17px; text-align: left; padding: 10px 14px; border: 2px solid transparent; border-radius: 8px; background: #0000000d; color: inherit; cursor: pointer; }
       #menu button.selected { border-color: #1b1b1b; background: #fff; }
+      /* Rad som vänts för att bekräftas (MenuItem.confirm): vänds runt sin vågräta axel. */
+      #menu button.flipped { align-items: center; background: #1b1b1b; color: #fff; border-color: #1b1b1b; animation: flip 0.22s ease-out; }
+      #menu button.unflip { animation: flip 0.22s ease-out; }
+      @keyframes flip { from { transform: perspective(600px) rotateX(-90deg); } }
+      #menu button.flipped .choices { display: flex; gap: 6px; }
+      #menu button.flipped .choices b { padding: 2px 12px; border: 2px solid #fff6; border-radius: 6px; font-weight: 600; }
+      #menu button.flipped .choices b.on { background: #fff; color: #1b1b1b; border-color: #fff; }
       #menu button.pic { justify-content: flex-start; align-items: center; min-width: min(500px, calc(100vw - 88px)); box-sizing: border-box; padding: 8px 14px 8px 8px; }
       #menu button.pic .thumb { flex: none; width: 48%; align-self: stretch; min-height: 120px; border-radius: 6px; background: var(--img) center / cover; }
       #menu button.pic .note { margin-top: 6px; font-size: 13px; line-height: 1.6; }
