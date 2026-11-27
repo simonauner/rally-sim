@@ -698,7 +698,7 @@ async function main() {
 
     sound.update(car, input.throttle);
     carMesh.update();
-    dust.update(car, world, frameDt);
+    dust.update(car, world, frameDt, carMesh);
     precipitation?.update(frameDt, camera.position, now / 1000);
     barrierMeshes?.update();
     // Ghosten väntar vid startlinjen före start och försvinner när du gått i mål.

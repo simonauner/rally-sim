@@ -33,6 +33,11 @@ const STYLES: Record<SurfaceId, DustStyle> = {
   asphalt: { color: 0xd9d9d9, perSpeed: 0, perSlip: 3, slipMin: 4, life: 1.4, size: 0.15, grow: 0.6, gravity: -0.2, drag: 1.6, lift: 0.3 },
 };
 
+/** Avgaspuffar vid tomgång: små, ljusgrå, stiger långsamt och tunnas ut. */
+const EXHAUST: DustStyle = { color: 0xd4d8dc, perSpeed: 0, perSlip: 0, slipMin: 0, life: 1.2, size: 0.025, grow: 0.09, gravity: -0.5, drag: 1.8, lift: 0.1 };
+/** Puffar per sekund och rpm: ~1,5 i sekunden vid tomgång, glest men i takt med motorn. */
+const PUFFS_PER_RPM = 1 / 600;
+
 const MAX = 1200;
 const MAX_RATE = 60;
 
@@ -50,6 +55,8 @@ export class Dust {
   private style: DustStyle[] = new Array(MAX).fill(STYLES.gravel);
   private next = 0;
   private debt = [0, 0, 0, 0];
+  private puffDebt = 0;
+  private tip = new THREE.Vector3();
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private v = new THREE.Vector3();
@@ -68,8 +75,10 @@ export class Dust {
     }
   }
 
-  update(car: Car, world: World, dt: number) {
+  /** `exhaust` ger avgasrörets mynning för puffarna vid tomgång (bilen kan sakna synligt rör). */
+  update(car: Car, world: World, dt: number, exhaust?: { exhaustTip(out: THREE.Vector3): boolean }) {
     this.emit(car, dt);
+    if (exhaust) this.puff(car, exhaust, dt);
     this.simulate(world, dt);
   }
 
@@ -94,15 +103,36 @@ export class Dust {
     });
   }
 
+  /** Avgaspuffar ur röret när bilen står still på tomgång, t.ex. i målgången. */
+  private puff(car: Car, exhaust: { exhaustTip(out: THREE.Vector3): boolean }, dt: number) {
+    if (car.speed > 0.5 || !exhaust.exhaustTip(this.tip)) {
+      this.puffDebt = 0;
+      return;
+    }
+    // Lite ojämnt, som en motor som puttrar.
+    this.puffDebt += car.drivetrain.rpm * PUFFS_PER_RPM * dt * (0.6 + Math.random() * 0.8);
+    if (this.puffDebt < 1) return;
+    this.puffDebt -= 1;
+    this.fwd.set(0, 0, 1).applyQuaternion(car.quat);
+    const r = () => (Math.random() * 2 - 1) * 0.08;
+    this.v.copy(this.fwd).multiplyScalar(-0.9 - Math.random() * 0.4);
+    this.put(EXHAUST, this.tip, this.v.set(this.v.x + r(), this.v.y + EXHAUST.lift, this.v.z + r()));
+  }
+
   private spawn(st: DustStyle, at: THREE.Vector3, car: Car, slipLong: number) {
-    const k = this.next;
-    this.next = (this.next + 1) % MAX;
     const r = () => Math.random() * 2 - 1;
     const spread = 0.5 + Math.abs(slipLong) * 0.1;
     // Behåll en del av bilens fart, kasta bakåt vid hjulspinn, sprid slumpmässigt och lyft.
     this.v.copy(car.vel).multiplyScalar(0.3).addScaledVector(this.fwd, -slipLong * 0.35);
-    this.pos.set([at.x + r() * 0.15, at.y + 0.05, at.z + r() * 0.15], k * 3);
-    this.vel.set([this.v.x + r() * spread, this.v.y + st.lift * (0.6 + Math.random() * 0.8), this.v.z + r() * spread], k * 3);
+    this.v.set(this.v.x + r() * spread, this.v.y + st.lift * (0.6 + Math.random() * 0.8), this.v.z + r() * spread);
+    this.put(st, this.s.set(at.x + r() * 0.15, at.y + 0.05, at.z + r() * 0.15), this.v);
+  }
+
+  private put(st: DustStyle, at: THREE.Vector3, vel: THREE.Vector3) {
+    const k = this.next;
+    this.next = (this.next + 1) % MAX;
+    this.pos.set([at.x, at.y, at.z], k * 3);
+    this.vel.set([vel.x, vel.y, vel.z], k * 3);
     this.age[k] = 0;
     this.style[k] = st;
     this.mesh.setColorAt(k, this.c.setHex(st.color).multiplyScalar(0.9 + Math.random() * 0.2));

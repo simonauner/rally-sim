@@ -707,6 +707,8 @@ export class CarMesh {
   private xAxis = new THREE.Vector3(1, 0, 0);
   private detailGroup: THREE.Group;
   private details: Detail[];
+  /** Avgasröret (modelldelen 'exhaust') och dess mynning i bilens koordinater; bilar byggda av bodies/ har inget synligt rör. */
+  private exhaust?: { detail: Detail; tip: THREE.Vector3 };
   private lastUpdate = 0;
 
   constructor(
@@ -754,6 +756,24 @@ export class CarMesh {
       vel: new THREE.Vector3(),
       spin: new THREE.Vector3(),
     }));
+    const pipe = this.details.find((d) => d.mesh.name === 'exhaust');
+    if (pipe) {
+      // Mynningen: mitten av rörets bakersta hörn (röret kan vara böjt, så inte hela rörets mitt).
+      const pos = pipe.mesh.geometry.getAttribute('position');
+      let minZ = Infinity;
+      for (let i = 0; i < pos.count; i++) minZ = Math.min(minZ, pos.getZ(i));
+      const tip = new THREE.Vector3();
+      let n = 0;
+      for (let i = 0; i < pos.count; i++) {
+        if (pos.getZ(i) > minZ + 0.02) continue;
+        tip.x += pos.getX(i);
+        tip.y += pos.getY(i);
+        tip.z += pos.getZ(i);
+        n++;
+      }
+      tip.divideScalar(n).add(pipe.home);
+      this.exhaust = { detail: pipe, tip };
+    }
     // Strax bakom bakpartiet, så karossen ligger bakom ljuskäglan.
     // Ett par ljus per baklykta, mitt för lyktan ute vid hörnet.
     const tailLightY = (b.tailY[0] + b.tailY[1]) / 2;
@@ -775,6 +795,13 @@ export class CarMesh {
           : buildWheel(car.params.wheelRadius, b.rallyRims);
       this.wheels.push(w);
     }
+  }
+
+  /** Avgasrörets mynning i världen; false när bilen saknar synligt rör eller röret har lossnat. */
+  exhaustTip(out: THREE.Vector3): boolean {
+    if (!this.exhaust || this.exhaust.detail.loose) return false;
+    out.copy(this.exhaust.tip).applyQuaternion(this.car.quat).add(this.car.pos);
+    return true;
   }
 
   addTo(scene: THREE.Object3D) {
