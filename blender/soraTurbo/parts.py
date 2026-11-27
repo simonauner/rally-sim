@@ -168,8 +168,9 @@ MIRROR_AT = (0.39, 0.44)  # (y, z) för spegelns fot i sidorutans främre hörn
 
 
 def mirror(s, side, surface):
-    """Strömlinjeformad spegel: en svart trekantsplatta i sidorutans främre hörn, en kort lackad arm och
-    en kåpa som växer utåt, med svart glas bakåt. Plattans insida följer karossens yta (surface(s, y, z)
+    """Strömlinjeformad spegel: en lackad trekantsplatta i sidorutans främre hörn, en kort lackad arm och
+    en kåpa som växer utåt, med svart glas bakåt. En svart platta försvann mot den mörka rutan, så kåpan
+    såg ut att sväva. Plattans insida följer karossens yta (surface(s, y, z)
     ger x där), så spegeln sitter fast i dörren hur formen än ändras. Origo i plattan."""
     y0, z0 = MIRROR_AT
     bm = bmesh.new()
@@ -179,11 +180,11 @@ def mirror(s, side, surface):
     x0 = inner[0]
     a = [vert(bm, (x - x0, dy, dz)) for x, (dz, dy) in zip(inner, sail)]
     b = [vert(bm, (x - x0 + s * 0.023, dy, dz)) for x, (dz, dy) in zip(inner, sail)]
-    face(bm, list(reversed(a)), 'black')
-    face(bm, b, 'black')
+    face(bm, list(reversed(a)), 'paint')
+    face(bm, b, 'paint')
     for k in range(3):
         k1 = (k + 1) % 3
-        face(bm, [a[k], a[k1], b[k1], b[k]], 'black')
+        face(bm, [a[k], a[k1], b[k1], b[k]], 'paint')
     # Armen ut från plattans nedre del, och kåpan längst ut.
     out = max(abs(x - x0) for x in inner) * s + s * 0.02
     box(bm, (out + s * 0.025, 0.02, -0.03), (0.05, 0.025, 0.045), 'paint')
