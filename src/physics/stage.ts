@@ -334,7 +334,11 @@ export class Stage extends World {
    * gäller d, width och surface; s och roadY är fortfarande etappens.
    */
   roadAt(x: number, z: number, maxD = Infinity): StageHit {
-    const h = this.project(x, z, maxD);
+    return this.withSpurs(this.project(x, z, maxD), x, z);
+  }
+
+  /** Byter träffen mot en korsande väg om någon ligger närmare än etappen. */
+  private withSpurs(h: StageHit, x: number, z: number): StageHit {
     for (const sp of this.spurs) {
       const p = sp.points;
       for (let i = 0; i + 1 < p.length; i++) {
@@ -355,13 +359,18 @@ export class Stage extends World {
   }
 
   override heightAt(x: number, z: number): number {
-    const { d, width, roadY: nearY } = this.roadAt(x, z);
+    const stage = this.project(x, z);
+    const stageD = stage.d;
+    const stageHw = stage.width / 2;
+    const nearY = stage.roadY;
+    const { d, width } = this.withSpurs(stage, x, z);
     const hw = width / 2;
-    // Utanför vägkanten följer terrängen ett medel av vägen runt omkring, inte bara närmaste
+    // Utanför etappens vägkant följer terrängen ett medel av vägen runt omkring, inte bara närmaste
     // punkten: annars blir det en kant på insidan av snäva kurvor och hårnålar, där närmaste
-    // punkt hoppar till en annan del av vägen. Vägen och vägkanten har vägens egen höjd.
-    const blend = smooth(hw + 2, hw + 12, d);
-    const roadY = blend > 0 ? nearY + (this.nearbyRoadY(x, z, d) - nearY) * blend : nearY;
+    // punkt hoppar till en annan del av vägen. Avståndet räknas till etappen även intill en korsande
+    // väg, som då följer samma medel. Vägen och vägkanten har vägens egen höjd.
+    const blend = smooth(stageHw + 2, stageHw + 12, stageD);
+    const roadY = blend > 0 ? nearY + (this.nearbyRoadY(x, z, stageD) - nearY) * blend : nearY;
     // Vinterväg har plogade snövallar där andra vägar har dike.
     const edge = this.def.winter ? SNOWBANK_HEIGHT * smooth(hw + 0.3, hw + 1.4, d) * (1 - smooth(hw + 2.4, hw + 4.5, d)) : -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
     const bank = smooth(hw + 2.5, hw + 8, d) * 0.12 * (d - hw - 2.5);
@@ -590,7 +599,7 @@ export interface RealStagePart {
 function realWinterStages(source: string, parts: RealStagePart[], light: (Light | undefined)[] = []): StageDef[] {
   return parts.map((part, i) => ({
     name: part.name,
-    version: '1.0.0',
+    version: '1.0.1',
     recordsSince: '1.0.0',
     winter: true,
     ...(light[i] ? { light: light[i] } : {}),
