@@ -7,6 +7,10 @@ import { applause, coins, showMenu } from "../menu";
 import skogsrallytImg from "../assets/champ-skogsrallyt.webp";
 import myrkullarallytImg from "../assets/champ-myrkullarallyt.webp";
 import vinterrallytImg from "../assets/champ-vinterrallyt.webp";
+import forsrallytImg from "../assets/champ-forsrallyt.webp";
+import tallmoklassikernImg from "../assets/champ-tallmoklassikern.webp";
+import ljunghedsrallytImg from "../assets/champ-ljunghedsrallyt.webp";
+import israllytImg from "../assets/champ-israllyt.webp";
 import { CARS, type CarModel } from "../physics/params";
 import { STAGES, type StageDef } from "../physics/stage";
 import { pickStage, stagePreviewHtml } from "../stageMenu";
@@ -245,16 +249,15 @@ export async function careerMenu(
   }
 }
 
-/** En vy från en etapp i varje mästerskap, tagen i spelet. */
+/** Vyn från motorhuven vid starten av en etapp i varje mästerskap, tagen i spelet i uppehållsväder. */
 const CHAMPIONSHIP_IMAGES: Record<string, string> = {
   skogsrallyt: skogsrallytImg,
   myrkullarallyt: myrkullarallytImg,
   vinterrallyt: vinterrallytImg,
-  // shortcut: klass 2 och Forsrallyt lånar bilder från klass 1-mästerskapen; ta egna om de behövs.
-  tallmoklassikern: skogsrallytImg,
-  ljunghedsrallyt: myrkullarallytImg,
-  israllyt: vinterrallytImg,
-  forsrallyt: myrkullarallytImg,
+  forsrallyt: forsrallytImg,
+  tallmoklassikern: tallmoklassikernImg,
+  ljunghedsrallyt: ljunghedsrallytImg,
+  israllyt: israllytImg,
 };
 
 /** Mästerskapen: först klassen, sedan mästerskapet i den. */
