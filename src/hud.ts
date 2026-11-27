@@ -7,13 +7,27 @@ import type { StageRecord } from './account/protocol';
 
 const WHEEL_NAMES = ['VF', 'HF', 'VB', 'HB'];
 
-/** Tangentlistan, både i hjälprutan och i menyns Kontroller. */
-export const CONTROLS_HTML = [
-  '<b>W/S</b> gas/broms (S bakåt vid stopp) · <b>A/D</b> styr',
-  '<b>Mellanslag</b> handbroms · <b>R</b> tillbaka på vägen · <b>T</b> starta om',
-  '<b>C</b> kamera · <b>M</b> manuell låda (<b>E</b>/<b>Q</b>) · <b>F3</b> kraftvektorer',
-  '<b>F1</b> felsökning · <b>H</b> visa/dölj hjälpen · <b>N</b> ljud av/på · <b>G</b> ghost av/på · <b>Esc</b> meny',
-].join('<br/>');
+/** Tangenterna, en per rad i menyns Kontroller. */
+const CONTROLS: [string, string][] = [
+  ['W', 'gas'],
+  ['S', 'broms, bakåt vid stopp'],
+  ['A/D', 'styr'],
+  ['Mellanslag', 'handbroms'],
+  ['R', 'tillbaka på vägen'],
+  ['T', 'starta om'],
+  ['C', 'kamera'],
+  ['M', 'manuell låda'],
+  ['E/Q', 'växla upp/ner'],
+  ['N', 'ljud av/på'],
+  ['G', 'ghost av/på'],
+  ['H', 'visa/dölj hjälpen'],
+  ['F1', 'felsökning'],
+  ['F3', 'kraftvektorer'],
+  ['Esc', 'meny'],
+];
+export const CONTROLS_TABLE = `<table class="specs">${CONTROLS.map(([k, a]) => `<tr><th>${k}</th><td>${a}</td></tr>`).join('')}</table>`;
+/** Samma tangenter i hjälprutan, i följd så att rutan förblir låg. */
+const CONTROLS_HTML = CONTROLS.map(([k, a]) => `<b>${k}</b> ${a}`).join(' · ');
 
 /** Strålkastarnas skick i ord, för skadepanelen och servicen. */
 export function lampStatus(lamps: number[]): string {

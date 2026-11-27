@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { toonOutlinePass, uniform } from 'three/tsl';
 import { Sound } from './audio';
 import { createGui } from './gui';
-import { CONTROLS_HTML, Hud, resultHtml } from './hud';
+import { CONTROLS_TABLE, Hud, resultHtml } from './hud';
 import { CoDriver } from './codriver';
 import { settings, showSettings, showWelcome } from './settings';
 import { Controls } from './input';
@@ -169,7 +169,7 @@ async function main() {
   };
 
   const showControls = (solid: boolean) =>
-    showMenu({ title: 'Kontroller', body: CONTROLS_HTML, items: [{ label: '← Tillbaka', value: 0 }], cancel: 0, solid });
+    showMenu({ title: 'Kontroller', body: CONTROLS_TABLE, items: [{ label: '← Tillbaka', value: 0 }], cancel: 0, solid });
 
   // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
   type MainChoice = 'stage' | 'test' | 'settings' | 'controls' | 'account' | 'career';
