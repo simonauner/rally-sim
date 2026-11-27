@@ -17,6 +17,11 @@ const LIGHT_NAMES: Record<Light, string> = { day: '', dawn: 'gryning', dusk: 'sk
  */
 export async function pickStage(title: string, extra?: (s: StageDef) => string): Promise<StageDef | null> {
   const career = loadCareer().career;
+  // Etappbilderna hämtas redan nu, så de syns direkt när man går in i ett mästerskap.
+  for (const s of STAGES) {
+    const url = stageImage(s.name);
+    if (url) new Image().src = url;
+  }
   // Varje etapp listas under det första mästerskapet den körs i; klass 2 visas bara med sina nya etapper.
   const listed = new Set<string>();
   const groups = CHAMPIONSHIPS.map((c) => {
@@ -50,8 +55,10 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
           const s = STAGES.find((x) => x.name === leg);
           if (!s) return [];
           const best = loadRecord(s);
-          const detail = [LIGHT_NAMES[s.light ?? 'day'], best ? `bästa ${formatTime(best.time)}` : '', extra?.(s) ?? ''].filter(Boolean).join(' · ');
-          return [{ label: s.name, note: s.credit ? 'verklig väg · kartdata © OpenStreetMap contributors' : undefined, detail: detail || undefined, image: stageImage(s.name), value: s.name }];
+          // Under namnet: ljus, bästa tid och källan, en rad var.
+          const facts = [LIGHT_NAMES[s.light ?? 'day'], best ? `bästa ${formatTime(best.time)}` : '', extra?.(s) ?? ''].filter(Boolean).join(' · ');
+          const lines = [facts, s.credit ? 'verklig väg · kartdata © OpenStreetMap contributors' : ''].filter(Boolean);
+          return [{ label: s.name, note: lines.map((l) => `<span>${l}</span>`).join('') || undefined, image: stageImage(s.name), value: s.name }];
         }),
         { label: '← Tillbaka', value: '' },
       ],
