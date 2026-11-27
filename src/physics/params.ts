@@ -562,12 +562,14 @@ export function brenner5t(): CarParams {
 }
 
 /**
- * Klass 2: en fiktiv japansk sedan med boxermotor, låg tyngdpunkt och mjuk fjädring. Stabil och
- * förlåtande över ojämnheter, och drar jämnt ur kurvorna.
+ * Klass 2: en fiktiv japansk tvådörrars coupé med boxermotor, låg tyngdpunkt och mjuk fjädring. Stabil
+ * och förlåtande över ojämnheter, och drar jämnt ur kurvorna. Mått, vikt och motor följer förebilden
+ * från 1999: 4,35 × 1,69 × 1,405 m, hjulbas 2,52 m, spårvidd 1,47/1,46 m, 1 260 kg, 206 kW vid
+ * 6 500 rpm och 352 Nm vid 4 000 rpm, däck 205/50 R16.
  */
 export function soraTurbo(): CarParams {
   const p = kvarnTurbo4x4();
-  const mass = 1230;
+  const mass = 1260;
   const R = 0.31;
   const cg = 0.47;
   const wheelbase = 2.52;
@@ -575,20 +577,20 @@ export function soraTurbo(): CarParams {
     ...p,
     name: 'Sora 2.0 Turbo',
     mass,
-    inertia: boxInertia(mass, 4.35, 1.74, 1.4, 0.8),
+    inertia: boxInertia(mass, 4.35, 1.69, 1.405, 0.8),
     cgHeight: cg,
     wheelRadius: R,
     wheelbase,
-    trackFront: 1.48,
-    wheels: wheelsAt(R - cg + 0.125, 0.74, 0.74, wheelbase * 0.44, -wheelbase * 0.56),
-    body: { halfX: 0.87, halfZ: 2.17, bottomY: -0.3, topY: 0.9 },
+    trackFront: 1.47,
+    wheels: wheelsAt(R - cg + 0.125, 0.735, 0.73, wheelbase * 0.44, -wheelbase * 0.56),
+    body: { halfX: 0.845, halfZ: 2.175, bottomY: -0.3, topY: 0.89 },
     susp: { ...p.susp, kFront: 30000, kRear: 27000, bump: 2500, rebound: 4000, arbFront: 13000, arbRear: 11000 },
     frontShare: 0.5,
     centerDiff: { lock: 0.5, preload: 100 },
     engine: {
       ...p.engine,
       curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
-      curveNm: [115, 150, 230, 310, 345, 355, 355, 330, 275, 215],
+      curveNm: [115, 150, 230, 310, 340, 352, 345, 325, 295, 225],
     },
     // Vit urtavla med svarta siffror och orange nål; rött fält från 8000 som på förlagan.
     gauges: {
@@ -709,8 +711,8 @@ export const CARS: CarModel[] = [
   {
     make: soraTurbo,
     body: 'soraTurbo',
-    paint: 0x2a4fa8,
-    blurb: 'Boxersedan med låg tyngdpunkt och mjuk fjädring. Stabil över ojämnheter och drar jämnt ur kurvorna.',
+    paint: 0x1f4fb4,
+    blurb: 'Tvådörrars boxercoupé med hög vinge och låg tyngdpunkt. Mjuk fjädring, stabil över ojämnheter och drar jämnt ur kurvorna.',
   },
   {
     make: arashiRs,
