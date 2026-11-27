@@ -175,6 +175,8 @@ export interface BodyShape {
   lampBand?: boolean;
   /** Karossens hörnradie; större ger en rundare bil. */
   round?: number;
+  /** Extraljusens x (mitt) på klass 2-rampen, om de inte ska spridas brett över fronten. */
+  podX?: number[];
   /** Vita fälgar med en tät ring av hål, som rallyfälgar, i stället för navkapslar. */
   rallyRims?: boolean;
 }
@@ -280,6 +282,8 @@ const SHAPES: Record<CarModel['body'], BodyShape> = {
     paintedBumpers: true,
     spoiler: 'roof',
     rallyRims: true,
+    // Tätt i en rad framför grillen, så de egna runda lyktorna syns utanför.
+    podX: [0.285, 0.095, -0.095, -0.285],
   },
   // Rundad tredörrars liftback-coupé: lång låg nos med smala lyktor, luftintag på huven, lång sluttande
   // bakruta som slutar i en vinge på bakluckan.
@@ -605,12 +609,13 @@ function addLampPod(g: THREE.Group, b: BodyShape, lampGlow: LampGlow) {
   const black = new THREE.MeshToonMaterial({ color: BLACK });
   const y = (b.lampY[0] + b.lampY[1]) / 2;
   const z = b.nose + 0.16;
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.04), black);
+  const xs = b.podX ?? [0.52, 0.18, -0.18, -0.52];
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(2 * xs[0]! + 0.16, 0.04, 0.04), black);
   bar.position.set(0, y - 0.1, z - 0.02);
   g.add(bar);
   const housing = new THREE.CylinderGeometry(0.095, 0.08, 0.1, 20).rotateX(Math.PI / 2);
   const lens = new THREE.CylinderGeometry(0.078, 0.078, 0.01, 20).rotateX(Math.PI / 2).translate(0, 0, 0.051);
-  for (const x of [0.52, 0.18, -0.18, -0.52]) {
+  for (const x of xs) {
     const glass = new THREE.MeshToonNodeMaterial();
     glass.colorNode = color(LAMP);
     glass.emissiveNode = color(LAMP).mul(lampGlow[x > 0 ? 0 : 1]);
