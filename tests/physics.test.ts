@@ -518,18 +518,37 @@ for (const def of STAGES) {
   check('strålkastare lagas vid omstart', car.lamps.every((l) => l === 0), car.lamps.join('/'));
 }
 
+// 16a. Kickdown: gasen i botten på låga varv växlar ner, men inte så länge gasen hållits i botten sedan uppväxlingen.
+{
+  const p = kvarn240();
+  const d = new Drivetrain(p.engine, p.gearbox);
+  d.gear = 4;
+  d.rpm = 2700;
+  const omega = (2700 / d.totalRatio(4)) * (2 * Math.PI / 60);
+  d.update(DT, 0.3, omega, 0.3);
+  const held = d.gear;
+  d.update(DT, 1, omega, 1);
+  const kicked = d.gear;
+  d.kickdownArmed = false;
+  d.gear = 4;
+  d.shiftTimer = 0;
+  d.update(DT, 1, omega, 1);
+  check('kickdown', held === 4 && kicked === 3 && d.gear === 4, `delgas ${held}, gasen i botten ${kicked}, utan lyft ${d.gear}`);
+}
+
 // 16b. Turbo: laddtrycket byggs upp efter gaspådrag, släpps när gasen lyfts, och antilag håller det.
 {
   const p = kvarnTurbo4x4();
   const torqueAfter = (antilag: number, offFor: number) => {
     const d = new Drivetrain({ ...p.engine, turbo: { ...p.engine.turbo!, antilag } }, p.gearbox);
+    d.autoShift = false;
     d.gear = 3;
     const omega = (4500 / d.totalRatio(3)) * (2 * Math.PI / 60);
-    for (let t = 0; t < 3; t += DT) d.update(DT, 1, omega);
-    for (let t = 0; t < offFor; t += DT) d.update(DT, 0, omega);
-    const first = d.update(DT, 1, omega);
-    for (let t = 0; t < 0.1; t += DT) d.update(DT, 1, omega);
-    return { first, full: (() => { for (let t = 0; t < 3; t += DT) d.update(DT, 1, omega); return d.update(DT, 1, omega); })() };
+    for (let t = 0; t < 3; t += DT) d.update(DT, 1, omega, 1);
+    for (let t = 0; t < offFor; t += DT) d.update(DT, 0, omega, 0);
+    const first = d.update(DT, 1, omega, 1);
+    for (let t = 0; t < 0.1; t += DT) d.update(DT, 1, omega, 1);
+    return { first, full: (() => { for (let t = 0; t < 3; t += DT) d.update(DT, 1, omega, 1); return d.update(DT, 1, omega, 1); })() };
   };
   const plain = torqueAfter(0, 1);
   const al = torqueAfter(0.8, 1);

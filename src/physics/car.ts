@@ -369,7 +369,7 @@ export class Car {
       }
     }
 
-    const shaftTorque = dtn.update(dt, gas, shaftOmega);
+    const shaftTorque = dtn.update(dt, gas, shaftOmega, input.throttle);
     const iRef = p.engine.inertia * dtn.ratio * dtn.ratio * dtn.engage * dtn.engage;
 
     const axleTorque = [0, 0, 0, 0];

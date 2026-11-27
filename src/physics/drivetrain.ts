@@ -40,6 +40,9 @@ export interface GearboxParams {
   shiftTime: number;
 }
 
+/** Hur långt under uppväxlingsvarvet kickdown får landa, så att lådan inte pendlar mellan växlar. */
+const KICKDOWN_MARGIN_RPM = 700;
+
 export function interp(xs: number[], ys: number[], x: number): number {
   if (x <= xs[0]!) return ys[0]!;
   for (let i = 1; i < xs.length; i++) {
@@ -68,6 +71,8 @@ export class Drivetrain {
   powerFactor = 1;
   /** Laddtryck 0..1, för turbomotorer. */
   boost = 0;
+  /** Kickdown kräver att föraren lättat på gasen sedan senaste uppväxlingen, annars pendlar lådan när hjulspinn släpper. */
+  kickdownArmed = false;
 
   constructor(
     public engine: EngineParams,
@@ -85,12 +90,14 @@ export class Drivetrain {
     this.rpm = this.engine.idleRpm;
     this.shiftTimer = 0;
     this.boost = 0;
+    this.kickdownArmed = false;
   }
 
   shiftUp() {
     if (this.gear < this.gearbox.ratios.length && this.shiftTimer <= 0) {
       this.gear = this.gear <= 0 ? 1 : this.gear + 1;
       this.shiftTimer = this.gearbox.shiftTime;
+      this.kickdownArmed = false;
     }
   }
 
@@ -105,20 +112,31 @@ export class Drivetrain {
    * Räknar ut moment vid drivaxeln.
    * @param throttle gaspedalen 0..1 (efter hjälpmedel)
    * @param shaftOmega drivaxelns vinkelhastighet (rad/s), medel av drivhjulen
+   * @param pedal förarens gaspedal 0..1 före hjälpmedel, för kickdown
    */
-  update(dt: number, throttle: number, shaftOmega: number): number {
+  update(dt: number, throttle: number, shaftOmega: number, pedal: number): number {
     const { engine, gearbox } = this;
 
     this.ratio = this.totalRatio(this.gear);
     const shaftRpmIn = Math.abs(shaftOmega * this.ratio) * (60 / (2 * Math.PI));
 
     if (this.shiftTimer > 0) this.shiftTimer -= dt;
+    if (pedal < 0.5) this.kickdownArmed = true;
 
     if (this.autoShift && this.gear >= 1 && this.shiftTimer <= 0) {
       if (this.rpm > gearbox.upshiftRpm && throttle > 0.1 && this.gear < gearbox.ratios.length) this.shiftUp();
       // Nedväxling även när kopplingen slirar och håller motorvarvet uppe men hjulen nästan står,
       // t.ex. efter hjulspinn i en brant snöbacke; annars fastnar bilen på en hög växel.
       else if (Math.min(this.rpm, shaftRpmIn) < gearbox.downshiftRpm && this.gear > 1) this.shiftDown();
+      // Kickdown: när föraren trampar ner gasen växlar lådan ner om varvet på växeln under hamnar en bra bit
+      // under uppväxlingsvarvet, så att den inte direkt växlar upp igen.
+      else if (
+        this.kickdownArmed &&
+        pedal > 0.8 &&
+        this.gear > 1 &&
+        (Math.max(this.rpm, shaftRpmIn) * gearbox.ratios[this.gear - 2]!) / gearbox.ratios[this.gear - 1]! < gearbox.upshiftRpm - KICKDOWN_MARGIN_RPM
+      )
+        this.shiftDown();
     }
     this.ratio = this.totalRatio(this.gear);
 
