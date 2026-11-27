@@ -53,7 +53,7 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
   }
 }
 
-const MAP_COLORS: Record<SurfaceId, string> = { asphalt: '#9aa4b0', gravel: '#d9a55b', mud: '#8a5a2b', snow: '#7fa8d6', snowbank: '#7fa8d6' };
+const MAP_COLORS: Record<SurfaceId, string> = { asphalt: '#9aa4b0', gravel: '#d9a55b', mud: '#8a5a2b', snow: '#7fa8d6', snowbank: '#7fa8d6', water: '#2fb8d8' };
 
 /** Förhandsvisning av en etapp: tid på dygnet, längd, underlag och karta ovanifrån färgad efter underlag. */
 export function stagePreviewHtml(def: StageDef): string {

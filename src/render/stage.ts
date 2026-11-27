@@ -89,6 +89,8 @@ export function buildStage(stage: Stage): THREE.Group {
   outer.receiveShadow = true;
   group.add(outer);
 
+  group.add(buildWater(stage));
+
   // Kantpinnar var 25:e meter
   const sideOf = (s: number) => {
     const p = stage.poseAt(s);
@@ -200,6 +202,7 @@ export function buildStage(stage: Stage): THREE.Group {
     let ki = 0;
     for (let s = 0; s < stage.length && ki < n - 1; s += k.every) {
       const p = sideOf(s + r() * k.every);
+      if (stage.project(p.x, p.z).surface === 'water') continue; // inga buskar i bäcken
       const hw = stage.project(p.x, p.z).width / 2;
       for (const side of [-1, 1]) {
         const off = (hw + k.near + r() * (k.far - k.near)) * side;
@@ -219,12 +222,36 @@ export function buildStage(stage: Stage): THREE.Group {
   return group;
 }
 
+/**
+ * Vattenytan i varje vadställe: en rektangel tvärs över vägen, en bit över stenbotten, så hjulen
+ * försvinner ner i vattnet. Bäckfåran utanför vägen är samma sänka i terrängen.
+ */
+function buildWater(stage: Stage): THREE.Group {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshToonMaterial({ color: 0x4f8fa8, transparent: true, opacity: 0.78 });
+  for (let i = 0; i < stage.surfaces.length; i++) {
+    if (stage.surfaces[i] !== 'water' || stage.surfaces[i - 1] === 'water') continue;
+    let j = i;
+    let y = Infinity;
+    while (stage.surfaces[j + 1] === 'water') y = Math.min(y, stage.ys[j++]!);
+    const mid = stage.poseAt((i + j) / 2);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(18, j - i + 12).rotateX(-Math.PI / 2), mat);
+    plane.position.set(mid.x, Math.min(y, stage.ys[j]!) + 0.3, mid.z);
+    plane.rotation.y = mid.heading;
+    plane.receiveShadow = true;
+    group.add(plane);
+    i = j;
+  }
+  return group;
+}
+
 /** Hjulspårens färg per underlag: packad snö blir beigegrå, grus och lera mörkare där stenarna sopats undan. */
 const TRACK: Record<string, (c: THREE.Color) => THREE.Color> = {
   snow: (c) => c.setHex(0xd3cbbb),
   gravel: (c) => c.setHex(COLORS.gravel!).multiplyScalar(0.82),
   mud: (c) => c.setHex(COLORS.mud!).multiplyScalar(0.78),
   asphalt: (c) => c.setHex(COLORS.asphalt!).multiplyScalar(0.88),
+  water: (c) => c.setHex(COLORS.water!).multiplyScalar(0.85),
 };
 
 /** Två hjulspår längs etappens mitt, som vandrar lite i sidled och varierar i bredd och ton. */

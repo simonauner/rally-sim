@@ -10,6 +10,8 @@ export const COLORS: Record<string, number> = {
   // Packad vägsnö är gråare än den lösa snön i vallarna.
   snow: 0xe3e6e7,
   snowbank: 0xfafcfd,
+  // Stenbotten i vadställen, under vattenytan.
+  water: 0x5d6660,
 };
 
 export function buildTerrain(world: World): THREE.Group {

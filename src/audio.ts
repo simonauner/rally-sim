@@ -10,6 +10,7 @@ const SURFACE_SOUND: Record<SurfaceId, { roll: number; slip: number; q: number; 
   mud: { roll: 300, slip: 500, q: 1.2, level: 0.7 },
   snow: { roll: 1500, slip: 2500, q: 0.7, level: 0.5 },
   snowbank: { roll: 700, slip: 1200, q: 0.6, level: 0.9 },
+  water: { roll: 600, slip: 900, q: 0.5, level: 1 },
 };
 
 /** Motorljudets klang. Övertonen k ligger på k × halva vevaxelvarvet, alltså motorordning k/2. */

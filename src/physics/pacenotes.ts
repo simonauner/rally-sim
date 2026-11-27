@@ -44,7 +44,7 @@ const WORDS = {
     crest: 'krön',
     junction: 'korsning',
     finish: 'mål',
-    surfaces: { gravel: 'grus', asphalt: 'asfalt', mud: 'lera', snow: 'snö' } as Record<SurfaceId, string>,
+    surfaces: { gravel: 'grus', asphalt: 'asfalt', mud: 'lera', snow: 'snö', water: 'vatten' } as Record<SurfaceId, string>,
     distances: { 50: 'femtio', 100: 'hundra', 150: 'hundrafemtio', 200: 'tvåhundra', 250: 'tvåhundrafemtio', 300: 'trehundra' } as Record<number, string>,
   },
   en: {
@@ -55,7 +55,7 @@ const WORDS = {
     crest: 'crest',
     junction: 'junction',
     finish: 'finish',
-    surfaces: { gravel: 'gravel', asphalt: 'tarmac', mud: 'mud', snow: 'snow' } as Record<SurfaceId, string>,
+    surfaces: { gravel: 'gravel', asphalt: 'tarmac', mud: 'mud', snow: 'snow', water: 'water' } as Record<SurfaceId, string>,
     distances: { 50: 'fifty', 100: 'one hundred', 150: 'one fifty', 200: 'two hundred', 250: 'two fifty', 300: 'three hundred' } as Record<number, string>,
   },
 };

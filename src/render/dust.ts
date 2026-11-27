@@ -28,6 +28,8 @@ const STYLES: Record<SurfaceId, DustStyle> = {
   snow: { color: 0xf3f6f9, perSpeed: 0.8, perSlip: 4, slipMin: 0.5, life: 1.2, size: 0.1, grow: 0.45, gravity: 0.3, drag: 2, lift: 0.7 },
   // Vallarna yr upp ett stort pudermoln, som när en bil plöjer i snökanten.
   snowbank: { color: 0xf3f6f9, perSpeed: 2.5, perSlip: 6, slipMin: 0.3, life: 1.8, size: 0.16, grow: 0.9, gravity: 0.2, drag: 2.2, lift: 1.6 },
+  // Vadställen sprutar vatten åt sidorna, mer ju fortare bilen kör.
+  water: { color: 0xdfeef5, perSpeed: 2.5, perSlip: 5, slipMin: 0.3, life: 0.7, size: 0.1, grow: 0.25, gravity: 9, drag: 0.6, lift: 4 },
   asphalt: { color: 0xd9d9d9, perSpeed: 0, perSlip: 3, slipMin: 4, life: 1.4, size: 0.15, grow: 0.6, gravity: -0.2, drag: 1.6, lift: 0.3 },
 };
 
