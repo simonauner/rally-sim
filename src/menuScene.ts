@@ -4,7 +4,7 @@ import { Sound } from './audio';
 import { driveAlongRoad, turnAt } from './physics/autopilot';
 import { Car } from './physics/car';
 import { CARS } from './physics/params';
-import { lightAt, START_S, Stage, STAGE_MYRKULLA } from './physics/stage';
+import { type Light, lightAt, START_S, Stage, type StageDef } from './physics/stage';
 import { CarMesh } from './render/carMesh';
 import { Dust } from './render/dust';
 import { buildStage } from './render/stage';
@@ -27,19 +27,20 @@ const VOLUME_OFF = icon(
 );
 
 export interface MenuScene {
-  /** Visar scenen bakom menyerna och kör loopen. */
-  play(): void;
+  /** Visar scenen bakom menyerna och kör loopen, i givet ljus eller spelarens klocka. */
+  play(light?: Light): void;
   /** Stoppar loopen; scenen finns kvar till nästa play(). */
   stop(): void;
   dispose(): void;
 }
 
 /**
- * Bakgrunden till huvudmenyn: en fast kamera ovanför Myrkullas skarpaste gruskurva, där
- * autopiloten kör förbi med en bil i taget, en ny modell varje varv.
+ * Bakgrunden till menyerna: en fast kamera ovanför etappens skarpaste kurva på grus (snö på
+ * vinteretapper), där autopiloten kör förbi med en bil i taget, en ny modell varje varv.
  */
-export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
-  const stage = new Stage(STAGE_MYRKULLA);
+export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuScene {
+  const stage = new Stage(def);
+  const surface = def.winter ? 'snow' : 'gravel';
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 1500);
   const outlinePass = toonOutlinePass(scene, camera, undefined, 0.003);
@@ -56,10 +57,10 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   const headlights = new Headlights();
   scene.add(headlights.group);
 
-  // Skarpaste kurvan på grus (surfaces har en post per meter), och kameran högt upp på utsidan av den så bilen kommer mot kameran.
+  // Skarpaste kurvan på grus/snö (surfaces har en post per meter), och kameran högt upp på utsidan av den så bilen kommer mot kameran.
   let corner = 0;
   for (let s = START_S + RUN_IN; s < stage.length - RUN_OUT; s += 5) {
-    const gravel = stage.surfaces.slice(s - 60, s + 60).every((x) => x === 'gravel');
+    const gravel = stage.surfaces.slice(s - 60, s + 60).every((x) => x === surface);
     if (gravel && Math.abs(turnAt(stage, s)) > Math.abs(turnAt(stage, corner))) corner = s;
   }
   const apex = stage.poseAt(corner);
@@ -71,9 +72,8 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   camera.position.set(apex.x + out.x * 42, 0, apex.z + out.y * 42);
   camera.position.y = Math.max(apexY, stage.heightAt(camera.position.x, camera.position.z)) + 22;
   sun.target.position.copy(look);
-  // Ljuset följer spelarens klocka; läses om varje gång menyn visas.
-  const setLight = () => {
-    const time = lightAt(new Date());
+  // Ljuset följer spelarens klocka om inget annat ges; läses om varje gång menyn visas.
+  const setLight = (time = lightAt(new Date())) => {
     const light = LIGHTS[time];
     applyLight(scene, hemi, sun, light);
     // Svagt månljus på natten så att banan syns mellan bilarna; etappens natt förblir becksvart.
@@ -157,8 +157,8 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   };
 
   return {
-    play() {
-      setLight();
+    play(light) {
+      setLight(light);
       resize();
       addEventListener('resize', resize);
       document.body.classList.add('menu-scene');

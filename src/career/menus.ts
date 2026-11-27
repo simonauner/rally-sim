@@ -86,6 +86,8 @@ type Pick = (
 ) => Promise<CarModel | null>;
 /** Öppnar vridbordet med bilen och dess skador. */
 export type ShowCar = (model: CarModel, damage: CarDamage) => Showroom;
+/** Visar en bakgrund i etappens tema bakom menyn; null stänger av den. */
+export type Scenery = (stage: StageDef | null) => void;
 
 const buyMessage = (
   result: BuyResult,
@@ -138,6 +140,7 @@ export async function confirmAbort(): Promise<boolean> {
 export async function careerMenu(
   pick: Pick,
   showCar: ShowCar,
+  scenery: Scenery,
   gained = 0,
 ): Promise<Launch | null> {
   let career = loadCareer().career;
@@ -228,7 +231,7 @@ export async function careerMenu(
     if (c === "champ") {
       const launch = ongoing
         ? await ongoingMenu()
-        : await championshipMenu(career, pick, showCar);
+        : await championshipMenu(career, pick, showCar, scenery);
       if (launch) return launch;
     }
     if (c === "history") await history(career);
@@ -255,6 +258,7 @@ async function championshipMenu(
   career: CareerState,
   pick: Pick,
   showCar: ShowCar,
+  scenery: Scenery,
 ): Promise<Launch | null> {
   const tiers = [...new Set(CHAMPIONSHIPS.map((ch) => ch.tier))];
   for (;;) {
@@ -295,7 +299,7 @@ async function championshipMenu(
     });
     if (!tier) return null;
     if (!tierUnlocked(career, tier)) continue;
-    const launch = await tierMenu(tier, career, pick, showCar);
+    const launch = await tierMenu(tier, career, pick, showCar, scenery);
     if (launch) return launch;
   }
 }
@@ -306,6 +310,7 @@ async function tierMenu(
   career: CareerState,
   pick: Pick,
   showCar: ShowCar,
+  scenery: Scenery,
 ): Promise<Launch | null> {
   for (;;) {
     const id = await showMenu<string>({
@@ -324,7 +329,7 @@ async function tierMenu(
     const def = championshipById(id);
     if (!def) return null;
     if (!championshipUnlocked(career, def)) continue;
-    const launch = await startChampionship(def, career, pick, showCar);
+    const launch = await startChampionship(def, career, pick, showCar, scenery);
     if (launch) return launch;
   }
 }
@@ -641,7 +646,7 @@ async function ongoingMenu(): Promise<Launch | null> {
 }
 
 /** Bläddrar genom mästerskapets etapper med samma förhandsvisning som före varje etapp, men utan väder (det slumpas vid start). */
-async function browseLegs(def: ChampionshipDef) {
+async function browseLegs(def: ChampionshipDef, scenery: Scenery) {
   const n = def.legs.length;
   let leg = 0;
   // Pilar som i bilväljaren; inga <button> eftersom showMenu gör alla knappar i menyn till menyval.
@@ -654,6 +659,7 @@ async function browseLegs(def: ChampionshipDef) {
   const step = (d: number) => {
     leg = (leg + d + n) % n;
     document.querySelector("#menu .body")!.innerHTML = bodyHtml();
+    scenery(STAGES.find((s) => s.name === def.legs[leg]) ?? null);
   };
   const click = (e: MouseEvent) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-leg]");
@@ -672,6 +678,7 @@ async function browseLegs(def: ChampionshipDef) {
   const menu = document.getElementById("menu")!;
   menu.addEventListener("click", click);
   addEventListener("keydown", key, true);
+  scenery(STAGES.find((s) => s.name === def.legs[0]) ?? null);
   await showMenu({
     title: def.name,
     subtitle: "Etapper",
@@ -682,6 +689,7 @@ async function browseLegs(def: ChampionshipDef) {
   });
   menu.removeEventListener("click", click);
   removeEventListener("keydown", key, true);
+  scenery(null);
 }
 
 async function startChampionship(
@@ -689,6 +697,7 @@ async function startChampionship(
   career: CareerState,
   pick: Pick,
   showCar: ShowCar,
+  scenery: Scenery,
 ): Promise<Launch | null> {
   let c: "go" | "legs" | "back";
   while (
@@ -711,7 +720,7 @@ async function startChampionship(
       cancel: "back",
     })) === "legs"
   )
-    await browseLegs(def);
+    await browseLegs(def, scenery);
   if (c !== "go") return null;
   const model = await pick(ownedModels(career), {
     locked: (m) => tierOf(nameOf(m)) !== def.tier,

@@ -14,7 +14,7 @@ import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
 import { CARS, type CarModel } from './physics/params';
-import { FINISH_MARGIN, START_S, Stage, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
+import { FINISH_MARGIN, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
 import { pickTyre } from './tyreMenu';
 import { CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
@@ -204,12 +204,22 @@ async function main() {
     const cars = freeCars().length;
     return `${stages} av ${STAGES.length} etapper, ${cars === 1 ? '1 bil' : `${cars} bilar`}`;
   };
-  /** Kurvan med bilarna bakom huvudmenyn; byggs första gången menyn visas. */
-  let backdrop: MenuScene | null = null;
+  /** Kurvan med bilarna bakom menyerna, en för sommar och en för vinter; byggs första gången de visas. */
+  const backdrops = new Map<boolean, MenuScene>();
+  const backdropFor = (winter: boolean) => {
+    if (!backdrops.has(winter)) backdrops.set(winter, menuScene(renderer, winter ? STAGE_FROSTBERGA : STAGE_MYRKULLA));
+    return backdrops.get(winter)!;
+  };
+  /** Bakgrund i etappens tema (årstid och ljus) medan mästerskapets etapper visas; null stänger av. */
+  let themed: MenuScene | null = null;
+  const scenery = (s: StageDef | null) => {
+    themed?.stop();
+    themed = s && backdropFor(!!s.winter);
+    themed?.play(s?.light ?? 'day');
+  };
   while (!resumed) {
     if (choice === 'controls') {
-      backdrop ??= menuScene(renderer);
-      backdrop.play();
+      backdropFor(false).play();
       if (settings.firstVisit) await showWelcome();
     }
     while (choice === 'settings' || choice === 'controls' || choice === 'account') {
@@ -230,9 +240,9 @@ async function main() {
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
     }
-    backdrop?.stop();
+    backdrops.get(false)?.stop();
     if (choice === 'career') {
-      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts), showCar, gained);
+      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts), showCar, scenery, gained);
       gained = 0;
       if (launch) {
         ({ model, stage: stageDef, championship: champ } = launch);
@@ -259,7 +269,7 @@ async function main() {
     }
     choice = 'controls';
   }
-  backdrop?.dispose();
+  backdrops.forEach((b) => b.dispose());
   // Vädret slumpas per etapp; i mästerskap från dess frö, så en omladdning inte ger nytt väder.
   // ?vader=regn|dimma|snöfall tvingar fram ett väder vid felsökning.
   const forced = (Object.keys(WEATHER_NAMES) as Weather[]).find((w) => WEATHER_NAMES[w] === query.get('vader'));
