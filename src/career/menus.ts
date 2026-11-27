@@ -8,7 +8,7 @@ import skogsrallytImg from "../assets/champ-skogsrallyt.webp";
 import myrkullarallytImg from "../assets/champ-myrkullarallyt.webp";
 import vinterrallytImg from "../assets/champ-vinterrallyt.webp";
 import { CARS, type CarModel } from "../physics/params";
-import { STAGES, type StageDef } from "../physics/stage";
+import { FINISH_MARGIN, Stage, STAGES, START_S, type StageDef } from "../physics/stage";
 import { pickStage, stagePreviewHtml } from "../stageMenu";
 import { WEATHER_NAMES, type Weather } from "../physics/weather";
 import {
@@ -316,20 +316,8 @@ async function tierMenu(
       items: [
         ...CHAMPIONSHIPS.filter((ch) => ch.tier === tier).map((ch) =>
           championshipUnlocked(career, ch)
-            ? {
-                label: ch.name,
-                note: bestNote(career, ch),
-                image: CHAMPIONSHIP_IMAGES[ch.id],
-                detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`,
-                value: ch.id,
-              }
-            : {
-                label: ch.name,
-                image: CHAMPIONSHIP_IMAGES[ch.id],
-                detail: unlockHint(career, ch),
-                value: ch.id,
-                locked: true,
-              },
+            ? { label: ch.name, note: championshipNote(career, ch), image: CHAMPIONSHIP_IMAGES[ch.id], value: ch.id }
+            : { label: ch.name, note: championshipNote(career, ch), image: CHAMPIONSHIP_IMAGES[ch.id], value: ch.id, locked: true },
         ),
         { label: "← Tillbaka", value: "" },
       ],
@@ -343,10 +331,32 @@ async function tierMenu(
   }
 }
 
-/** Bästa placeringen hittills, under mästerskapets namn. */
-function bestNote(career: CareerState, def: ChampionshipDef) {
+const legKm = new Map<string, number>();
+
+/** Mästerskapets etapper sammanlagt (km); varje etapp byggs bara en gång. */
+function championshipKm(def: ChampionshipDef) {
+  return def.legs.reduce((sum, leg) => {
+    if (!legKm.has(leg)) {
+      const s = STAGES.find((x) => x.name === leg);
+      legKm.set(leg, s ? (new Stage(s).length - FINISH_MARGIN - START_S) / 1000 : 0);
+    }
+    return sum + legKm.get(leg)!;
+  }, 0);
+}
+
+/** Fakta bredvid mästerskapets bild: etapper, längd, prispengar och bästa placering (eller vad som låser upp det). */
+function championshipNote(career: CareerState, def: ChampionshipDef) {
   const place = bestPlace(career, def);
-  return place ? `${trophy(place)}bäst ${place}:a` : undefined;
+  const km = championshipKm(def).toFixed(1).replace(".", ",");
+  return [
+    `${def.legs.length} etapper`,
+    `Totalt: ${km} km`,
+    championshipUnlocked(career, def) ? `Prispengar: ${formatMoney(championshipMedals(def)[0]!.prize)} ${trophy(1)}` : unlockHint(career, def),
+    place && `<b>${trophy(place)}bäst ${place}:a</b>`,
+  ]
+    .filter(Boolean)
+    .map((line) => `<span>${line}</span>`)
+    .join("");
 }
 
 /** En historikrad som [vad, detaljer]. */

@@ -8,7 +8,7 @@ export interface MenuItem<T> {
   detail?: string;
   /** Liten rad under texten, t.ex. vad en del gör. */
   note?: string;
-  /** Bild (URL) som fyller knappen, t.ex. en vy från mästerskapets etapper. */
+  /** Bild (URL) till vänster i knappen, t.ex. en vy från mästerskapets etapper. */
   image?: string;
   value: T;
   /** Sant om valet inte går, t.ex. för lite pengar: då låter det duh-duh i stället för klick. Läses vid klicket. */
@@ -124,7 +124,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       <div class="items">${opts.items
         .map((it, i) => {
           const cls = [it.image && 'pic', it.locked && 'locked'].filter(Boolean).join(' ');
-          return `<button data-i="${i}"${cls ? ` class="${cls}"` : ''}${it.image ? ` style="--img: url('${it.image}')"` : ''}><span>${it.locked ? LOCK_ICON : ''}${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`;
+          return `<button data-i="${i}"${cls ? ` class="${cls}"` : ''}${it.image ? ` style="--img: url('${it.image}')"` : ''}>${it.image ? '<i class="thumb"></i>' : ''}<span>${it.locked ? LOCK_ICON : ''}${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`;
         })
         .join('')}</div>
     </div>
