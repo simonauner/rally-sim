@@ -8,6 +8,7 @@ const SOUND_KEY = 'rally.sound';
 const MENU_SOUND_KEY = 'rally.menusound';
 const MENU_CARS_KEY = 'rally.menucars';
 const DIFFICULTY_KEY = 'rally.difficulty';
+const STEER_ASSIST_KEY = 'rally.steerassist';
 
 function read(key: string) {
   try {
@@ -31,6 +32,11 @@ let menuSound = read(MENU_SOUND_KEY) !== 'off';
 let menuCars = read(MENU_CARS_KEY) !== 'off';
 const savedDifficulty = read(DIFFICULTY_KEY);
 let difficulty: Difficulty = savedDifficulty && savedDifficulty in DIFFICULTY_PACE ? (savedDifficulty as Difficulty) : 'easy';
+
+const STEER_ASSISTS = [0, 0.5, 1];
+const STEER_ASSIST_LABEL = ['av', 'halv', 'full'];
+const savedSteerAssist = Number(read(STEER_ASSIST_KEY) ?? 1);
+let steerAssist = STEER_ASSISTS.includes(savedSteerAssist) ? savedSteerAssist : 1;
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'lätt', medium: 'medel', hard: 'svår' };
@@ -77,6 +83,14 @@ export const settings = {
     difficulty = d;
     write(DIFFICULTY_KEY, d);
   },
+  /** Hur mycket bilen själv motstyr i sladd: 0 av, 1 full. */
+  get steerAssist() {
+    return steerAssist;
+  },
+  set steerAssist(v: number) {
+    steerAssist = v;
+    write(STEER_ASSIST_KEY, String(v));
+  },
   /** Ingen har svarat på välkomstfrågorna än. */
   get firstVisit() {
     return sound === null;
@@ -108,9 +122,9 @@ export async function showWelcome() {
 
 /** Inställningsmenyn, från både huvud- och pausmenyn. */
 export async function showSettings(solid: boolean) {
-  let c: 'sound' | 'menuSound' | 'voice' | 'difficulty' | 'back' | undefined;
+  let c: 'sound' | 'menuSound' | 'voice' | 'difficulty' | 'steerAssist' | 'back' | undefined;
   for (;;) {
-    c = await showMenu<'sound' | 'menuSound' | 'voice' | 'difficulty' | 'back'>({
+    c = await showMenu<'sound' | 'menuSound' | 'voice' | 'difficulty' | 'steerAssist' | 'back'>({
       title: 'Inställningar',
       solid,
       items: [
@@ -118,6 +132,7 @@ export async function showSettings(solid: boolean) {
         { label: 'Menyljud', detail: settings.menuSound ? 'på' : 'av', value: 'menuSound' },
         { label: 'Kartläsarens röst', detail: settings.voice ? 'på' : 'av', note: 'Noterna visas på skärmen ändå.', value: 'voice' },
         { label: 'Motståndare', detail: DIFFICULTY_LABEL[settings.difficulty], note: 'Gäller mästerskap som startas efter ändringen.', value: 'difficulty' },
+        { label: 'Motstyrning', detail: STEER_ASSIST_LABEL[STEER_ASSISTS.indexOf(settings.steerAssist)], note: 'Bilen styr själv emot i sladd.', value: 'steerAssist' },
         { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
@@ -126,6 +141,7 @@ export async function showSettings(solid: boolean) {
     });
     if (c === 'back') return;
     if (c === 'difficulty') settings.difficulty = DIFFICULTIES[(DIFFICULTIES.indexOf(settings.difficulty) + 1) % DIFFICULTIES.length]!;
+    else if (c === 'steerAssist') settings.steerAssist = STEER_ASSISTS[(STEER_ASSISTS.indexOf(settings.steerAssist) + 1) % STEER_ASSISTS.length]!;
     else if (c === 'sound') settings.sound = !settings.sound;
     else if (c === 'menuSound') settings.menuSound = !settings.menuSound;
     else settings.voice = !settings.voice;

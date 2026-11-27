@@ -321,6 +321,7 @@ async function main() {
   await loadCarModel(model);
   const car = new Car(model.make(), world);
   if (tyre) car.params.tyre = tyre;
+  car.assists.steerAssist = settings.steerAssist;
   const carMesh = new CarMesh(car, model);
   carMesh.addTo(scene);
   const headlights = light.headlights ? new Headlights() : null;
@@ -589,6 +590,7 @@ async function main() {
       });
       if (c === 'settings') {
         await showSettings(false);
+        car.assists.steerAssist = settings.steerAssist;
         continue;
       }
       if (c === 'controls') {
