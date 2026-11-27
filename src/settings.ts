@@ -108,8 +108,9 @@ export async function showWelcome() {
 
 /** Inställningsmenyn, från både huvud- och pausmenyn. */
 export async function showSettings(solid: boolean) {
+  let c: 'sound' | 'menuSound' | 'voice' | 'difficulty' | 'back' | undefined;
   for (;;) {
-    const c = await showMenu<'sound' | 'menuSound' | 'voice' | 'difficulty' | 'back'>({
+    c = await showMenu<'sound' | 'menuSound' | 'voice' | 'difficulty' | 'back'>({
       title: 'Inställningar',
       solid,
       items: [
@@ -120,6 +121,8 @@ export async function showSettings(solid: boolean) {
         { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
+      // Markeringen stannar på raden man just ändrade.
+      initial: c,
     });
     if (c === 'back') return;
     if (c === 'difficulty') settings.difficulty = DIFFICULTIES[(DIFFICULTIES.indexOf(settings.difficulty) + 1) % DIFFICULTIES.length]!;

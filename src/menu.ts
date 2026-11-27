@@ -39,6 +39,8 @@ export interface MenuOptions<T> {
   footer?: string;
   /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
   input?: { placeholder: string; onDone: (value: string) => void };
+  /** Valet som är markerat när menyn öppnas; annars det första. */
+  initial?: T;
   /** Anropas när markeringen flyttas, även för första valet. */
   onSelect?: (value: T) => void;
 }
@@ -140,7 +142,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     buttons[sel]?.scrollIntoView({ block: 'nearest' });
     opts.onSelect?.(opts.items[sel]!.value);
   };
-  select(0);
+  select(Math.max(0, opts.items.findIndex((it) => it.value === opts.initial)));
   const input = el.querySelector('input');
   input?.focus();
 
