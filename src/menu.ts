@@ -35,6 +35,8 @@ export interface MenuOptions<T> {
   side?: boolean;
   /** En panel till, till höger om den vanliga (HTML), t.ex. bilen man jämför med. */
   aside?: string;
+  /** Valen i aside-panelen i stället för den vanliga, t.ex. när de hör till den. */
+  itemsInAside?: boolean;
   /** Liten text nere i högra hörnet av skärmen, t.ex. version. */
   footer?: string;
   /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
@@ -117,20 +119,21 @@ export const coins = () => playClip(coinsUrl, 0.6);
 export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const el = root();
   el.className = opts.solid ? 'solid' : opts.side ? 'side' : opts.aside ? 'pair' : '';
+  const items = `<div class="items">${opts.items
+    .map((it, i) => {
+      const cls = [it.image && 'pic', it.locked && 'locked'].filter(Boolean).join(' ');
+      return `<button data-i="${i}"${cls ? ` class="${cls}"` : ''}${it.image ? ` style="--img: url('${it.image}')"` : ''}>${it.image ? '<i class="thumb"></i>' : ''}<span>${it.locked ? LOCK_ICON : ''}${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`;
+    })
+    .join('')}</div>`;
   const panels = `
     <div class="panel">
       <h1>${opts.title}</h1>
       ${opts.subtitle ? `<div class="subtitle">${opts.subtitle}</div>` : ''}
       ${opts.body ? `<div class="body">${opts.body}</div>` : ''}
       ${opts.input ? `<input type="text" autocomplete="off" spellcheck="false" placeholder="${opts.input.placeholder}" />` : ''}
-      <div class="items">${opts.items
-        .map((it, i) => {
-          const cls = [it.image && 'pic', it.locked && 'locked'].filter(Boolean).join(' ');
-          return `<button data-i="${i}"${cls ? ` class="${cls}"` : ''}${it.image ? ` style="--img: url('${it.image}')"` : ''}>${it.image ? '<i class="thumb"></i>' : ''}<span>${it.locked ? LOCK_ICON : ''}${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`;
-        })
-        .join('')}</div>
+      ${opts.itemsInAside ? '' : items}
     </div>
-    ${opts.aside ? `<div class="panel aside">${opts.aside}</div>` : ''}`;
+    ${opts.aside ? `<div class="panel aside">${opts.aside}${opts.itemsInAside ? items : ''}</div>` : ''}`;
   // Vid sidan ligger panelerna i en rad som kan glida upp (se #menu.side i index.html).
   el.innerHTML = `${opts.side && !opts.solid ? `<div class="panels">${panels}</div>` : panels}
     ${opts.footer ? `<div class="corner">${opts.footer}</div>` : ''}`;

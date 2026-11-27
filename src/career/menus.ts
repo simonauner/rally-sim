@@ -855,7 +855,7 @@ export async function championshipLegDone(
   const place = table.findIndex((s) => s.player) + 1;
 
   if (times.length === def.legs.length) {
-    const { medal, prize } = championshipPrize(def, place);
+    const { prize } = championshipPrize(def, place);
     const career = loadCareer().career;
     commit(
       logged(
@@ -882,8 +882,9 @@ export async function championshipLegDone(
       subtitle: "Sista etappen",
       side: true,
       body: `${resultBody}${legResultHtml(table)}`,
-      aside: `<h1>${def.name}: klart</h1><div class="body"><div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ""}</div><div>Bilen lagas och står hel i garaget.</div></div>`,
+      aside: `<h1>${def.name}: klart</h1><div class="body"><div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span></div><div>Bilen lagas och står hel i garaget.</div></div>`,
       items: [{ label: "Avsluta mästerskapet", value: 0 }],
+      itemsInAside: true,
     });
     return { prize };
   }
