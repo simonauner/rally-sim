@@ -37,4 +37,4 @@ dem bara medvetet.
 ## Nästa steg (fas 1)
 
 Fas 1 är klar: spline-etappen (`src/physics/stage.ts`), tidtagningen (`src/physics/timing.ts`), ghosten (`src/physics/ghost.ts`), dammet (`src/render/dust.ts`), pacenotes (`src/physics/pacenotes.ts`) och motorljudet.
-Huvud- och pausmeny finns (`src/menu.ts`). Konto och synk av rekord finns (`src/account/`, `sync/`). Karriär med kassa, garage, bilhandlare och mästerskap finns (`src/career/`). Etapper: Skogsberg, Myrkulla och vinteretappen Frostberga (även baklänges), plus Tallmon i skymning, Ljungheden i gryning och Isvallen på natten (med strålkastare); däcken väljs före start (`src/tyreMenu.ts`). Nästa: se README.
+Huvud- och pausmeny finns (`src/menu.ts`). Konto och synk av rekord finns (`src/account/`, `sync/`). Karriär med kassa, garage, bilhandlare och mästerskap finns (`src/career/`). Etapper: Skogsberg, Myrkulla och vinteretappen Frostberga (även baklänges), plus Tallmon i skymning, Ljungheden i gryning och Isvallen på natten (med strålkastare); däcken väljs före start (`src/tyreMenu.ts`). Klass 2 (tre snabbare bilar, egna delar och mästerskap) låses upp när klass 1 är vunnen. Nästa: se README.

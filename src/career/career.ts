@@ -17,13 +17,34 @@ export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 GL': 6000,
   'Kvarn 240 Turbo': 15000,
   'Ljung 1600 S': 9000,
+  'Ljung 2000 16V': 30000,
+  'Strand 2.0 GT': 38000,
+  'Kvarn Turbo 4x4': 50000,
 };
 
-export type UpgradeGroup = 'Motor' | 'Drivlina' | 'Bromsar' | 'Fjädring' | 'Däck';
+/**
+ * Bilarnas klass: 1 är 80-talets amatörbilar, 2 är kitcars och Grupp A-bilar som låses upp
+ * när alla mästerskap i klass 1 är vunna. Bilar som saknas här räknas som klass 1.
+ */
+export type Tier = 1 | 2;
+const CAR_TIERS: Record<string, Tier> = { 'Ljung 2000 16V': 2, 'Strand 2.0 GT': 2, 'Kvarn Turbo 4x4': 2 };
+export const tierOf = (car: string): Tier => CAR_TIERS[car] ?? 1;
+
+/**
+ * Klassens takt mot klass 1 (guldtider och motståndare) och hur mycket mer prispengarna är värda.
+ * shortcut: 0,92 är uppskattat från verkligheten (Rally4/Rally2 mot Rally5), inte uppmätt;
+ * testföraren kör inte fort nog för att mäta skillnaden. Justera efter provkörning.
+ */
+export const TIER_PACE: Record<Tier, number> = { 1: 1, 2: 0.92 };
+export const TIER_PRIZE: Record<Tier, number> = { 1: 1, 2: 2 };
+
+export type UpgradeGroup = 'Motor' | 'Drivlina' | 'Bromsar' | 'Fjädring' | 'Kaross' | 'Däck';
 
 /** En del man kan köpa och montera, en gång per bil. Sparas som nivå 1 i garaget. */
 export interface Upgrade {
   id: string;
+  /** Bilklassen delen passar; klass 2 har egna, dyrare delar. */
+  tier: Tier;
   group: UpgradeGroup;
   name: string;
   price: number;
@@ -44,6 +65,7 @@ const torque = (p: CarParams, factor: (rpm: number) => number) => {
  */
 export const UPGRADES: Upgrade[] = [
   {
+    tier: 1,
     id: 'airfilter',
     group: 'Motor',
     name: 'Sportluftfilter',
@@ -52,6 +74,7 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => torque(p, () => 1.02),
   },
   {
+    tier: 1,
     id: 'exhaust',
     group: 'Motor',
     name: 'Sportavgassystem',
@@ -60,6 +83,7 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.04 : 1.01)),
   },
   {
+    tier: 1,
     id: 'racecat',
     group: 'Motor',
     name: 'Racekatalysator',
@@ -68,6 +92,7 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.03 : 1)),
   },
   {
+    tier: 1,
     id: 'cams',
     group: 'Motor',
     name: 'Vassare kamaxlar',
@@ -76,6 +101,7 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => torque(p, (rpm) => (rpm >= 4500 ? 1.08 : rpm < 2500 ? 0.96 : 1.02)),
   },
   {
+    tier: 1,
     id: 'pistons',
     group: 'Motor',
     name: 'Smidda kolvar',
@@ -87,6 +113,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'gearbox',
     group: 'Drivlina',
     name: 'Racelåda',
@@ -97,6 +124,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'lsd',
     group: 'Drivlina',
     name: 'Spärrdiff',
@@ -107,6 +135,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'pads',
     group: 'Bromsar',
     name: 'Racebelägg',
@@ -117,6 +146,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'drilled',
     group: 'Bromsar',
     name: 'Borrade bromsskivor',
@@ -127,6 +157,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'bigdiscs',
     group: 'Bromsar',
     name: 'Större bromsskivor',
@@ -137,6 +168,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'dampers',
     group: 'Fjädring',
     name: 'Gasstötdämpare',
@@ -147,6 +179,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'springs',
     group: 'Fjädring',
     name: 'Sportfjädrar',
@@ -157,6 +190,7 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'arb',
     group: 'Fjädring',
     name: 'Kraftigare krängningshämmare',
@@ -167,10 +201,120 @@ export const UPGRADES: Upgrade[] = [
     },
   },
   {
+    tier: 1,
     id: 'rallytyres',
     group: 'Däck',
     name: 'Rallydäck',
     price: 3500,
+    effect: '+6 % grepp',
+    apply: (p) => {
+      p.gripScale *= 1.06;
+    },
+  },
+  // Klass 2: tävlingsdelar till kitcars och Grupp A-bilar.
+  {
+    tier: 2,
+    id: 'ecu',
+    group: 'Motor',
+    name: 'Programmerbar motorstyrning',
+    price: 6000,
+    effect: '+5 % vridmoment över 3 000 rpm',
+    apply: (p) => torque(p, (rpm) => (rpm >= 3000 ? 1.05 : 1)),
+  },
+  {
+    tier: 2,
+    id: 'intake',
+    group: 'Motor',
+    name: 'Tävlingsinsug',
+    price: 4000,
+    effect: '+3 % vridmoment',
+    apply: (p) => torque(p, () => 1.03),
+  },
+  {
+    tier: 2,
+    id: 'flywheel',
+    group: 'Motor',
+    name: 'Lätt svänghjul',
+    price: 3500,
+    effect: 'Motorn varvar upp och ner 30 % snabbare',
+    apply: (p) => {
+      p.engine = { ...p.engine, inertia: p.engine.inertia * 0.7 };
+    },
+  },
+  {
+    tier: 2,
+    id: 'dogbox',
+    group: 'Drivlina',
+    name: 'Klolåda',
+    price: 9000,
+    effect: 'Växlar på halva tiden',
+    apply: (p) => {
+      p.gearbox = { ...p.gearbox, shiftTime: p.gearbox.shiftTime * 0.5 };
+    },
+  },
+  {
+    tier: 2,
+    id: 'platelsd',
+    group: 'Drivlina',
+    name: 'Lamellspärr',
+    price: 7000,
+    effect: 'Nästan låst diff: drar rakt ut ur kurvorna men vill gå rakt fram',
+    apply: (p) => {
+      p.diff = { lock: Math.max(p.diff.lock, 0.75), preload: Math.max(p.diff.preload, 120) };
+    },
+  },
+  {
+    tier: 2,
+    id: 'calipers',
+    group: 'Bromsar',
+    name: 'Fyrkolvsok',
+    price: 5000,
+    effect: '+15 % bromsmoment',
+    apply: (p) => {
+      p.brake = { ...p.brake, total: p.brake.total * 1.15 };
+    },
+  },
+  {
+    tier: 2,
+    id: 'hydrohandbrake',
+    group: 'Bromsar',
+    name: 'Hydraulisk handbroms',
+    price: 2500,
+    effect: '+40 % handbroms: låser bakhjulen direkt',
+    apply: (p) => {
+      p.brake = { ...p.brake, handbrake: p.brake.handbrake * 1.4 };
+    },
+  },
+  {
+    tier: 2,
+    id: 'coilovers',
+    group: 'Fjädring',
+    name: 'Justerbara coilovers',
+    price: 8000,
+    effect: '+10 % fjäderkonstant och +20 % dämpning',
+    apply: (p) => {
+      p.susp = { ...p.susp, kFront: p.susp.kFront * 1.1, kRear: p.susp.kRear * 1.1, bump: p.susp.bump * 1.2, rebound: p.susp.rebound * 1.2 };
+    },
+  },
+  {
+    tier: 2,
+    id: 'lightweight',
+    group: 'Kaross',
+    name: 'Lättviktskaross',
+    price: 7000,
+    effect: '−50 kg: tunnare plåt och plexiglasrutor',
+    apply: (p) => {
+      const k = (p.mass - 50) / p.mass;
+      p.mass -= 50;
+      p.inertia = p.inertia.map((i) => i * k) as CarParams['inertia'];
+    },
+  },
+  {
+    tier: 2,
+    id: 'gravelslicks',
+    group: 'Däck',
+    name: 'Tävlingsdäck',
+    price: 6000,
     effect: '+6 % grepp',
     apply: (p) => {
       p.gripScale *= 1.06;
@@ -208,6 +352,9 @@ export function newCareer(): CareerState {
 
 export const levelOf = (career: CareerState, car: string, upgrade: string) => career.garage[car]?.upgrades[upgrade] ?? 0;
 
+/** Delarna som passar bilen. */
+export const upgradesFor = (car: string) => UPGRADES.filter((u) => u.tier === tierOf(car));
+
 /** Bilens parametrar med karriärens uppgraderingar. */
 export function applyUpgrades(params: CarParams, upgrades: Record<string, number>): CarParams {
   const p = { ...params };
@@ -223,7 +370,7 @@ export function logged(career: CareerState, entry: Omit<HistoryEntry, 'at'>, at 
 export type BuyResult = CareerState | 'poor' | 'maxed' | 'unknown';
 
 export function buyUpgrade(career: CareerState, car: string, upgradeId: string): BuyResult {
-  const u = UPGRADES.find((x) => x.id === upgradeId);
+  const u = upgradesFor(car).find((x) => x.id === upgradeId);
   const owned = career.garage[car];
   if (!u || !owned) return 'unknown';
   if (levelOf(career, car, upgradeId)) return 'maxed';
@@ -273,11 +420,16 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   Isvallen: [112, 124, 142],
 };
 
-/** Prispengarna för ett enstaka åk. */
-export function prizeFor(stageName: string, time: number): { medal: string | null; prize: number } {
-  const targets = STAGE_TARGETS[stageName];
+/** Medaljgränserna för en etapp i bilens klass, eller undefined för en okänd etapp. */
+export const stageTargets = (stageName: string, tier: Tier = 1) =>
+  STAGE_TARGETS[stageName]?.map((t) => Math.round(t * TIER_PACE[tier])) as [number, number, number] | undefined;
+
+/** Prispengarna för ett enstaka åk; klass 2 har snävare gränser och större priser. */
+export function prizeFor(stageName: string, time: number, tier: Tier = 1): { medal: string | null; prize: number } {
+  const targets = stageTargets(stageName, tier);
   const i = targets ? targets.findIndex((t) => time <= t) : -1;
-  return i >= 0 ? { medal: MEDALS[i]!.name, prize: MEDALS[i]!.prize } : { medal: null, prize: FINISH_PRIZE };
+  const prize = i >= 0 ? MEDALS[i]!.prize : FINISH_PRIZE;
+  return { medal: i >= 0 ? MEDALS[i]!.name : null, prize: prize * TIER_PRIZE[tier] };
 }
 
 export const formatMoney = (kr: number) => `${kr.toLocaleString('sv-SE')} kr`;

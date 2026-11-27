@@ -93,7 +93,7 @@ src/physics/   ren TypeScript, ingen webbläsarkod (körs även i Node)
   surfaces.ts    underlag och däcktyper som ren data (grepp per kombination)
   drivetrain.ts  motorkurva, koppling, växellåda (auto/manuell), differential
   collision.ts   sekventiella impulser mot statiska boxar och mark
-  params.ts      bilen "Kvarn 240 GL" (fiktiv)
+  params.ts      bilarna (fiktiva), i klass 1 och klass 2
   world.ts       testbanans höjd, underlag och hinder
   stage.ts       etapp som spline med höjd, bredd och underlag per stödpunkt
 src/account/   konto: protokoll (delas med sync/), återställningsnyckel, synk i webbläsaren
@@ -145,6 +145,12 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
   pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis
   men inga prispengar. Framsteget sparas i webbläsaren, eftersom sidan laddas om mellan
   etapperna (`?mastarskap` laddar nästa etapp).
+- **Klass 2:** när alla tre mästerskapen i klass 1 är vunna säljer bilhandlaren tre snabbare
+  bilar (Ljung 2000 16V med framhjulsdrift, Strand 2.0 GT med bakhjulsdrift och Kvarn Turbo 4x4
+  med fyrhjulsdrift och mittdiff). De har egna delar i garaget och egna mästerskap
+  (Tallmoklassikern, Ljunghedsrallyt, Israllyt) på samma etapper. Medaljgränserna och fältet är
+  8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
+  Varje klass kör bara sina egna mästerskap.
 
 Pengarna köper uppgraderingar i garaget (motor, bromsar, fjädring, däck, tre nivåer var) och
 bilar hos bilhandlaren. Man börjar med Kvarn 240 GL. Regler och priser finns i

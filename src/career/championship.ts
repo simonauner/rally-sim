@@ -6,7 +6,7 @@
 
 import type { CareerState } from '../account/protocol';
 import type { DamageState } from '../physics/car';
-import { STAGE_TARGETS } from './career';
+import { STAGE_TARGETS, TIER_PACE, TIER_PRIZE, type Tier } from './career';
 import { isRival, newRivals, raceLeg, type Rival } from './rivals';
 import { rng } from '../physics/rng';
 import { STAGES } from '../physics/stage';
@@ -19,13 +19,22 @@ export interface ChampionshipDef {
   legs: string[];
   /** Fältets grundtakt som andel av guldtiden; ingen motståndare blir snabbare än strax under den. */
   pace: number;
+  /** Bilklassen som får köra. */
+  tier: Tier;
 }
 
 export const CHAMPIONSHIPS: ChampionshipDef[] = [
-  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges', 'Tallmon'], pace: 0.985 },
-  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'], pace: 0.965 },
-  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges', 'Isvallen'], pace: 0.945 },
+  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges', 'Tallmon'], pace: 0.985, tier: 1 },
+  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'], pace: 0.965, tier: 1 },
+  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges', 'Isvallen'], pace: 0.945, tier: 1 },
+  // Klass 2 kör samma etapper i nya kombinationer, mot ett snabbare fält.
+  { id: 'tallmoklassikern', name: 'Tallmoklassikern', legs: ['Tallmon', 'Skogsberg', 'Myrkulla'], pace: 0.985, tier: 2 },
+  { id: 'ljunghedsrallyt', name: 'Ljunghedsrallyt', legs: ['Ljungheden', 'Myrkulla baklänges', 'Skogsberg baklänges'], pace: 0.965, tier: 2 },
+  { id: 'israllyt', name: 'Israllyt', legs: ['Isvallen', 'Frostberga baklänges', 'Frostberga'], pace: 0.945, tier: 2 },
 ];
+
+/** Fältets takt i klass 1-guldtider: klass 2 kör fortare. */
+const fieldPace = (def: ChampionshipDef) => def.pace * TIER_PACE[def.tier];
 
 /** Vunnet; vinster från före `won` läses ur historiken. */
 export const hasWon = (career: CareerState, def: ChampionshipDef) =>
@@ -34,6 +43,9 @@ export const hasWon = (career: CareerState, def: ChampionshipDef) =>
 /** Skogsrallyt är alltid öppet; varje mästerskap därefter kräver att alla före det är vunna. */
 export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>
   CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).every((c) => hasWon(career, c));
+
+/** Klassen är öppen när alla mästerskap i klasserna under är vunna. */
+export const tierUnlocked = (career: CareerState, tier: Tier) => CHAMPIONSHIPS.filter((c) => c.tier < tier).every((c) => hasWon(career, c));
 
 /** Vad som låser upp mästerskapet, för menyn. */
 export const unlockHint = (career: CareerState, def: ChampionshipDef) =>
@@ -77,7 +89,8 @@ const CHAMPIONSHIP_MEDALS = [
 export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
 
 /** Medaljerna med prispengar som växer med antalet etapper. */
-export const championshipMedals = (def: ChampionshipDef) => CHAMPIONSHIP_MEDALS.map((m) => ({ name: m.name, prize: (m.prize * def.legs.length) / 2 }));
+export const championshipMedals = (def: ChampionshipDef) =>
+  CHAMPIONSHIP_MEDALS.map((m) => ({ name: m.name, prize: (m.prize * def.legs.length * TIER_PRIZE[def.tier]) / 2 }));
 
 export const championshipById = (id: string) => CHAMPIONSHIPS.find((c) => c.id === id) ?? null;
 
@@ -85,13 +98,13 @@ export const championshipById = (id: string) => CHAMPIONSHIPS.find((c) => c.id =
 export function championshipTargets(def: ChampionshipDef): [number, number, number] | null {
   const all = def.legs.map((name) => STAGE_TARGETS[name]);
   if (all.some((t) => !t)) return null;
-  return [0, 1, 2].map((i) => all.reduce((sum, t) => sum + t![i]!, 0)) as [number, number, number];
+  return [0, 1, 2].map((i) => Math.round(all.reduce((sum, t) => sum + t![i]!, 0) * TIER_PACE[def.tier])) as [number, number, number];
 }
 
 /** Prispengarna efter placering i mästerskapet (1 = vinst). */
 export function championshipPrize(def: ChampionshipDef, place: number): { medal: string | null; prize: number } {
   const medal = championshipMedals(def)[place - 1];
-  return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE };
+  return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE * TIER_PRIZE[def.tier] };
 }
 
 /** Vädret på etappen som ska köras härnäst; samma frö ger samma väder efter en omladdning. */
@@ -103,7 +116,7 @@ export function legWeather(p: ChampionshipProgress, leg = p.leg): Weather {
 
 /** Ett nytt mästerskap med ett slumpat fält motståndare. */
 export function newProgress(def: ChampionshipDef, car: string, seed: number): ChampionshipProgress {
-  return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, def.pace) };
+  return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, fieldPace(def)) };
 }
 
 /**
@@ -113,10 +126,10 @@ export function newProgress(def: ChampionshipDef, car: string, seed: number): Ch
 export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipProgress {
   const def = championshipById(p.id)!;
   const seed = p.seed ?? p.times.length * 1000 + Math.round(time * 100);
-  let rivals = p.rivals ?? newRivals(seed, def.pace);
+  let rivals = p.rivals ?? newRivals(seed, fieldPace(def));
   const times = [...p.times, time];
   const slowdown = def.legs.map((_, i) => WEATHER_SLOWDOWN[legWeather({ ...p, seed }, i)]);
-  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown, def.pace - 0.015);
+  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown, fieldPace(def) - 0.015);
   return { ...p, seed, rivals };
 }
 

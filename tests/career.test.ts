@@ -1,9 +1,9 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
-import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, newCareer, prizeFor, START_MONEY } from '../src/career/career';
-import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
+import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, tierUnlocked, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
-import { kvarn240 } from '../src/physics/params';
+import { CARS, kvarn240, kvarnTurbo4x4 } from '../src/physics/params';
 import { STAGES } from '../src/physics/stage';
 import { carSpecs } from '../src/physics/specs';
 
@@ -157,8 +157,37 @@ const CAR = 'Kvarn 240 GL';
   const both = withWin(one, myr);
   const old = logged(fresh, { kind: 'championship', name: skog.name, car: CAR, place: 1, of: 8, time: 300, amount: 9000 });
   const second = logged(fresh, { kind: 'championship', name: skog.name, car: CAR, place: 2, of: 8, time: 300, amount: 6000 });
-  const ok = open(fresh) === '100' && open(one) === '110' && open(myrOnly) === '100' && open(both) === '111' && open(old) === '110' && open(second) === '100';
+  const ok = open(fresh) === '100000' && open(one) === '110000' && open(myrOnly) === '100000' && open(both) === '111000' && open(old) === '110000' && open(second) === '100000';
   check('mästerskap: upplåsning', ok && withWin(one, skog) === one && isCareerState(both) && !isCareerState({ ...fresh, won: [''] }), `${open(fresh)} ${open(one)} ${open(both)}`);
+}
+
+// Klass 2: låses upp av alla klass 1-mästerskap, har egna delar, snävare gränser och större priser.
+{
+  const tier1 = CHAMPIONSHIPS.filter((c) => c.tier === 1);
+  const tier2 = CHAMPIONSHIPS.filter((c) => c.tier === 2);
+  const allOne = tier1.reduce(withWin, newCareer());
+  const almost = tier1.slice(0, 2).reduce(withWin, newCareer());
+  const openTwo = (c: ReturnType<typeof newCareer>) => tier2.map((ch) => (championshipUnlocked(c, ch) ? 1 : 0)).join('');
+  check('klass 2: upplåsning', !tierUnlocked(almost, 2) && tierUnlocked(allOne, 2) && tierUnlocked(newCareer(), 1) && openTwo(almost) === '000' && openTwo(allOne) === '100' && openTwo(withWin(allOne, tier2[0]!)) === '110', `${openTwo(almost)} → ${openTwo(allOne)}`);
+  const names = CARS.map((m) => m.make().name);
+  check('klass 2: tre bilar', names.filter((n) => tierOf(n) === 2).length === 3 && names.every((n) => tierOf(n) === 1 || tierOf(n) === 2), names.map((n) => `${n} ${tierOf(n)}`).join(', '));
+  const T2 = 'Kvarn Turbo 4x4';
+  const rich = buyCar(buyCar({ ...newCareer(), money: 200_000 }, T2) as ReturnType<typeof newCareer>, CAR) as ReturnType<typeof newCareer>;
+  const own = upgradesFor(T2).map((u) => u.id);
+  const ids = new Set([...upgradesFor(CAR), ...upgradesFor(T2)].map((u) => u.id));
+  const ok = own.length >= 8 && ids.size === upgradesFor(CAR).length + own.length && buyUpgrade(rich, T2, 'exhaust') === 'unknown' && buyUpgrade(rich, CAR, 'dogbox') === 'unknown' && typeof buyUpgrade(rich, T2, 'dogbox') === 'object';
+  check('klass 2: egna delar', ok, own.join(', '));
+  const base = kvarnTurbo4x4();
+  const built = applyUpgrades(base, Object.fromEntries(own.map((id) => [id, 1])));
+  check('klass 2: delarna verkar', built.mass === base.mass - 50 && built.gearbox.shiftTime < base.gearbox.shiftTime && built.brake.handbrake > base.brake.handbrake && built.engine.inertia < base.engine.inertia && built.gripScale > base.gripScale, `${base.mass} → ${built.mass} kg`);
+  const gold1 = prizeFor('Skogsberg', 88, 1);
+  const slow2 = prizeFor('Skogsberg', 88, 2);
+  const gold2 = prizeFor('Skogsberg', 80, 2);
+  check('klass 2: gränser och priser', gold1.medal === 'guld' && slow2.medal === 'silver' && gold2.medal === 'guld' && gold2.prize === MEDALS[0].prize * 2 && championshipPrize(tier2[0]!, 1).prize === championshipPrize(tier1[0]!, 1).prize * 2, `88 s: klass 1 ${gold1.medal}, klass 2 ${slow2.medal}; 80 s klass 2 ${gold2.medal} ${gold2.prize} kr`);
+  // Samma etapper i klass 1-gränser: summan av guldtiderna.
+  const t1 = tier2[0]!.legs.reduce((sum, leg) => sum + STAGE_TARGETS[leg]![0], 0);
+  const t2 = championshipTargets(tier2[0]!)![0];
+  check('klass 2: snabbare fält', tier2.every((c) => !!championshipTargets(c)) && t2 < t1 && Math.min(...newProgress(tier2[0]!, T2, 1).rivals!.map((v) => v.pace)) < 0.95, `guld ${t1} s mot ${t2} s`);
 }
 
 if (failures) {
