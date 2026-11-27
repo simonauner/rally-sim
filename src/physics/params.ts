@@ -48,7 +48,21 @@ export interface CarParams {
   /** Global grepp-multiplikator för trimning. */
   gripScale: number;
   /** Skalorna på varvräknaren och hastighetsmätaren, som i bilens egen instrumentpanel. */
-  gauges: { rpmMax: number; rpmRed: number; speedMin: number; speedMax: number };
+  gauges: { rpmMax: number; rpmRed: number; speedMin: number; speedMax: number; style?: GaugeStyle };
+}
+
+/** Färger och skalvinklar för bilar med en egen instrumentpanel; utan den blir urtavlan svart med vita siffror. */
+export interface GaugeStyle {
+  face: string;
+  /** Streck, siffror och växelmönster. */
+  ink: string;
+  needle: string;
+  red: string;
+  /** Skalornas start- och slutvinkel i grader (0 = höger, medurs). */
+  tachoArc: [number, number];
+  speedoArc: [number, number];
+  /** Varvräknarens siffror räknas i hundratals eller tusentals varv. */
+  rpmUnit: 100 | 1000;
 }
 
 function boxInertia(m: number, l: number, w: number, h: number, k: number): [number, number, number] {
@@ -484,6 +498,14 @@ export function volpeTurbo(): CarParams {
       ...p.engine,
       curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
       curveNm: [105, 130, 190, 280, 340, 360, 360, 330, 270, 210],
+    },
+    // Orange skala på svart; varvräknaren börjar klockan tre, hastighetsmätaren klockan nio.
+    gauges: {
+      rpmMax: 9000,
+      rpmRed: 7000,
+      speedMin: 0,
+      speedMax: 240,
+      style: { face: '#0b0b0b', ink: '#f7a21b', needle: '#ffc21a', red: '#e3261b', tachoArc: [0, 270], speedoArc: [180, 450], rpmUnit: 100 },
     },
   };
 }
