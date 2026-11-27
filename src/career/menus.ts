@@ -866,10 +866,12 @@ export async function championshipLegDone(
     saveChampionship(null);
     applause();
     await showMenu({
-      title: `${def.name}: klart`,
+      // Etappen till vänster och mästerskapet till höger, som mellan etapperna.
+      title: def.legs[times.length - 1]!,
+      subtitle: "Sista etappen",
       side: true,
-      body: `<div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ""}</div><div>Bilen lagas och står hel i garaget.</div>`,
-      aside: `<h1>${def.legs[times.length - 1]}</h1><div class="subtitle">Sista etappen</div><div class="body">${resultBody}${legResultHtml(table)}</div>`,
+      body: `${resultBody}${legResultHtml(table)}`,
+      aside: `<h1>${def.name}: klart</h1><div class="body"><div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ""}</div><div>Bilen lagas och står hel i garaget.</div></div>`,
       items: [{ label: "Avsluta mästerskapet", value: 0 }],
     });
     return { prize };
