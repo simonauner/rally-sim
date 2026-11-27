@@ -4,6 +4,7 @@ import { abs, attribute, color, fract, positionGeometry, select, uniform, vec3 }
 import { LAMP_BROKEN, type Car, type DamageState } from '../physics/car';
 import type { DamageEvent } from '../physics/collision';
 import type { CarModel } from '../physics/params';
+import { tierOf } from '../career/career';
 import { bodyDecals, decalTexture, roofDecals, startNumber } from './decals';
 
 const GLASS = new THREE.Color(0x2b3a42);
@@ -470,6 +471,31 @@ interface Detail {
 const DETACH_DENT = 0.12;
 
 /** Små odeformerbara detaljer: speglar, främre nummerplåt, stänkskydd, dörrhandtag. */
+/**
+ * Klass 2-bilarnas extraljusramp: fyra runda lampor på en svart balk framför grillen.
+ * Lyser med strålkastarna och ramlar av, en och en, vid krockar framifrån.
+ */
+function addLampPod(g: THREE.Group, b: BodyShape, lampGlow: LampGlow) {
+  const black = new THREE.MeshToonMaterial({ color: BLACK });
+  const y = (b.lampY[0] + b.lampY[1]) / 2;
+  const z = b.nose + 0.16;
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.04), black);
+  bar.position.set(0, y - 0.1, z - 0.02);
+  g.add(bar);
+  const housing = new THREE.CylinderGeometry(0.095, 0.08, 0.1, 20).rotateX(Math.PI / 2);
+  const lens = new THREE.CylinderGeometry(0.078, 0.078, 0.01, 20).rotateX(Math.PI / 2).translate(0, 0, 0.051);
+  for (const x of [0.52, 0.18, -0.18, -0.52]) {
+    const glass = new THREE.MeshToonNodeMaterial();
+    glass.colorNode = color(LAMP);
+    glass.emissiveNode = color(LAMP).mul(lampGlow[x > 0 ? 0 : 1]);
+    const lamp = new THREE.Mesh(housing, black);
+    lamp.add(new THREE.Mesh(lens, glass));
+    lamp.position.set(x, y, z);
+    lamp.castShadow = true;
+    g.add(lamp);
+  }
+}
+
 function buildDetails(b: BodyShape, wheelZ: Range): THREE.Group {
   const g = new THREE.Group();
   const black = new THREE.MeshToonMaterial({ color: BLACK });
@@ -561,6 +587,7 @@ export class CarMesh {
     ];
     this.parts.forEach((p) => this.group.add(p.mesh));
     this.detailGroup = buildDetails(b, wheelZ);
+    if (tierOf(car.params.name) === 2) addLampPod(this.detailGroup, b, this.lampGlow);
     this.group.add(this.detailGroup);
     this.details = (this.detailGroup.children as THREE.Mesh[]).map((mesh) => ({
       mesh,
