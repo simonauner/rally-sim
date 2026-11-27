@@ -242,7 +242,8 @@ export function ljung2000(): CarParams {
   const mass = 1000;
   const R = 0.3;
   const cg = 0.48;
-  const wheelbase = 2.47;
+  // Samma kaross och hjulbas som Ljung 1600 S; kitcaren får bredare spårvidd under breddarna.
+  const wheelbase = 2.4;
   const zF = wheelbase * 0.39;
   const zR = -wheelbase * 0.61;
   const yMount = R - cg + 0.125;
