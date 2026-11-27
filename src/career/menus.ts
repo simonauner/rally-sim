@@ -14,7 +14,9 @@ import israllytImg from "../assets/champ-israllyt.webp";
 import { CARS, type CarModel } from "../physics/params";
 import { STAGES, type StageDef } from "../physics/stage";
 import { pickStage, stagePreviewHtml } from "../stageMenu";
-import { WEATHER_NAMES, type Weather } from "../physics/weather";
+import { rollWeather, WEATHER_NAMES, type Weather } from "../physics/weather";
+import type { TyreType } from "../physics/surfaces";
+import { forcedWeather, pickTyre } from "../tyreMenu";
 import {
   applyUpgrades,
   sponsorsOf,
@@ -110,15 +112,17 @@ const buyMessage = (
       ? done
       : "";
 
-/** Vad som ska köras: bil, etapp och (för mästerskap) framsteget. */
+/** Vad som ska köras: bil, etapp, (för mästerskap) framsteget, och vädret och däcken. */
 export interface Launch {
   model: CarModel;
   stage: StageDef;
   championship: ChampionshipProgress | null;
+  weather: Weather;
+  tyre: TyreType;
 }
 
 /** Nästa etapp i ett pågående mästerskap, med bilen och dess uppgraderingar, eller null. */
-export function resumeChampionship(): Launch | null {
+export function resumeChampionship(): Omit<Launch, "weather" | "tyre"> | null {
   const p = loadChampionship();
   const def = p && championshipById(p.id);
   const stage = def && STAGES.find((s) => s.name === def.legs[p.leg]);
@@ -235,8 +239,14 @@ export async function careerMenu(
           ? `guld under ${t[0]} s${t2 ? `, i klass 2 under ${t2[0]} s` : ""}`
           : "";
       });
-      const model = stage && (await pick(ownedModels(career)));
-      if (stage && model) return { model, stage, championship: null };
+      if (stage) {
+        // Däcken efter bilen; Tillbaka från däcken går till bilväljaren.
+        const weather = forcedWeather() ?? rollWeather(stage, Math.random());
+        for (let model; (model = await pick(ownedModels(career))); ) {
+          const tyre = await pickTyre(stage, weather);
+          if (tyre) return { model, stage, championship: null, weather, tyre };
+        }
+      }
     }
     if (c === "champ") {
       const launch = ongoing
@@ -637,7 +647,7 @@ async function ongoingMenu(showCar: ShowCar): Promise<Launch | null> {
   if (!left) return null;
   const championship = { ...p, damage: repairCost(left.damage) === 0 ? null : left.damage };
   saveChampionship(championship);
-  return left.later ? null : { ...launch, championship };
+  return left.later ? null : { ...launch, championship, weather: left.weather, tyre: left.tyre };
 }
 
 /** Bläddrar genom mästerskapets etapper med samma förhandsvisning som före varje etapp, men utan väder (det slumpas vid start). */
@@ -734,12 +744,13 @@ async function startChampionship(
   const weather = legWeather(progress, 0);
   // Bilväljaren lämnar huvudmenyns kurva bakom sig; förhandsvisningen visar etappens ljus och väder.
   scenery(stage, weather);
-  if (!(await beforeLeg(def, 0, WHOLE, (d) => showCar(model, d), weather))) {
+  const left = await beforeLeg(def, 0, WHOLE, (d) => showCar(model, d), weather);
+  if (!left || left.later) {
     scenery(null);
     return null;
   }
   saveChampionship(progress);
-  return { model, stage, championship: progress };
+  return { model, stage, championship: progress, weather: left.weather, tyre: left.tyre };
 }
 
 const WHOLE: CarDamage = {
@@ -771,7 +782,7 @@ function damageHtml(d: CarDamage) {
 
 /**
  * Efter en etapp i mästerskapet. Mellan etapperna: förhandsvisning av nästa etapp och sedan service där spelaren lagar för egna pengar,
- * kör vidare skadad eller avbryter. Efter sista: totaltid och prispengar. Returnerar 'next' när
+ * kör vidare skadad eller avbryter. Efter sista: totaltid och prispengar. Returnerar däcken när
  * nästa etapp ska laddas, annars prispengarna (0 om spelaren avbryter) på väg till karriären. På servicen står bilen med sina skador på
  * vridbordet från showCar.
  */
@@ -829,7 +840,7 @@ export async function championshipLegDone(
   resultBody: string,
   damage: CarDamage,
   showCar: (d: CarDamage) => Showroom,
-): Promise<"next" | { prize: number }> {
+): Promise<{ tyre: TyreType } | { prize: number }> {
   const def = championshipById(p.id)!;
   const times = [...p.times, time];
   const total = times.reduce((a, b) => a + b, 0);
@@ -898,13 +909,14 @@ export async function championshipLegDone(
   );
   if (!left) return { prize: 0 };
   saveChampionship(afterLeg(p, time, left.damage, repairCost(left.damage) === 0));
-  return left.later ? { prize: 0 } : "next";
+  return left.later ? { prize: 0 } : { tyre: left.tyre };
 }
 
 /**
  * Före etapp `leg` (0-baserad): förhandsvisning av etappen och service där spelaren lagar för egna pengar,
  * kör vidare skadad, sparar till senare (`pausable`) eller avbryter. Returnerar skadan bilen har och om
- * spelaren valde att fortsätta senare, eller null om mästerskapet avbröts.
+ * spelaren valde att fortsätta senare, eller null om mästerskapet avbröts. Start går via däckvalet, vars
+ * Tillbaka leder till skärmen där man valde start (förhandsvisningen eller servicen).
  */
 async function beforeLeg(
   def: ChampionshipDef,
@@ -913,14 +925,25 @@ async function beforeLeg(
   showCar: (d: CarDamage) => Showroom,
   weather: Weather,
   pausable = leg > 0,
-): Promise<{ damage: CarDamage; later: boolean } | null> {
+): Promise<
+  | { damage: CarDamage; later: true }
+  | { damage: CarDamage; later: false; weather: Weather; tyre: TyreType }
+  | null
+> {
   const nextName = def.legs[leg]!;
   const nextStage = STAGES.find((s) => s.name === nextName);
+  weather = forcedWeather() ?? weather;
   // Vridbordet öppnas vid första besöket på servicen och står kvar bakom förhandsvisningen.
   let room: Showroom | null = null;
   let message = "";
   let atService = false;
   let countFrom = loadCareer().career.money;
+  const start = async () => {
+    const tyre = await pickTyre(nextStage!, weather);
+    if (!tyre) return null;
+    room?.close();
+    return { damage, later: false as const, weather, tyre };
+  };
   for (;;) {
     const cost = repairCost(damage);
     if (!atService) {
@@ -946,7 +969,11 @@ async function beforeLeg(
         ],
         cancel: leg > 0 ? "service" : pausable ? "later" : "abort",
       });
-      if (c === "go") break;
+      if (c === "go") {
+        const s = await start();
+        if (s) return s;
+        continue;
+      }
       if (c === "later") {
         room?.close();
         return { damage, later: true };
@@ -1020,8 +1047,7 @@ async function beforeLeg(
       message = `<div class="ahead">${c === "all" ? "Lagad" : `Lagade ${PART_NAMES[c]}`} för ${formatMoney(price)}.</div>`;
       continue;
     }
-    break;
+    const s = await start();
+    if (s) return s;
   }
-  room?.close();
-  return { damage, later: false };
 }

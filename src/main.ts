@@ -16,7 +16,7 @@ import { Car } from './physics/car';
 import { CARS, type CarModel } from './physics/params';
 import { START_S, Stage, STAGE_ASJON, STAGE_GRINSBOL, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
-import { pickTyre } from './tyreMenu';
+import { forcedWeather, isTyre, pickTyre } from './tyreMenu';
 import type { TyreType } from './physics/surfaces';
 import { CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
@@ -38,7 +38,7 @@ import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
 import { applyLight, Headlights, LIGHTS } from './render/lighting';
 import { applyWeather, Precipitation } from './render/weather';
-import { rollWeather, WEATHER_NAMES, type Weather } from './physics/weather';
+import { rollWeather, type Weather } from './physics/weather';
 
 const DT = 1 / 240;
 const CAMERAS = ['bakifrån nära', 'bakifrån långt', 'motorhuv', 'förarvy', 'uppifrån', 'sidovy (skador)'] as const;
@@ -183,13 +183,19 @@ async function main() {
   let stageDef: StageDef = STAGE_GRINSBOL;
   /** Karriärlopp ger prispengar; fri körning gör det inte. */
   let careerMode = false;
-  /** Pågående mästerskap; ?mastarskap laddar dess nästa etapp direkt. */
+  /** Pågående mästerskap; ?mastarskap=<däck> laddar dess nästa etapp direkt med däcken valda före omladdningen. */
   let champ: ChampionshipProgress | null = null;
-  let resumed = query.has('mastarskap') ? resumeChampionship() : null;
-  if (resumed) {
+  let weather: Weather = 'clear';
+  let tyre: TyreType | null = null;
+  const resumedTyre = query.get('mastarskap');
+  const resumed = isTyre(resumedTyre) ? resumeChampionship() : null;
+  if (resumed && isTyre(resumedTyre)) {
     ({ model, stage: stageDef, championship: champ } = resumed);
+    // Vädret slumpas per etapp; i mästerskap från dess frö, så en omladdning inte ger nytt väder.
+    weather = forcedWeather() ?? legWeather(champ!);
+    tyre = resumedTyre;
     choice = 'stage';
-  }
+  } else if (query.has('mastarskap')) choice = 'career';
   /** Bilen på vridbordet, t.ex. på mästerskapets service. */
   const showCar = (m: CarModel, d: CarDamage) => {
     const room = showroom(renderer);
@@ -243,76 +249,61 @@ async function main() {
       },
     };
   };
-  let weather: Weather = 'clear';
-  let tyre: TyreType | null = null;
-  // Tillbaka från däckvalet går till huvudmenyn.
-  for (;;) {
-    while (!resumed) {
-      if (choice === 'controls') {
-        scenery(null);
-        if (settings.firstVisit) await showWelcome();
-      }
-      while (choice === 'settings' || choice === 'controls' || choice === 'account') {
-        choice = await showMenu<MainChoice>({
-          title: 'RALLY',
-          side: true,
-          items: [
-            { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
-            { label: 'Fri körning', detail: freeDriveDetail(), value: 'stage' },
-            { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
-            { label: 'Inställningar', value: 'settings' },
-            { label: 'Kontroller', value: 'controls' },
-            { label: 'Konto', value: 'account' },
-          ],
-          footer: VERSION,
-        });
-        if (choice === 'settings') await showSettings(true);
-        if (choice === 'controls') await showControls(true);
-        if (choice === 'account') await showAccount();
-      }
-      // Fri körning väljer etapp med huvudmenyns kurva bakom sig.
-      if (choice !== 'career' && choice !== 'stage') hideScenery();
-      if (choice === 'career') {
-        const launch = await careerMenu(careerPick, careerShowCar, scenery, gained);
-        hideScenery();
-        gained = 0;
-        if (launch) {
-          ({ model, stage: stageDef, championship: champ } = launch);
-          careerMode = !champ;
-          choice = 'stage';
-          break;
-        }
-        choice = 'controls';
-        continue;
-      }
-      if (choice === 'stage') {
-        const picked = await pickStage('Fri körning');
-        hideScenery();
-        if (!picked) {
-          choice = 'controls';
-          continue;
-        }
-        stageDef = picked;
-      }
-      // Bilväljaren före varje start; Tillbaka går till huvudmenyn.
-      const picked = query.has('testbana') ? model : await pickCar(renderer, CARS, { locked: (m) => !freeCars().includes(m.make().name) });
-      if (picked) {
-        model = picked;
+  while (!resumed) {
+    if (choice === 'controls') {
+      scenery(null);
+      if (settings.firstVisit) await showWelcome();
+    }
+    while (choice === 'settings' || choice === 'controls' || choice === 'account') {
+      choice = await showMenu<MainChoice>({
+        title: 'RALLY',
+        side: true,
+        items: [
+          { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
+          { label: 'Fri körning', detail: freeDriveDetail(), value: 'stage' },
+          { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
+          { label: 'Inställningar', value: 'settings' },
+          { label: 'Kontroller', value: 'controls' },
+          { label: 'Konto', value: 'account' },
+        ],
+        footer: VERSION,
+      });
+      if (choice === 'settings') await showSettings(true);
+      if (choice === 'controls') await showControls(true);
+      if (choice === 'account') await showAccount();
+    }
+    // Fri körning väljer etapp med huvudmenyns kurva bakom sig.
+    if (choice !== 'career' && choice !== 'stage') hideScenery();
+    if (choice === 'career') {
+      const launch = await careerMenu(careerPick, careerShowCar, scenery, gained);
+      hideScenery();
+      gained = 0;
+      if (launch) {
+        ({ model, stage: stageDef, championship: champ, weather, tyre } = launch);
+        careerMode = !champ;
+        choice = 'stage';
         break;
       }
       choice = 'controls';
+      continue;
     }
-    if (choice === 'test') break;
-    // Vädret slumpas per etapp; i mästerskap från dess frö, så en omladdning inte ger nytt väder.
-    // ?vader=regn|dimma|snöfall tvingar fram ett väder vid felsökning.
-    const forced = (Object.keys(WEATHER_NAMES) as Weather[]).find((w) => WEATHER_NAMES[w] === query.get('vader'));
-    weather = forced ?? (champ ? legWeather(champ) : rollWeather(stageDef, Math.random()));
-    // Däcken väljs före varje etapp, även mellan mästerskapets etapper.
-    tyre = await pickTyre(stageDef, weather);
-    if (tyre) break;
-    resumed = null;
-    champ = null;
-    careerMode = false;
+    if (choice === 'stage') {
+      const picked = await pickStage('Fri körning');
+      hideScenery();
+      if (!picked) {
+        choice = 'controls';
+        continue;
+      }
+      stageDef = picked;
+      weather = forcedWeather() ?? rollWeather(stageDef, Math.random());
+    }
+    // Bilväljaren före varje start och däcken efter den; Tillbaka går till huvudmenyn respektive bilväljaren.
+    let picked: CarModel | null;
+    while ((picked = query.has('testbana') ? model : await pickCar(renderer, CARS, { locked: (m) => !freeCars().includes(m.make().name) }))) {
+      model = picked;
+      if (choice === 'test' || (tyre = await pickTyre(stageDef, weather))) break;
+    }
+    if (picked) break;
     choice = 'controls';
   }
   backdrops.forEach((b) => b.dispose());
@@ -561,7 +552,7 @@ async function main() {
   // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
   const goToMainMenu = () => void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
   const goToCareer = (prize = 0) => void (location.href = `${location.pathname}?karriar=${prize}${forceWebGL ? '&webgl' : ''}`);
-  const goToNextLeg = () => void (location.href = `${location.pathname}?mastarskap${forceWebGL ? '&webgl' : ''}`);
+  const goToNextLeg = (t: TyreType) => void (location.href = `${location.pathname}?mastarskap=${t}${forceWebGL ? '&webgl' : ''}`);
 
   /** Prispengarna från senaste åket, för målskärmen. */
   let prizeHtml = '';
@@ -569,7 +560,7 @@ async function main() {
     if (!stage || !timer) return;
     if (champ) {
       const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), damageAtFinish ?? readDamage(), (d) => showCar(model, d));
-      return next === 'next' ? goToNextLeg() : goToCareer(next.prize);
+      return 'tyre' in next ? goToNextLeg(next.tyre) : goToCareer(next.prize);
     }
     const c = await showMenu<'again' | 'menu'>({
       title: 'Mål',

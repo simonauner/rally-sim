@@ -193,7 +193,7 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
   fältet hittar en eller två av dem samma fart till nästa etapp (`src/career/rivals.ts`). Skador följer med mellan etapperna; på servicen lagar man för egna
   pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis
   men inga prispengar. Framsteget sparas i webbläsaren, eftersom sidan laddas om mellan
-  etapperna (`?mastarskap` laddar nästa etapp).
+  etapperna (`?mastarskap=<däck>` laddar nästa etapp med däcken som valdes före omladdningen).
 - **Klass 2:** när alla tre mästerskapen i klass 1 är vunna säljer bilhandlaren sju snabbare
   bilar (Ljung 2000 16V med framhjulsdrift, Strand 2.0 GT med bakhjulsdrift och fem med
   fyrhjulsdrift och mittdiff: Kvarn Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé och
