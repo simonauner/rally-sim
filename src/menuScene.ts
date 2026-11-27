@@ -73,8 +73,14 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   sun.target.position.copy(look);
   // Ljuset följer spelarens klocka; läses om varje gång menyn visas.
   const setLight = () => {
-    const light = LIGHTS[lightAt(new Date())];
+    const time = lightAt(new Date());
+    const light = LIGHTS[time];
     applyLight(scene, hemi, sun, light);
+    // Svagt månljus på natten så att banan syns mellan bilarna; etappens natt förblir becksvart.
+    if (time === 'night') {
+      hemi.intensity = 0.08;
+      sun.intensity = 0.12;
+    }
     outlineColor.value.setHex(light.outline);
     sun.position.set(apex.x + light.sunOffset[0], apexY + light.sunOffset[1], apex.z + light.sunOffset[2]);
     headlights.group.visible = light.headlights;
