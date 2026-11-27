@@ -471,7 +471,7 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   Niklasdamm: [219, 242, 278],
   Broby: [207, 229, 262],
   // Bygdsiljum i fem delar på drygt 5 km. Testföraren med vinterdäck: Åsjön 290 s, Altarliden
-  // 292 s, Bergtjärnen 294 s, Torpet 303 s (T-korsningen i krypfart) och Trollberget 293 s på natten.
+  // 292 s, Bergtjärnen 293 s, Torpet 303 s (T-korsningen i krypfart) och Trollberget 293 s på natten.
   Åsjön: [292, 323, 370],
   Altarliden: [293, 324, 372],
   Bergtjärnen: [296, 327, 375],
@@ -483,7 +483,7 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   Rickleån: [196, 217, 249],
   Valsfäboda: [199, 220, 252],
   // Andersvattnet i fyra delar på drygt 5 km. Testföraren med vinterdäck: Storberget 291 s,
-  // Hösjöälven 304 s (hårnålen i krypfart), Röjmyrberget 323 s och Flarkån 314 s i skymning.
+  // Hösjöälven 303 s (hårnålen i krypfart), Röjmyrberget 323 s och Flarkån 314 s i skymning.
   Storberget: [293, 324, 371],
   Hösjöälven: [306, 338, 388],
   Röjmyrberget: [324, 358, 411],

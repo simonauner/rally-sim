@@ -418,14 +418,21 @@ export interface RealStagePart {
 
 /**
  * Etapper från en verklig sträcka i delar, med källan angiven: snöig vinterväg eller sommargrus.
- * `light` ger ljuset per del (dag om inget anges).
+ * `light` ger ljuset per del (dag om inget anges); `version` och `recordsSince` gäller alla delar.
  */
-function realStages(source: string, parts: RealStagePart[], winter: boolean, light: (Light | undefined)[] = []): StageDef[] {
+function realStages(
+  source: string,
+  parts: RealStagePart[],
+  winter: boolean,
+  light: (Light | undefined)[] = [],
+  version = '1.0.1',
+  recordsSince = '1.0.0',
+): StageDef[] {
   const surface = winter ? ('snow' as const) : ('gravel' as const);
   return parts.map((part, i) => ({
     name: part.name,
-    version: '1.0.1',
-    recordsSince: '1.0.0',
+    version,
+    recordsSince,
     ...(winter ? { winter } : {}),
     ...(light[i] ? { light: light[i] } : {}),
     credit: `${source}, del ${i + 1} av ${parts.length} · kartdata © OpenStreetMap contributors (ODbL) · höjd EU-DEM, Copernicus`,
@@ -437,21 +444,28 @@ function realStages(source: string, parts: RealStagePart[], winter: boolean, lig
 
 /**
  * Andersvattnet ur Rally Sweden i fyra delar (se andersvattnet.ts). Sista delen körs i skymning,
- * som eftermiddagens omgång i rallyt.
+ * som eftermiddagens omgång i rallyt. 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte.
  */
 export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLARKAN] = realStages(
   'Andersvattnet i Rally Sweden',
   ANDERSVATTNET,
   true,
   [undefined, undefined, undefined, 'dusk'],
+  '1.1.0',
+  '1.1.0',
 ) as [StageDef, StageDef, StageDef, StageDef];
 
-/** Bygdsiljum ur Rally Sweden i fem delar (se bygdsiljum.ts). Sista delen körs på natten. */
+/**
+ * Bygdsiljum ur Rally Sweden i fem delar (se bygdsiljum.ts). Sista delen körs på natten.
+ * 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte.
+ */
 export const [STAGE_ASJON, STAGE_ALTARLIDEN, STAGE_BERGTJARNEN, STAGE_TORPET, STAGE_TROLLBERGET] = realStages(
   'Bygdsiljum i Rally Sweden',
   BYGDSILJUM,
   true,
   [undefined, undefined, undefined, undefined, 'night'],
+  '1.1.0',
+  '1.1.0',
 ) as [StageDef, StageDef, StageDef, StageDef, StageDef];
 
 /** Bäck ur Rally Sweden i tre delar (se back.ts). Sista delen körs i skymning, som eftermiddagens omgång. */
