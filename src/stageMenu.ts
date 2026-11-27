@@ -15,34 +15,41 @@ const LIGHT_NAMES: Record<Light, string> = { day: '', dawn: 'gryning', dusk: 'sk
  */
 export async function pickStage(title: string, extra?: (s: StageDef) => string): Promise<StageDef | null> {
   const career = loadCareer().career;
+  // Varje etapp listas under det första mästerskapet den körs i; klass 2 visas bara med sina nya etapper.
+  const listed = new Set<string>();
+  const groups = CHAMPIONSHIPS.map((c) => {
+    const legs = c.legs.filter((leg) => !listed.has(leg));
+    legs.forEach((leg) => listed.add(leg));
+    return { c, legs };
+  }).filter((g) => g.legs.length > 0);
   for (;;) {
     const id = await showMenu<string>({
       title,
       solid: true,
       items: [
-        // Klass 2 kör samma etapper som klass 1, så etapperna listas bara under klass 1.
-        ...CHAMPIONSHIPS.filter((c) => c.tier === 1).map((c) =>
+        ...groups.map(({ c, legs }) =>
           championshipUnlocked(career, c)
-            ? { label: c.name, detail: `${c.legs.length} etapper`, value: c.id }
-            : { label: c.name, note: c.legs.join(', '), detail: `${unlockHint(career, c)} i karriären`, value: c.id, locked: true },
+            ? { label: c.name, detail: legs.length === 1 ? '1 etapp' : `${legs.length} etapper`, value: c.id }
+            : { label: c.name, note: legs.join(', '), detail: `${unlockHint(career, c)} i karriären`, value: c.id, locked: true },
         ),
         { label: '← Tillbaka', value: '' },
       ],
       cancel: '',
     });
-    const champ = CHAMPIONSHIPS.find((c) => c.id === id);
-    if (!champ) return null;
+    const group = groups.find((g) => g.c.id === id);
+    if (!group) return null;
+    const champ = group.c;
     if (!championshipUnlocked(career, champ)) continue;
     const name = await showMenu<string>({
       title: champ.name,
       solid: true,
       items: [
-        ...champ.legs.flatMap((leg) => {
+        ...group.legs.flatMap((leg) => {
           const s = STAGES.find((x) => x.name === leg);
           if (!s) return [];
           const best = loadRecord(s);
           const detail = [LIGHT_NAMES[s.light ?? 'day'], best ? `bästa ${formatTime(best.time)}` : '', extra?.(s) ?? ''].filter(Boolean).join(' · ');
-          return [{ label: s.name, detail: detail || undefined, value: s.name }];
+          return [{ label: s.name, note: s.credit ? 'verklig väg · kartdata © OpenStreetMap contributors' : undefined, detail: detail || undefined, value: s.name }];
         }),
         { label: '← Tillbaka', value: '' },
       ],
@@ -89,6 +96,7 @@ export function stagePreviewHtml(def: StageDef): string {
     <tr><th>Tid på dygnet</th><td>${LIGHT_NAMES[def.light ?? 'day'] || 'dag'}</td></tr>
     <tr><th>Längd</th><td>${((end - START_S) / 1000).toFixed(1).replace('.', ',')} km</td></tr>
     <tr><th>Underlag</th><td>${shares.map(([s, k]) => `${SURFACES[s].name.toLowerCase()} ${Math.round(k * 100)} %`).join(', ')}${def.winter ? ' · vinter' : ''}</td></tr>
+    ${def.credit ? `<tr><th>Källa</th><td>${def.credit}</td></tr>` : ''}
   </table>
   <svg viewBox="${minX - pad} ${minZ - pad} ${maxX - minX + 2 * pad} ${maxZ - minZ + 2 * pad}" style="display:block;width:100%;max-height:40vh;margin-top:10px">
     <g fill="none" stroke-width="${sw.toFixed(1)}" stroke-linecap="round" stroke-linejoin="round">${lines.join('')}</g>

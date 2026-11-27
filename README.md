@@ -153,9 +153,14 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Klass 2:** när alla tre mästerskapen i klass 1 är vunna säljer bilhandlaren tre snabbare
   bilar (Ljung 2000 16V med framhjulsdrift, Strand 2.0 GT med bakhjulsdrift och Kvarn Turbo 4x4
   med fyrhjulsdrift och mittdiff). De har egna delar i garaget och egna mästerskap
-  (Tallmoklassikern, Ljunghedsrallyt, Israllyt) på samma etapper. Medaljgränserna och fältet är
+  (Tallmoklassikern och Ljunghedsrallyt på klass 1-etapperna, Israllyt på en verklig väg). Medaljgränserna och fältet är
   8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
   Varje klass kör bara sina egna mästerskap.
+- **Israllyt** körs på en verklig väg: Andersvattnet ur Rally Sweden, ca 21 km delad i fyra
+  etapper (Storberget, Hösjöälven med en hårnål, Röjmyrberget och Flarkån i skymning). Geometrin
+  kommer ur OpenStreetMap och höjden ur EU-DEM (`src/physics/andersvattnet.ts`). Där vägen
+  svänger tillbaka mot sig själv blandas terrängens höjd mellan vägdelarna. Vägdata ©
+  OpenStreetMap contributors, ODbL 1.0; den härledda datan i filen delas under samma licens.
 
 Pengarna köper uppgraderingar i garaget (motor, bromsar, fjädring, däck, tre nivåer var) och
 bilar hos bilhandlaren. Man börjar med Kvarn 240 GL. Regler och priser finns i

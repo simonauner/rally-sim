@@ -422,6 +422,12 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   Forsbäcken: [81, 90, 104],
   Hamnudden: [88, 98, 112],
   Vadmyra: [98, 109, 125],
+  // Andersvattnet i fyra delar på drygt 5 km. Testföraren med vinterdäck: Storberget 289 s,
+  // Hösjöälven 300 s (hårnålen i krypfart), Röjmyrberget 323 s och Flarkån 314 s i skymning.
+  Storberget: [290, 321, 368],
+  Hösjöälven: [302, 334, 383],
+  Röjmyrberget: [324, 358, 411],
+  Flarkån: [318, 352, 403],
 };
 
 /** Medaljgränserna för en etapp i bilens klass, eller undefined för en okänd etapp. */

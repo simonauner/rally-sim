@@ -1,5 +1,6 @@
 import { CatmullRomCurve3, Vector3 } from 'three';
 import { TYRE_GRIP, type SurfaceId, type TyreType } from './surfaces';
+import { ANDERSVATTNET } from './andersvattnet';
 import { rng } from './rng';
 import { World } from './world';
 
@@ -39,6 +40,8 @@ export interface StageDef {
   winter?: boolean;
   /** Tid på dygnet; dag om inget anges. Påverkar bara grafiken. */
   light?: Light;
+  /** Källa för verklig kartdata, visas i etappens förhandsvisning. */
+  credit?: string;
 }
 
 export type Light = 'day' | 'dawn' | 'dusk' | 'night';
@@ -60,7 +63,9 @@ const SAMPLE_STEP = 1;
 export const START_S = 20;
 export const FINISH_MARGIN = 80;
 const CELL = 20;
+/** Träd per etapp, och fler på långa etapper så skogen blir lika tät. */
 const TREES = 2500;
+const TREES_PER_M = 0.9;
 /** Bortom detta avstånd från vägen är terrängen bara utfyllnad. */
 export const STAGE_CORRIDOR = 45;
 /** Snövallarnas höjd över vägen på vinteretapper (m). */
@@ -210,7 +215,8 @@ export class Stage extends World {
       maxZ = Math.max(maxZ, this.zs[i]!);
     }
     const r = rng(99);
-    for (let tries = 0; tries < TREES * 20 && this.trunks.length < TREES; tries++) {
+    const count = Math.max(TREES, Math.round(this.length * TREES_PER_M));
+    for (let tries = 0; tries < count * 20 && this.trunks.length < count; tries++) {
       const x = minX - STAGE_CORRIDOR + r() * (maxX - minX + 2 * STAGE_CORRIDOR);
       const z = minZ - STAGE_CORRIDOR + r() * (maxZ - minZ + 2 * STAGE_CORRIDOR);
       const { d, width } = this.roadAt(x, z, STAGE_CORRIDOR);
@@ -733,6 +739,24 @@ export const STAGE_VADMYRA: StageDef = {
 };
 
 /**
+ * Verkliga vinteretapper: Andersvattnet ur Rally Sweden i fyra delar på snöig skogsväg, med
+ * geometri och höjd från öppen kartdata (se andersvattnet.ts). Sista delen körs i skymning,
+ * som eftermiddagens omgång i rallyt.
+ */
+export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLARKAN] = ANDERSVATTNET.map(
+  (part, i): StageDef => ({
+    name: part.name,
+    version: '1.0.0',
+    recordsSince: '1.0.0',
+    winter: true,
+    ...(i === ANDERSVATTNET.length - 1 ? { light: 'dusk' as const } : {}),
+    credit: `Andersvattnet i Rally Sweden, del ${i + 1} av ${ANDERSVATTNET.length} · kartdata © OpenStreetMap contributors (ODbL) · höjd EU-DEM, Copernicus`,
+    points: part.road.map(([x, z, y]) => ({ x, z, y, width: 6, surface: 'snow' as const })),
+    spurs: part.spurs.map((points) => ({ points, width: 5, surface: 'snow' as const })),
+  }),
+) as [StageDef, StageDef, StageDef, StageDef];
+
+/**
  * Samma väg körd åt andra hållet. Underlaget gäller från en punkt fram till nästa, så varje
  * vänd punkt får underlaget från segmentet som nu ligger framför den. Den gamla utrullningen
  * blir startraka och den gamla startraka blir utrullning efter mål.
@@ -765,6 +789,10 @@ export const STAGES: StageDef[] = [
   STAGE_FORSBACKEN,
   STAGE_HAMNUDDEN,
   STAGE_VADMYRA,
+  STAGE_STORBERGET,
+  STAGE_HOSJOALVEN,
+  STAGE_ROJMYRBERGET,
+  STAGE_FLARKAN,
 ];
 
 /** Andel av etappen per underlag, mätt längs raka linjer mellan stödpunkterna. */

@@ -25,7 +25,9 @@ dem bara medvetet.
 - `src/physics/` är ren TypeScript. Importera bara `three` (matte), aldrig `three/webgpu`, DOM eller `window`.
 - Fast fysiksteg 240 Hz, frikopplat från rendering.
 - Koordinater: bilens lokala x = vänster, y = upp, z = framåt. Styrvinkel positiv = vänster.
-- Bilar, märken och banor är fiktiva. Använd aldrig verkliga märkes- eller modellnamn.
+- Bilar och märken är fiktiva. Använd aldrig verkliga märkes- eller modellnamn.
+- Banor är fiktiva, utom verkliga vägar från öppen kartdata (OpenStreetMap, ODbL) som anger
+  källan i `StageDef.credit`. Använd ortsnamn, aldrig ett rallys varumärke som etappnamn.
 - Språk i UI och kommentarer: svenska.
 - Grafik: WebGPU enbart. `?webgl` finns bara för felsökning i miljöer utan WebGPU.
 
@@ -37,4 +39,4 @@ dem bara medvetet.
 ## Nästa steg (fas 1)
 
 Fas 1 är klar: spline-etappen (`src/physics/stage.ts`), tidtagningen (`src/physics/timing.ts`), ghosten (`src/physics/ghost.ts`), dammet (`src/render/dust.ts`), pacenotes (`src/physics/pacenotes.ts`) och motorljudet.
-Huvud- och pausmeny finns (`src/menu.ts`). Konto och synk av rekord finns (`src/account/`, `sync/`). Karriär med kassa, garage, bilhandlare och mästerskap finns (`src/career/`). Etapper: Skogsberg, Myrkulla och vinteretappen Frostberga (även baklänges), plus Tallmon i skymning, Ljungheden i gryning och Isvallen på natten (med strålkastare), plus Forsrallyts Forsbäcken, Hamnudden och Vadmyra (vadställen och asfalt); däcken väljs före start (`src/tyreMenu.ts`). Klass 2 (tre snabbare bilar, egna delar och mästerskap) låses upp när klass 1 är vunnen. Nästa: se README.
+Huvud- och pausmeny finns (`src/menu.ts`). Konto och synk av rekord finns (`src/account/`, `sync/`). Karriär med kassa, garage, bilhandlare och mästerskap finns (`src/career/`). Etapper: Skogsberg, Myrkulla och vinteretappen Frostberga (även baklänges), plus Tallmon i skymning, Ljungheden i gryning och Isvallen på natten (med strålkastare), plus Forsrallyts Forsbäcken, Hamnudden och Vadmyra (vadställen och asfalt); däcken väljs före start (`src/tyreMenu.ts`). Klass 2 (tre snabbare bilar, egna delar och mästerskap) låses upp när klass 1 är vunnen. Israllyt körs på Andersvattnet ur Rally Sweden, verklig väg i fyra delar (`src/physics/andersvattnet.ts`). Nästa: se README.

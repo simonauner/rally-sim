@@ -397,7 +397,9 @@ for (const def of STAGES) {
   for (let i = 0; i < stage.xs.length; i += 2)
     for (let j = i + 150; j < stage.xs.length; j += 2)
       minSep = Math.min(minSep, Math.hypot(stage.xs[i]! - stage.xs[j]!, stage.zs[i]! - stage.zs[j]!));
-  check(`${def.name}: vägen korsar inte sig själv`, minSep > 2 * STAGE_CORRIDOR, `${stage.length} m lång, minsta avstånd ${minSep.toFixed(0)} m`);
+  // Verkliga vägar kan svänga tätare än två korridorer, som i en hårnål; terrängen blandas då
+  // mellan vägdelarna. Vägarna får bara inte mötas.
+  check(`${def.name}: vägen korsar inte sig själv`, minSep > STAGE_CORRIDOR, `${stage.length} m lång, minsta avstånd ${minSep.toFixed(0)} m`);
   // Terrängen hänger ihop: inga kanter i korridoren, inte heller på insidan av snäva kurvor och
   // hårnålar eller vid korsande vägar. Vallarna vid vintervägar ger upp till ca 0,8 m per 2 m.
   let step = 0;
@@ -437,7 +439,9 @@ for (const def of STAGES) {
   const finish = stage.length - FINISH_MARGIN;
   let maxOver = 0;
   let time = NaN;
-  run(car, 250, (t, c) => {
+  // Testföraren håller i snitt minst 10 m/s, så etappens längd ger en övre gräns för tiden.
+  const maxTime = Math.max(200, finish / 10);
+  run(car, maxTime + 50, (t, c) => {
     const hit = stage.project(c.pos.x, c.pos.z);
     if (Number.isNaN(time) && hit.s >= finish) time = t;
     if (!Number.isNaN(time)) return brakeAlongRoad(stage, c);
@@ -447,7 +451,9 @@ for (const def of STAGES) {
     const err = Math.atan2(look.x - c.pos.x, look.z - c.pos.z) - Math.atan2(f.x, f.z);
     const a = stage.poseAt(hit.s + 10).heading;
     const b = stage.poseAt(hit.s + 40).heading;
-    const target = Math.max(9, 24 - Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) * 18) * gripK(hit.surface);
+    const turn = Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a)));
+    // Hårnålar (över ca 90° på 30 m) tas i krypfart, annars aldrig under 9 m/s.
+    const target = Math.max(turn > 1.5 ? 5 : 9, 24 - turn * 18) * gripK(hit.surface);
     return {
       ...idle,
       steer: Math.max(-1, Math.min(1, Math.atan2(Math.sin(err), Math.cos(err)) * 4)),
@@ -455,7 +461,7 @@ for (const def of STAGES) {
       brake: c.forwardSpeed > target + 2 ? 0.6 : 0,
     };
   });
-  check(`${def.name}: förare når målet på vägen`, time > 60 && time < 200 && maxOver < 1, `${TYRE_NAMES[tyre]}, ${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
+  check(`${def.name}: förare når målet på vägen`, time > 60 && time < maxTime && maxOver < 1, `${TYRE_NAMES[tyre]}, ${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
 }
 
 // 14. Däckrådet: grusdäck på grusetapperna, vinterdäck på snön och asfaltsdäck där det mest är asfalt.
