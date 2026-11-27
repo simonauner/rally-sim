@@ -311,7 +311,6 @@ async function tierMenu(
   for (;;) {
     const id = await showMenu<string>({
       title: `Klass ${tier}`,
-      subtitle: `Kassa: ${formatMoney(career.money)}`,
       solid: true,
       items: [
         ...CHAMPIONSHIPS.filter((ch) => ch.tier === tier).map((ch) =>
