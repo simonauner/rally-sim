@@ -17,10 +17,15 @@ fälls upp ur huven och är uppfällda på modellen.
 
 import math
 import os
+import sys
 
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from simplify import simplify  # noqa: E402
 
 GROUND = -0.496
 WHEELS = [(1.06, -0.179), (-1.465, -0.195)]  # (z, y) fram och bak
@@ -651,7 +656,7 @@ def rim():
     def v(a, y, z):
         return bm.verts.new(to_blender(a, y, z))
 
-    def tube(r_in, r_out, a0, a1, mat, segs=40):
+    def tube(r_in, r_out, a0, a1, mat, segs=32):
         """Ett rör runt axeln: ytter- och innermantel och båda gavlarna."""
         sec = [(r_out, a0), (r_out, a1), (r_in, a1), (r_in, a0)]
         loops = [[v(a, r * math.cos(2 * math.pi * i / segs), r * math.sin(2 * math.pi * i / segs)) for r, a in sec] for i in range(segs)]
@@ -740,6 +745,8 @@ def main():
     body = build_body()
     cut_planes(body)
     assign_materials(body, face_material)
+    # Hoshins mjukare hörn vid lyktorna blir kantiga redan vid 0,3.
+    simplify(body, 0.4)
     wheel_rim = rim()
     for obj in [body, *details(body), wheel_rim]:
         bpy.context.scene.collection.objects.unlink(obj)
