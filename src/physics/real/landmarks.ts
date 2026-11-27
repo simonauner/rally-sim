@@ -1,6 +1,6 @@
 /**
- * Landmärken längs etapperna ur OpenStreetMap: åkrar, gårdar, sjöar, kraftledningar, broar och krön,
- * som sträckor längs vägen (m från etappens start). side 1 = vänster i färdriktningen, -1 = höger,
+ * Landmärken längs etapperna ur OpenStreetMap: åkrar, gårdar, sjöar, myrar, kalhyggen, kraftledningar,
+ * broar och krön, som sträckor längs vägen (m från etappens start). side 1 = vänster i färdriktningen, -1 = höger,
  * 0 = tvärs över. Genererad av tools/stages/landmarks.py.
  *
  * Kartdata © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
@@ -11,6 +11,8 @@ import type { Landmark } from '../stage';
 export const LANDMARKS: Record<string, Landmark[]> = {
   'Grinsbol': [
     { kind: 'power', side: 0, from: 335, to: 335 },
+    { kind: 'farm', side: -1, from: 370, to: 450 },
+    { kind: 'farm', side: 1, from: 370, to: 470 },
     { kind: 'field', side: 1, from: 1630, to: 1740 },
     { kind: 'field', side: 1, from: 1990, to: 2140 },
     { kind: 'field', side: -1, from: 2400, to: 2470 },
@@ -20,7 +22,6 @@ export const LANDMARKS: Record<string, Landmark[]> = {
     { kind: 'field', side: 1, from: 4210, to: 4370 },
     { kind: 'field', side: -1, from: 4350, to: 4700 },
     { kind: 'farm', side: 1, from: 4430, to: 4650 },
-    { kind: 'field', side: 1, from: 4660, to: 4700 },
   ],
   'Åsterud': [
     { kind: 'field', side: -1, from: 0, to: 240 },
@@ -48,17 +49,31 @@ export const LANDMARKS: Record<string, Landmark[]> = {
   'Stor-Jangen': [
     { kind: 'crest', side: 0, from: 3360, to: 3360 },
   ],
+  'Åsjön': [
+    { kind: 'farm', side: 1, from: 1470, to: 1570 },
+  ],
+  'Altarliden': [
+    { kind: 'bog', side: -1, from: 1880, to: 1950 },
+  ],
   'Bergtjärnen': [
+    { kind: 'bog', side: 1, from: 3030, to: 3260 },
     { kind: 'lake', side: 1, from: 3450, to: 3580 },
     { kind: 'lake', side: 1, from: 4220, to: 4300 },
   ],
+  'Torpet': [
+    { kind: 'bog', side: 1, from: 1290, to: 1360 },
+  ],
   'Näs': [
+    { kind: 'bog', side: 1, from: 560, to: 650 },
     { kind: 'lake', side: -1, from: 1660, to: 1890 },
     { kind: 'lake', side: 1, from: 1670, to: 1900 },
   ],
   'Rickleån': [
+    { kind: 'bog', side: -1, from: 1130, to: 1310 },
+    { kind: 'bog', side: -1, from: 2000, to: 2070 },
     { kind: 'farm', side: 1, from: 3090, to: 3260 },
     { kind: 'farm', side: -1, from: 3300, to: 3450 },
+    { kind: 'farm', side: 1, from: 3330, to: 3390 },
   ],
   'Valsfäboda': [
     { kind: 'farm', side: -1, from: 0, to: 120 },
@@ -75,12 +90,29 @@ export const LANDMARKS: Record<string, Landmark[]> = {
     { kind: 'farm', side: 1, from: 2820, to: 2950 },
     { kind: 'farm', side: -1, from: 3260, to: 3350 },
   ],
+  'Storberget': [
+    { kind: 'clearcut', side: -1, from: 0, to: 120 },
+    { kind: 'bog', side: -1, from: 600, to: 670 },
+    { kind: 'bog', side: -1, from: 4850, to: 4900 },
+  ],
   'Hösjöälven': [
+    { kind: 'bog', side: 1, from: 550, to: 630 },
     { kind: 'bridge', side: 0, from: 3541, to: 3541 },
     { kind: 'lake', side: -1, from: 3610, to: 3750 },
   ],
+  'Röjmyrberget': [
+    { kind: 'clearcut', side: -1, from: 2850, to: 3680 },
+    { kind: 'clearcut', side: 1, from: 2900, to: 3750 },
+    { kind: 'clearcut', side: 1, from: 4370, to: 4720 },
+    { kind: 'clearcut', side: -1, from: 4390, to: 4750 },
+    { kind: 'bog', side: -1, from: 4780, to: 4950 },
+    { kind: 'bog', side: 1, from: 4980, to: 5080 },
+  ],
   'Flarkån': [
     { kind: 'bridge', side: 0, from: 1386, to: 1386 },
+    { kind: 'bog', side: 1, from: 1780, to: 1930 },
+    { kind: 'bog', side: 1, from: 3370, to: 3480 },
+    { kind: 'bog', side: -1, from: 3850, to: 4000 },
   ],
   'Södra Hulteby': [
     { kind: 'field', side: -1, from: 1250, to: 1430 },
@@ -113,6 +145,8 @@ export const LANDMARKS: Record<string, Landmark[]> = {
     { kind: 'field', side: -1, from: 2640, to: 2860 },
     { kind: 'farm', side: -1, from: 2880, to: 2950 },
     { kind: 'field', side: 1, from: 2900, to: 3020 },
+    { kind: 'bog', side: 1, from: 3640, to: 3700 },
+    { kind: 'bog', side: 1, from: 4220, to: 4270 },
   ],
   'Lungsund': [
     { kind: 'farm', side: -1, from: 190, to: 290 },

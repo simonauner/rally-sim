@@ -41,13 +41,15 @@ function part(p: Prop, x: number, y: number, z: number, sx: number, sy: number, 
 
 /**
  * Landmärkena ur kartdatan: sjöar och åar, röda gårdar med vita knutar, gärdsgårdar och
- * ensilagebalar på åkrarna, kraftledningar och broräcken, och publik vid krönet.
+ * ensilagebalar på åkrarna, myrar med låga tallar, kalhyggen med stubbar, kraftledningar och
+ * broräcken, och publik vid krönet.
  */
 export function buildLandmarks(stage: Stage): THREE.Group {
   const group = new THREE.Group();
   const winter = !!stage.def.winter;
   const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
-  const waterMat = new THREE.MeshToonMaterial({ color: winter ? 0xdbe5ec : 0x47809b, side: THREE.DoubleSide });
+  // Isen är blågrå, så de frusna sjöarna syns mot snön.
+  const waterMat = new THREE.MeshToonMaterial({ color: winter ? 0xa9c2d2 : 0x47809b, side: THREE.DoubleSide });
   const hwAt = (s: number) => stage.widths[Math.min(stage.xs.length - 1, Math.max(0, Math.round(s)))]! / 2;
   const beside = (s: number, off: number) => {
     const p = stage.poseAt(s);
@@ -90,6 +92,29 @@ export function buildLandmarks(stage: Stage): THREE.Group {
 
   const mats: Record<string, THREE.Matrix4[]> = {};
   const add = (key: string, m: THREE.Matrix4) => (mats[key] ??= []).push(m);
+
+  // Myrar med glesa, låga tallar och kalhyggen med stubbar (bara grafik, ingen kollision).
+  const scatter = rng(83);
+  for (const lm of stage.landmarks) {
+    if (lm.kind !== 'bog' && lm.kind !== 'clearcut') continue;
+    const every = lm.kind === 'bog' ? 9 : 2.2;
+    for (let s = lm.from; s < lm.to; s += every) {
+      const p = beside(s, lm.side * (hwAt(s) + 7 + scatter() * 36));
+      const h = stage.roadAt(p.x, p.z);
+      if (h.d < h.width / 2 + 6) continue;
+      const y = stage.heightAt(p.x, p.z);
+      const yaw = scatter() * Math.PI * 2;
+      if (lm.kind === 'bog') {
+        const k = 0.35 + scatter() * 0.3;
+        add('dwarfTrunk', new THREE.Matrix4().compose(pos.set(p.x, y, p.z), q.setFromAxisAngle(up, yaw), scl.set(k, k * 2.5, k)));
+        add('dwarfCrown', new THREE.Matrix4().compose(pos.set(p.x, y + k * 2.2, p.z), q, scl.setScalar(k * 1.6)));
+      } else {
+        const k = 0.8 + scatter() * 0.5;
+        add('stump', new THREE.Matrix4().compose(pos.set(p.x, y - 0.05, p.z), q.setFromAxisAngle(up, yaw), scl.set(k, k, k)));
+        if (scatter() < 0.12) add('slash', new THREE.Matrix4().compose(pos.set(p.x, y - 0.1, p.z), q, scl.set(2.5 + scatter() * 2, 0.7, 1.2)));
+      }
+    }
+  }
   const tilt = (a: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), a);
   const lying = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
   const wires: { x: number; z: number; y: number; heading: number }[] = [];
@@ -139,6 +164,10 @@ export function buildLandmarks(stage: Stage): THREE.Group {
     steel: [box, 0x8f969c],
     railPost: [box, 0x4a4a48],
     rail: [box, 0xa9adb0],
+    dwarfTrunk: [new THREE.CylinderGeometry(0.15, 0.2, 1, 6).translate(0, 0.5, 0), 0x6b4a32],
+    dwarfCrown: [new THREE.ConeGeometry(0.8, 1.8, 7).translate(0, 0.6, 0), winter ? 0x5d7c58 : 0x4f6e48],
+    stump: [new THREE.CylinderGeometry(0.28, 0.33, 0.45, 7).translate(0, 0.22, 0), winter ? 0xe9eef1 : 0x9a7c58],
+    slash: [new THREE.DodecahedronGeometry(0.6, 0).translate(0, 0.3, 0), winter ? 0xe4eaee : 0x7a6a4a],
   };
   for (const [key, list] of Object.entries(mats)) group.add(instances(look[key]![0], look[key]![1], list, key !== 'fenceSlat'));
 

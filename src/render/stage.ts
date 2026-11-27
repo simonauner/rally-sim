@@ -6,9 +6,8 @@ import { buildLandmarks } from './landmarks';
 
 const VERGE = 0x6f5a3e;
 const FOREST = 0x6f7d4c;
-/** Åker i sensommar och klippt gräs på gårdstomter. */
-const FIELD = 0xaaa65c;
-const YARD = 0x86a04e;
+/** Åker i sensommar, klippt gräs på gårdstomter, myrens starr och kalhyggets ris. */
+const AREA: Record<string, number> = { field: 0xaaa65c, farm: 0x86a04e, bog: 0xa09a64, clearcut: 0x8b7a52 };
 /** Snötäckt skogsmark på vinteretapper. */
 const WINTER_FOREST = 0xf2f5f7;
 const BANK_SHADE = 0xaab9cd;
@@ -57,7 +56,7 @@ export function buildStage(stage: Stage): THREE.Group {
       const area = stage.def.winter ? null : stage.areaAt(s, lr);
       road.setHex(COLORS[surface]!);
       side.setHex(stage.def.winter ? COLORS.snowbank! : surface === 'snow' ? COLORS.snow! : VERGE).lerp(c.setHex(forest), smooth(hw + 2, hw + 6, d));
-      if (area && area.lm.kind !== 'lake') side.lerp(c.setHex(area.lm.kind === 'field' ? FIELD : YARD), area.t * smooth(hw + 3, hw + 7, d));
+      if (area && area.lm.kind !== 'lake') side.lerp(c.setHex(AREA[area.lm.kind]!), area.t * smooth(hw + 3, hw + 7, d));
       c.copy(road).lerp(side, smooth(hw - 0.2, hw + 0.4, d)).multiplyScalar(0.93 + rand() * 0.14);
       // Snövallens insida mot vägen ligger i blå skugga, som i lågt vintersolljus.
       if (stage.def.winter) c.lerp(side.setHex(BANK_SHADE), 0.9 * smooth(hw + 0.1, hw + 0.7, d) * (1 - smooth(hw + 1.3, hw + 1.9, d)));

@@ -52,6 +52,8 @@ def stage(name):
         if t.get('landuse') in ('farmland', 'meadow', 'grass') or t.get('natural') == 'grassland': return 'field'
         if t.get('landuse') in ('residential', 'farmyard'): return 'farm'
         if t.get('natural') == 'water': return 'lake'
+        if t.get('natural') == 'wetland': return 'bog'
+        if t.get('natural') in ('scrub', 'heath') or t.get('landuse') == 'clearcut': return 'clearcut'
     polys = []
     for e in feat:
         k = kind(e.get('tags', {}))
@@ -61,7 +63,7 @@ def stage(name):
             if r[0] != r[-1]: continue
             pts = [m(g) for g in r]; xs = [p[0] for p in pts]; zs = [p[1] for p in pts]
             polys.append((k, pts, (min(xs), min(zs), max(xs), max(zs))))
-    OFFSETS = {'field': (20, 35), 'farm': (20, 35), 'lake': (25, 40)}
+    OFFSETS = {'field': (20, 35), 'farm': (20, 35), 'lake': (25, 40), 'bog': (20, 35), 'clearcut': (20, 35)}
     hits = {}  # (kind, side) -> [s]
     for d, x, z, nx, nz in R:
         for side in (1, -1):
@@ -82,7 +84,7 @@ def stage(name):
                 for d, x, z, nx, nz in grid.get((int(cx // 50) + dx, int(cz // 50) + dz), []):
                     dist = math.hypot(cx - x, cz - z)
                     if best is None or dist < best[0]: best = (dist, d, 1 if (cx - x) * nx + (cz - z) * nz > 0 else -1)
-        if best and 12 <= best[0] <= 45: hits.setdefault(('farm', best[2]), []).extend(range(best[1] - 20, best[1] + 21, 10))
+        if best and 5 <= best[0] <= 45: hits.setdefault(('farm', best[2]), []).extend(range(best[1] - 20, best[1] + 21, 10))
     spans = []
     for (k, side), ds in hits.items():
         ds = sorted(set(ds)); cur = None
@@ -114,7 +116,7 @@ def stage(name):
     points = merged
     out = {}
     for pn, a, b in parts:
-        lm = [(k, side, max(f, a) - a, min(t, b) - a) for k, side, f, t in spans if f < b and t > a and min(t, b) - max(f, a) >= 40]
+        lm = [(k, side, max(f, a) - a, min(t, b) - a) for k, side, f, t in spans if f < b and t > a and min(t, b) - max(f, a) >= 50]
         lm += [(k, 0, s - a, s - a) for k, s in points if a + 30 < s < b - 30]
         out[pn] = sorted(lm, key=lambda x: x[2])
         print(name, pn, [(k, sd, round(f), round(t)) for k, sd, f, t in out[pn]], file=sys.stderr)
@@ -123,8 +125,8 @@ def stage(name):
 all_ = {}
 for n in STAGES: all_.update(stage(n))
 print('''/**
- * Landmärken längs etapperna ur OpenStreetMap: åkrar, gårdar, sjöar, kraftledningar, broar och krön,
- * som sträckor längs vägen (m från etappens start). side 1 = vänster i färdriktningen, -1 = höger,
+ * Landmärken längs etapperna ur OpenStreetMap: åkrar, gårdar, sjöar, myrar, kalhyggen, kraftledningar,
+ * broar och krön, som sträckor längs vägen (m från etappens start). side 1 = vänster i färdriktningen, -1 = höger,
  * 0 = tvärs över. Genererad av tools/stages/landmarks.py.
  *
  * Kartdata © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).

@@ -25,12 +25,12 @@ export interface StagePoint {
 }
 
 /**
- * Något längs vägen ur kartdatan, som sträcka längs etappen (m från start). Ytor (åker, gård, sjö)
+ * Något längs vägen ur kartdatan, som sträcka längs etappen (m från start). Ytor (åker, gård, sjö, myr, kalhygge)
  * ligger på en sida: 1 = vänster i färdriktningen, -1 = höger. Punkter (kraftledning, bro, krön)
  * har from = to och side 0.
  */
 export interface Landmark {
-  kind: 'field' | 'farm' | 'lake' | 'power' | 'bridge' | 'crest';
+  kind: 'field' | 'farm' | 'lake' | 'bog' | 'clearcut' | 'power' | 'bridge' | 'crest';
   side: -1 | 0 | 1;
   from: number;
   to: number;
@@ -308,7 +308,7 @@ export class Stage extends World {
     }
   }
 
-  /** Ytan (åker, gård, sjö) vid sträckan s på en sida, och hur långt in i den (0–1, mjukt i ändarna). */
+  /** Ytan (åker, gård, sjö, myr, kalhygge) vid sträckan s på en sida, och hur långt in i den (0–1, mjukt i ändarna). */
   areaAt(s: number, side: number): { lm: Landmark; t: number } | null {
     const k = this.area[side > 0 ? 0 : 1][Math.min(this.xs.length - 1, Math.max(0, Math.round(s)))]!;
     if (k < 0) return null;
@@ -527,10 +527,10 @@ export class Stage extends World {
     const hills = smooth(hw + 4, hw + 30, d) * (1.8 * Math.sin(x * 0.021 + 1) * Math.cos(z * 0.017) + 0.9 * Math.sin(z * 0.043 + x * 0.029));
     let h = roadY + edge + bank + hills;
     if (area) {
-      // Åkrar och gårdstomter är flackare än skogen; sjöns botten ligger under vattenytan ut till
+      // Åkrar, gårdstomter och myrar är flackare än skogen (kalhygget behåller sina kullar); sjöns botten ligger under vattenytan ut till
       // horisonten, med en lång strand så att det inte blir någon brant kant.
       if (area.lm.kind === 'lake') h -= Math.max(h - (this.lakeLevel.get(area.lm)! - 1.6), 0) * area.t * smooth(stageHw + 3, stageHw + 16, stageD);
-      else h -= hills * 0.75 * area.t * smooth(stageHw + 3, stageHw + 12, stageD);
+      else if (area.lm.kind !== 'clearcut') h -= hills * 0.75 * area.t * smooth(stageHw + 3, stageHw + 12, stageD);
     }
     for (const lm of this.landmarks) {
       if (lm.kind !== 'bridge' || Math.abs(stageS - lm.from) > 10) continue;
@@ -586,13 +586,14 @@ export interface RealStagePart {
  * Etapper från en verklig sträcka i delar, med källan angiven: snöig vinterväg eller sommargrus.
  * `light` ger ljuset per del (dag om inget anges); `version` och `recordsSince` gäller alla delar.
  * 1.1.0: landmärken ur kartdatan (åkrar, gårdar, sjöar, kraftledningar, broar); rekorden gäller.
+ * 1.2.0: myrar och kalhyggen.
  */
 function realStages(
   source: string,
   parts: RealStagePart[],
   winter: boolean,
   light: (Light | undefined)[] = [],
-  version = '1.1.0',
+  version = '1.2.0',
   recordsSince = '1.0.0',
 ): StageDef[] {
   const surface = winter ? ('snow' as const) : ('gravel' as const);
@@ -613,27 +614,28 @@ function realStages(
 /**
  * Andersvattnet ur Rally Sweden i fyra delar (se andersvattnet.ts). Sista delen körs i skymning,
  * som eftermiddagens omgång i rallyt. 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte.
- * 1.2.0: landmärken.
+ * 1.2.0: landmärken. 1.3.0: myrar och kalhyggen.
  */
 export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLARKAN] = realStages(
   'Andersvattnet i Rally Sweden',
   ANDERSVATTNET,
   true,
   [undefined, undefined, undefined, 'dusk'],
-  '1.2.0',
+  '1.3.0',
   '1.1.0',
 ) as [StageDef, StageDef, StageDef, StageDef];
 
 /**
  * Bygdsiljum ur Rally Sweden i fem delar (se bygdsiljum.ts). Sista delen körs på natten.
  * 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte. 1.2.0: landmärken.
+ * 1.3.0: myrar och kalhyggen.
  */
 export const [STAGE_ASJON, STAGE_ALTARLIDEN, STAGE_BERGTJARNEN, STAGE_TORPET, STAGE_TROLLBERGET] = realStages(
   'Bygdsiljum i Rally Sweden',
   BYGDSILJUM,
   true,
   [undefined, undefined, undefined, undefined, 'night'],
-  '1.2.0',
+  '1.3.0',
   '1.1.0',
 ) as [StageDef, StageDef, StageDef, StageDef, StageDef];
 
