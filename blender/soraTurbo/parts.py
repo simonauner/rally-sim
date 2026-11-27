@@ -186,8 +186,12 @@ def mirror(s, side, surface):
         k1 = (k + 1) % 3
         face(bm, [a[k], a[k1], b[k1], b[k]], 'paint')
     # Armen ut från plattans nedre del, och kåpan längst ut.
-    out = max(abs(x - x0) for x in inner) * s + s * 0.02
-    box(bm, (out + s * 0.025, 0.02, -0.03), (0.05, 0.025, 0.045), 'paint')
+    # Plattans yttersta punkt: rutan lutar inåt, så hörnen kan ligga innanför x0 och får inte räknas som utåt.
+    out = s * (max(s * (x - x0) for x in inner) + 0.02)
+    # Armen börjar mitt i plattans tjocklek där den sitter, annars blir det en glipa mot den lutande rutan.
+    arm_in = surface(s, y0 + 0.02, z0 - 0.03) - x0 + s * 0.012
+    arm_out = out + s * 0.05
+    box(bm, ((arm_in + arm_out) / 2, 0.02, -0.03), (abs(arm_out - arm_in), 0.025, 0.045), 'paint')
 
     def end(x, y0, y1, z0, z1):
         return [(out + s * x, y0, z0), (out + s * x, y1, z0), (out + s * x, y1, z1), (out + s * x, y0, z1)]
