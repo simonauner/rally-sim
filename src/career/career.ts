@@ -439,14 +439,17 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   'Skogsberg baklänges': [93, 103, 118],
   Myrkulla: [128, 142, 163],
   'Myrkulla baklänges': [128, 142, 163],
-  // Med vinterdäck tar testföraren cirka 122 s åt båda hållen.
-  Frostberga: [123, 136, 156],
-  'Frostberga baklänges': [123, 136, 156],
-  // Testföraren: Tallmon 94 s, Ljungheden 87 s och Isvallen 108 s. Gränserna är lite
-  // generösare i dåligt ljus, mest i mörker.
+  // Testföraren: Tallmon 94 s och Ljungheden 87 s. Gränserna är lite generösare i dåligt ljus,
+  // mest i mörker.
   Tallmon: [96, 107, 122],
   Ljungheden: [88, 98, 112],
-  Isvallen: [112, 124, 142],
+  // Bygdsiljum i fem delar på drygt 5 km. Testföraren med vinterdäck: Åsjön 290 s, Altarliden
+  // 292 s, Bergtjärnen 294 s, Torpet 303 s (T-korsningen i krypfart) och Trollberget 293 s på natten.
+  Åsjön: [292, 323, 370],
+  Altarliden: [293, 324, 372],
+  Bergtjärnen: [296, 327, 375],
+  Torpet: [305, 337, 387],
+  Trollberget: [304, 336, 385],
   // Testföraren: Forsbäcken 80 s, Hamnudden 87 s (asfaltsdäck) och Vadmyra 97 s.
   Forsbäcken: [81, 90, 104],
   Hamnudden: [88, 98, 112],

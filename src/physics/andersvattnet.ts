@@ -8,13 +8,7 @@
  * Datan i den här filen är härledd från OpenStreetMap och delas under ODbL 1.0.
  */
 
-export interface RealStagePart {
-  name: string;
-  /** Mittlinjen: [x, z, y]. */
-  road: [number, number, number][];
-  /** Korsande skogsvägar, kapade 80 m från etappen. */
-  spurs: { x: number; z: number }[][];
-}
+import type { RealStagePart } from './stage';
 
 export const ANDERSVATTNET: RealStagePart[] = [
   {

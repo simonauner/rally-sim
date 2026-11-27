@@ -26,7 +26,8 @@ export interface ChampionshipDef {
 export const CHAMPIONSHIPS: ChampionshipDef[] = [
   { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges', 'Tallmon'], pace: 0.985, tier: 1 },
   { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'], pace: 0.965, tier: 1 },
-  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Frostberga', 'Frostberga baklänges', 'Isvallen'], pace: 0.945, tier: 1 },
+  // Fem etapper ger fältet fler chanser att hinna ikapp, så grundtakten är lite lägre än tre etappers.
+  { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Åsjön', 'Altarliden', 'Bergtjärnen', 'Torpet', 'Trollberget'], pace: 0.95, tier: 1 },
   // Klass 2 kör klass 1-etapperna i nya kombinationer, och Israllyt den verkliga vägen
   // Andersvattnet i fyra delar, mot ett snabbare fält.
   { id: 'tallmoklassikern', name: 'Tallmoklassikern', legs: ['Tallmon', 'Skogsberg', 'Myrkulla'], pace: 0.985, tier: 2 },

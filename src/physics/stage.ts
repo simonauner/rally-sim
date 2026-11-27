@@ -1,6 +1,7 @@
 import { CatmullRomCurve3, Vector3 } from 'three';
 import { TYRE_GRIP, type SurfaceId, type TyreType } from './surfaces';
 import { ANDERSVATTNET } from './andersvattnet';
+import { BYGDSILJUM } from './bygdsiljum';
 import { rng } from './rng';
 import { World } from './world';
 
@@ -482,51 +483,6 @@ export const STAGE_MYRKULLA: StageDef = {
   ],
 };
 
-/**
- * Vinteretapp: fiktiv, ca 2 km på packad snö, med en plogad grusväg på mitten. Vinterdäck
- * greppar nästan dubbelt så bra som grusdäck på snön.
- */
-export const STAGE_FROSTBERGA: StageDef = {
-  name: 'Frostberga',
-  version: '1.0.1',
-  recordsSince: '1.0.0',
-  winter: true,
-  points: [
-    { x: 0, z: -20, y: 0, width: 6.5, surface: 'snow' },
-    { x: 0, z: 0, y: 0, width: 6.5, surface: 'snow' },
-    { x: 0, z: 90, y: 1, width: 6.5, surface: 'snow' },
-    { x: 40, z: 180, y: 2, width: 6.5, surface: 'snow' },
-    { x: 130, z: 230, y: 3, width: 6.5, surface: 'snow' },
-    { x: 240, z: 240, y: 5, width: 6.5, surface: 'snow' },
-    { x: 330, z: 300, y: 7, width: 6.5, surface: 'snow' },
-    { x: 360, z: 400, y: 9, width: 6.5, surface: 'snow' },
-    // Krön
-    { x: 330, z: 500, y: 10, width: 6.5, surface: 'snow' },
-    { x: 250, z: 570, y: 9, width: 6.5, surface: 'snow' },
-    { x: 220, z: 680, y: 7, width: 6.5, surface: 'snow' },
-    // Korsning: snövägen fortsätter, etappen svänger vänster ut på den plogade grusvägen
-    { x: 230, z: 760, y: 6, width: 6.5, surface: 'snow' },
-    { x: 250, z: 780, y: 6, width: 7, surface: 'gravel' },
-    { x: 350, z: 800, y: 5, width: 7, surface: 'gravel' },
-    { x: 470, z: 790, y: 5, width: 7, surface: 'gravel' },
-    // Korsning: grusvägen fortsätter, etappen svänger höger in på snön igen
-    { x: 560, z: 810, y: 5, width: 6, surface: 'snow' },
-    { x: 590, z: 840, y: 6, width: 6, surface: 'snow' },
-    { x: 600, z: 950, y: 9, width: 6, surface: 'snow' },
-    { x: 560, z: 1060, y: 11, width: 6, surface: 'snow' },
-    { x: 600, z: 1170, y: 10, width: 6.5, surface: 'snow' },
-    { x: 680, z: 1240, y: 8, width: 6.5, surface: 'snow' },
-    { x: 700, z: 1340, y: 6, width: 6.5, surface: 'snow' },
-    { x: 700, z: 1380, y: 6, width: 6.5, surface: 'snow' },
-    // Utrullning efter mål
-    { x: 700, z: 1440, y: 6, width: 6.5, surface: 'snow' },
-  ],
-  spurs: [
-    { points: [{ x: 230, z: 760 }, { x: 222, z: 850 }], width: 6.5, surface: 'snow' },
-    { points: [{ x: 560, z: 810 }, { x: 650, z: 800 }], width: 7, surface: 'gravel' },
-  ],
-};
-
 /** Skymningsetapp: fiktiv, ca 1,9 km snabbt tallmogrus med en asfaltsbit på mitten. */
 export const STAGE_TALLMON: StageDef = {
   name: 'Tallmon',
@@ -601,45 +557,6 @@ export const STAGE_LJUNGHEDEN: StageDef = {
   spurs: [
     { points: [{ x: -410, z: 470 }, { x: -485, z: 515 }], width: 6.5, surface: 'gravel' },
     { points: [{ x: -330, z: 740 }, { x: -245, z: 760 }], width: 6.5, surface: 'gravel' },
-  ],
-};
-
-/** Nattetapp på vintern: fiktiv, ca 1,6 km snö med en plogad grusbit, bara i strålkastarljus. */
-export const STAGE_ISVALLEN: StageDef = {
-  name: 'Isvallen',
-  version: '1.0.1',
-  recordsSince: '1.0.0',
-  winter: true,
-  light: 'night',
-  points: [
-    { x: 0, z: -20, y: 0, width: 6.5, surface: 'snow' },
-    { x: 0, z: 0, y: 0, width: 6.5, surface: 'snow' },
-    { x: 0, z: 90, y: 1, width: 6.5, surface: 'snow' },
-    { x: 50, z: 170, y: 2, width: 6.5, surface: 'snow' },
-    { x: 150, z: 200, y: 3, width: 6.5, surface: 'snow' },
-    { x: 250, z: 180, y: 4, width: 6.5, surface: 'snow' },
-    { x: 330, z: 230, y: 6, width: 6.5, surface: 'snow' },
-    { x: 360, z: 330, y: 8, width: 6.5, surface: 'snow' },
-    { x: 320, z: 430, y: 9, width: 6.5, surface: 'snow' },
-    { x: 330, z: 540, y: 8, width: 6.5, surface: 'snow' },
-    // Korsning: snövägen fortsätter, etappen svänger höger ut på den plogade grusvägen
-    { x: 380, z: 620, y: 7, width: 7, surface: 'gravel' },
-    { x: 470, z: 660, y: 6, width: 7, surface: 'gravel' },
-    // Korsning: grusvägen fortsätter, etappen svänger vänster in på snön igen
-    { x: 570, z: 650, y: 6, width: 6, surface: 'snow' },
-    { x: 650, z: 700, y: 7, width: 6, surface: 'snow' },
-    { x: 690, z: 800, y: 9, width: 6, surface: 'snow' },
-    { x: 660, z: 900, y: 10, width: 6, surface: 'snow' },
-    { x: 690, z: 1000, y: 8, width: 6.5, surface: 'snow' },
-    { x: 760, z: 1060, y: 7, width: 6.5, surface: 'snow' },
-    { x: 780, z: 1140, y: 6, width: 6.5, surface: 'snow' },
-    { x: 780, z: 1180, y: 6, width: 6.5, surface: 'snow' },
-    // Utrullning efter mål
-    { x: 780, z: 1240, y: 6, width: 6.5, surface: 'snow' },
-  ],
-  spurs: [
-    { points: [{ x: 380, z: 620 }, { x: 392, z: 708 }], width: 6.5, surface: 'snow' },
-    { points: [{ x: 570, z: 650 }, { x: 660, z: 636 }], width: 7, surface: 'gravel' },
   ],
 };
 
@@ -768,33 +685,58 @@ export const STAGE_VADMYRA: StageDef = {
 const RUNOUT_EXTRA = 160;
 
 /** Förlänger vägen rakt fram från sista punkten, så mållinjen ligger kvar men utrullningen blir längre. */
-function withRunout(road: [number, number, number][]): [number, number, number][] {
-  const [x1, z1, y1] = road[road.length - 1]!;
+function withRunout(road: RealStagePart['road']): RealStagePart['road'] {
+  const [x1, z1, y1, w = 6] = road[road.length - 1]!;
   const [x0, z0] = road[road.length - 2]!;
   const d = Math.hypot(x1 - x0, z1 - z0);
-  const extra: [number, number, number][] = [];
-  for (let m = 20; m <= RUNOUT_EXTRA; m += 20) extra.push([x1 + ((x1 - x0) / d) * m, z1 + ((z1 - z0) / d) * m, y1]);
+  const extra: RealStagePart['road'] = [];
+  for (let m = 20; m <= RUNOUT_EXTRA; m += 20) extra.push([x1 + ((x1 - x0) / d) * m, z1 + ((z1 - z0) / d) * m, y1, w]);
   return [...road, ...extra];
 }
 
+/** En del av en verklig sträcka, från öppen kartdata. */
+export interface RealStagePart {
+  name: string;
+  /** Mittlinjen: [x väster, z norr, y höjd över starten, bredd (6 m om den saknas)], i meter från startpunkten. */
+  road: ([number, number, number] | [number, number, number, number])[];
+  /** Korsande skogsvägar, kapade 80 m från etappen. */
+  spurs: { x: number; z: number }[][];
+}
+
 /**
- * Verkliga vinteretapper: Andersvattnet ur Rally Sweden i fyra delar på snöig skogsväg, med
- * geometri och höjd från öppen kartdata (se andersvattnet.ts). Sista delen körs i skymning,
- * som eftermiddagens omgång i rallyt.
+ * Etapper från en verklig sträcka i delar, på snöig vinterväg med källan angiven.
+ * `light` ger ljuset per del (dag om inget anges).
  */
-export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLARKAN] = ANDERSVATTNET.map(
-  (part, i): StageDef => ({
+function realWinterStages(source: string, parts: RealStagePart[], light: (Light | undefined)[] = []): StageDef[] {
+  return parts.map((part, i) => ({
     name: part.name,
     version: '1.0.0',
     recordsSince: '1.0.0',
     winter: true,
-    ...(i === ANDERSVATTNET.length - 1 ? { light: 'dusk' as const } : {}),
-    credit: `Andersvattnet i Rally Sweden, del ${i + 1} av ${ANDERSVATTNET.length} · kartdata © OpenStreetMap contributors (ODbL) · höjd EU-DEM, Copernicus`,
-    points: withRunout(part.road).map(([x, z, y]) => ({ x, z, y, width: 6, surface: 'snow' as const })),
+    ...(light[i] ? { light: light[i] } : {}),
+    credit: `${source}, del ${i + 1} av ${parts.length} · kartdata © OpenStreetMap contributors (ODbL) · höjd EU-DEM, Copernicus`,
+    points: withRunout(part.road).map(([x, z, y, width = 6]) => ({ x, z, y, width, surface: 'snow' as const })),
     spurs: part.spurs.map((points) => ({ points, width: 5, surface: 'snow' as const })),
     runout: FINISH_MARGIN + RUNOUT_EXTRA,
-  }),
+  }));
+}
+
+/**
+ * Andersvattnet ur Rally Sweden i fyra delar (se andersvattnet.ts). Sista delen körs i skymning,
+ * som eftermiddagens omgång i rallyt.
+ */
+export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLARKAN] = realWinterStages(
+  'Andersvattnet i Rally Sweden',
+  ANDERSVATTNET,
+  [undefined, undefined, undefined, 'dusk'],
 ) as [StageDef, StageDef, StageDef, StageDef];
+
+/** Bygdsiljum ur Rally Sweden i fem delar (se bygdsiljum.ts). Sista delen körs på natten. */
+export const [STAGE_ASJON, STAGE_ALTARLIDEN, STAGE_BERGTJARNEN, STAGE_TORPET, STAGE_TROLLBERGET] = realWinterStages(
+  'Bygdsiljum i Rally Sweden',
+  BYGDSILJUM,
+  [undefined, undefined, undefined, undefined, 'night'],
+) as [StageDef, StageDef, StageDef, StageDef, StageDef];
 
 /**
  * Samma väg körd åt andra hållet. Underlaget gäller från en punkt fram till nästa, så varje
@@ -813,7 +755,6 @@ export function reversed(def: StageDef, name: string): StageDef {
 
 export const STAGE_SKOGSBERG_BACK = reversed(STAGE_SKOGSBERG, 'Skogsberg baklänges');
 export const STAGE_MYRKULLA_BACK = reversed(STAGE_MYRKULLA, 'Myrkulla baklänges');
-export const STAGE_FROSTBERGA_BACK = reversed(STAGE_FROSTBERGA, 'Frostberga baklänges');
 
 /** Alla etapper, i den ordning menyerna visar dem. */
 export const STAGES: StageDef[] = [
@@ -823,9 +764,11 @@ export const STAGES: StageDef[] = [
   STAGE_LJUNGHEDEN,
   STAGE_MYRKULLA,
   STAGE_MYRKULLA_BACK,
-  STAGE_FROSTBERGA,
-  STAGE_FROSTBERGA_BACK,
-  STAGE_ISVALLEN,
+  STAGE_ASJON,
+  STAGE_ALTARLIDEN,
+  STAGE_BERGTJARNEN,
+  STAGE_TORPET,
+  STAGE_TROLLBERGET,
   STAGE_FORSBACKEN,
   STAGE_HAMNUDDEN,
   STAGE_VADMYRA,

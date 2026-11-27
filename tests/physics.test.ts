@@ -5,7 +5,7 @@ import { splitDiff } from '../src/physics/drivetrain';
 import { tierOf } from '../src/career/career';
 import { Barriers } from '../src/physics/barriers';
 import { rollWeather, type Weather } from '../src/physics/weather';
-import { bestTyre, lightAt, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
+import { bestTyre, lightAt, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_ASJON, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad, driveAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
@@ -483,7 +483,7 @@ for (const def of STAGES) {
 
 // 15. Snövallarna: bilen som kör in i vallen bromsas kraftigt, tar lite skada och välter inte.
 {
-  const stage = new Stage(STAGE_FROSTBERGA);
+  const stage = new Stage(STAGE_ASJON);
   const results = [12, 22].map((v0) => {
     const car = makeCar(stage, 'snow');
     const p = stage.poseAt(START_S + 30);
@@ -560,7 +560,7 @@ for (const def of STAGES) {
   check('väder: regn ger längre bromssträcka', wet > dry * 1.2 && Math.abs(foggy - dry) < 0.01, `torrt ${dry.toFixed(1)} m, regn ${wet.toFixed(1)} m, dimma ${foggy.toFixed(1)} m`);
   const rolls = (def: (typeof STAGES)[number]) => Array.from({ length: 1000 }, (_, i) => rollWeather(def, (i + 0.5) / 1000));
   const summer = rolls(STAGE_SKOGSBERG);
-  const winter = rolls(STAGE_FROSTBERGA);
+  const winter = rolls(STAGE_ASJON);
   const share = (list: Weather[], w: Weather) => list.filter((x) => x === w).length / list.length;
   const ok = share(summer, 'clear') > 0.7 && share(summer, 'clear') < 0.85 && share(summer, 'snowfall') === 0 && share(winter, 'rain') === 0 && share(winter, 'snowfall') > 0.05;
   check('väder: oftast uppehåll', ok, `sommar: uppehåll ${(share(summer, 'clear') * 100).toFixed(0)} %, regn ${(share(summer, 'rain') * 100).toFixed(0)} %, dimma ${(share(summer, 'fog') * 100).toFixed(0)} % · vinter: snöfall ${(share(winter, 'snowfall') * 100).toFixed(0)} %`);

@@ -46,13 +46,12 @@ körning inte finns. `?testbana` hoppar över menyn och går direkt till testban
 
 Etapperna är *Skogsberg* (ca 1,8 km: grus, en asfaltsbit och en lerig skogsdel) och *Myrkulla*
 (ca 2,7 km: snabbt grus, en lerig väg över myren, en lång stigning med krön och en asfaltsbit).
-*Frostberga* är en vinteretapp (ca 2,1 km packad snö med en plogad grusväg på mitten). Där
-kantas vägen av snövallar i stället för dike: kör man i dem gräver hjulen ner sig, bilen bromsas
-kraftigt och tar en mild skada.
-Alla finns också baklänges, samma väg åt andra hållet med egna noter, rekord och ghost.
+Båda finns också baklänges, samma väg åt andra hållet med egna noter, rekord och ghost.
+Vinteretapperna kantas av snövallar i stället för dike: kör man i dem gräver hjulen ner sig, bilen
+bromsas kraftigt och tar en mild skada.
 Tre etapper körs i annat ljus (`light` på etappen): *Tallmon* i skymning (snabbt grus med en
-asfaltsbit), *Ljungheden* i gryning (ljunghedar med krön och en lerig sänka) och *Isvallen* på
-natten (snö). Då lyser bilens strålkastare. En hård smäll framifrån slår sönder lyktan på den
+asfaltsbit), *Ljungheden* i gryning (ljunghedar med krön och en lerig sänka) och *Trollberget* på
+natten (snö, se Vinterrallyt nedan). Då lyser bilens strålkastare. En hård smäll framifrån slår sönder lyktan på den
 sidan, och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
 inbromsning. I Fri körning väljer man först mästerskap och sedan etapp.
 
@@ -156,6 +155,10 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
   (Tallmoklassikern och Ljunghedsrallyt på klass 1-etapperna, Israllyt på en verklig väg). Medaljgränserna och fältet är
   8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
   Varje klass kör bara sina egna mästerskap.
+- **Vinterrallyt** (klass 1) körs på en verklig väg: Bygdsiljum ur Rally Sweden, ca 26 km delad i
+  fem etapper (Åsjön, Altarliden, Bergtjärnen, Torpet med en T-korsning och Trollberget på natten,
+  `src/physics/bygdsiljum.ts`). Sista biten före mål saknas i OpenStreetMap och är avritad från
+  rallyts sträckkarta. Hörn i korsningar är utjämnade och breddade så att bilen kommer runt.
 - **Israllyt** körs på en verklig väg: Andersvattnet ur Rally Sweden, ca 21 km delad i fyra
   etapper (Storberget, Hösjöälven med en hårnål, Röjmyrberget och Flarkån i skymning). Geometrin
   kommer ur OpenStreetMap och höjden ur EU-DEM (`src/physics/andersvattnet.ts`). Där vägen
