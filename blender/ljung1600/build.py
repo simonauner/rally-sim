@@ -557,11 +557,12 @@ def cylinder_z(name, mat, at, r, length, segs=20):
 
 
 # Strålkastarna: två runda lyktor per sida i den svarta panelen, en stor ytterst och en mindre innanför,
-# var och en i en svart ring. Grillen mellan de inre lyktorna har täta vågräta lameller.
+# var och en i en svart ring. Grillen med täta vågräta lameller går mellan de yttre lyktorna, bakom de
+# inre. Mätt på en bild rakt framifrån.
 LAMP_Y = 0.132
-LAMPS = [(0.57, 0.088), (0.38, 0.068)]  # (x, radie)
+LAMPS = [(0.584, 0.098), (0.358, 0.074)]  # (x, radie)
 LAMP_FACE = 1.566
-GRILLE_X, GRILLE_Y = 0.295, (0.06, 0.205)
+GRILLE_X, GRILLE_Y = 0.48, (0.05, 0.212)
 
 
 def headlamp(s, side):
@@ -590,12 +591,13 @@ def grille():
 # hjulhusen, med en mörkgrå skyddslist i mitten av framsidan. Bakre sitter högre än den främre.
 BUMPER_HALF, BUMPER_DEPTH, BUMPER_R = 0.815, 0.075, 0.09
 FRONT_BUMPER_Y, REAR_BUMPER_Y = (-0.128, 0.017), (-0.032, 0.107)
+FRONT_SPOILER_Y, FRONT_LIP_Y = (-0.245, -0.125), (-0.33, -0.24)
 
 
-def bumper(name, z_face, z_end, ys):
+def bumper(name, z_face, z_end, ys, half=BUMPER_HALF):
     """En U-formad stötfångare: framsidan i z_face, sidorna bakåt till z_end."""
     d = 1 if z_face > z_end else -1
-    h, r = BUMPER_HALF, BUMPER_R
+    h, r = half, BUMPER_R
     # Banan sett ovanifrån (x, z) med utåtriktad normal, från höger sida runt till vänster.
     path = []
     for i in range(6):
@@ -816,8 +818,11 @@ def details(body):
     objs.append(bumper('bumper_front', 1.612, 1.26, FRONT_BUMPER_Y))
     objs.append(bumper('bumper_rear', -2.132, -1.835, REAR_BUMPER_Y))
     # Spoilerläppen under den främre stötfångaren.
-    objs.append(assembly('lip', (0, -0.15, 1.54), [('black', (-0.72, 0.72), (-0.17, -0.128), (1.5, 1.585))]))
-    objs.append(assembly('plate_front', (0, -0.06, 1.615), [('plate', (-0.24, 0.24), (-0.11, -0.005), (1.605, 1.617))]))
+    # Frontspoilern under stötfångaren: svart plast i full bredd som viker runt hörnen bakåt till
+    # hjulhusen, och under den en smalare läpp som går ner till ungefär 17 cm över marken.
+    objs.append(bumper('spoiler_front', 1.592, 1.27, FRONT_SPOILER_Y))
+    objs.append(bumper('spoiler_lip', 1.585, 1.45, FRONT_LIP_Y, half=0.62))
+    objs.append(assembly('plate_front', (0, -0.1, 1.615), [('plate', (-0.24, 0.24), (-0.16, -0.04), (1.605, 1.617))]))
     # Bakre skylten sitter högt i bakluckan mellan baklyktorna, i en svart nedsänkning.
     objs.append(assembly('plate_rear', (0, 0.37, -2.072), [('black', (-0.285, 0.285), (0.3, 0.44), (-2.074, -2.06)),
                                                           ('plate', (-0.25, 0.25), (0.315, 0.425), (-2.078, -2.066))]))
