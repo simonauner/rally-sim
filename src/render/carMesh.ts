@@ -6,6 +6,19 @@ import type { DamageEvent } from '../physics/collision';
 import type { CarModel } from '../physics/params';
 import { tierOf } from '../career/career';
 import { bodyDecals, decalTexture, roofDecals, startNumber } from './decals';
+import type { BodyShape, Range } from './bodies/shape';
+import { kvarn240 } from './bodies/kvarn240';
+import { kvarn240Turbo } from './bodies/kvarn240Turbo';
+import { kvarnTurbo4x4 } from './bodies/kvarnTurbo4x4';
+import { soraTurbo } from './bodies/soraTurbo';
+import { arashiRs } from './bodies/arashiRs';
+import { ljung1600 } from './bodies/ljung1600';
+import { ljung2000 } from './bodies/ljung2000';
+import { strandGt } from './bodies/strandGt';
+import { brenner5t } from './bodies/brenner5t';
+import { volpeTurbo } from './bodies/volpeTurbo';
+import { hoshi4wd } from './bodies/hoshi4wd';
+
 
 const GLASS = new THREE.Color(0x2b3a42);
 const DARK = new THREE.Color(0x3a3a3a);
@@ -124,235 +137,18 @@ function roundedBox(
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
-type Range = readonly [number, number];
-
-/** Karossens form i bilens koordinater (fram = +z, origo i tyngdpunkten). */
-export interface BodyShape {
-  halfX: number;
-  bottom: number;
-  /** Plåtens framkant och bakkant. */
-  nose: number;
-  tail: number;
-  /** Gördellinjen, rak från huv till baklucka. */
-  belt: number;
-  roof: number;
-  /** Sidolistens höjd. */
-  crease: number;
-  /** Vindrutans och bakrutans fot och topp (z). */
-  screen: Range;
-  backlight: Range;
-  /** Hur mycket huven sluttar ner mot fronten och bakluckan mot bakkanten. */
-  hoodDrop: number;
-  trunkDrop: number;
-  cabinHalfX: number;
-  /** Hjulhusens centrum (y) och radie fram och bak. */
-  archY: number;
-  archR: Range;
-  /** Dörrspringor bakom vindrutans fot (z). */
-  doorSeams: number[];
-  /** Sidorutor (z från, till). ±Infinity följer A- respektive C-stolpen. */
-  sideGlass: Range[];
-  doorHandles: number[];
-  lampY: Range;
-  grilleX: number;
-  lampX: Range;
-  tailY: Range;
-  /** Baklyktornas innerkant. */
-  tailX: number;
-  bumperY: Range;
-  rearBumperDepth: number;
-  /** Lådformade utbyggda hjulhus: hur långt (m) de sticker ut från sidan. */
-  flare?: number;
-  /** Fyra runda strålkastare i en svart panel i stället för rektangulära lyktor: [x, radie] per lykta och sida. */
-  roundLamps?: [number, number][];
-  /** Ventiler i motorhuven, lackade stötfångare och spoiler på taket eller bakluckan. */
-  hoodVents?: boolean;
-  paintedBumpers?: boolean;
-  spoiler?: 'roof' | 'trunk';
-  /** Luftintag för laddluftkylaren mitt på huvens främre del, framför startnumret. */
-  hoodScoop?: boolean;
-  /** Smala lyktor i ett svart band tvärs över fronten, i stället för grill med kromram. */
-  lampBand?: boolean;
-  /** Karossens hörnradie; större ger en rundare bil. */
-  round?: number;
-  /** Extraljusens x (mitt) på klass 2-rampen, om de inte ska spridas brett över fronten. */
-  podX?: number[];
-  /** Vita fälgar med en tät ring av hål, som rallyfälgar, i stället för navkapslar. */
-  rallyRims?: boolean;
-}
-
-const SHAPES: Record<CarModel['body'], BodyShape> = {
-  // Kantig 80-talssedan: lång flat huv och baklucka, stora fyrkantiga lyktor.
-  sedan: {
-    halfX: 0.85,
-    bottom: -0.31,
-    nose: 1.96,
-    tail: -2.53,
-    belt: 0.4,
-    roof: 0.83,
-    crease: 0.19,
-    screen: [0.546, 0.123],
-    backlight: [-1.67, -1.318],
-    hoodDrop: 0.08,
-    trunkDrop: 0.05,
-    cabinHalfX: 0.74,
-    archY: -0.24,
-    archR: [0.39, 0.38], // bakre hjulhuset sluter tätare om hjulet
-    doorSeams: [-0.4, -1.22],
-    sideGlass: [
-      [-0.37, Infinity],
-      [-1.06, -0.45],
-      [-Infinity, -1.11],
-    ],
-    doorHandles: [-0.27, -1.1],
-    lampY: [0.03, 0.255],
-    grilleX: 0.39,
-    lampX: [0.43, 0.79],
-    tailY: [0.04, 0.24],
-    tailX: 0.46,
-    bumperY: [-0.1, -0.055],
-    rearBumperDepth: 0.46,
-  },
-  // Liten tredörrars halvkombi: kort sluttande huv, lång dörr, nästan lodrät baklucka.
-  hatch: {
-    halfX: 0.825,
-    bottom: -0.3,
-    nose: 1.65,
-    tail: -2.07,
-    belt: 0.36,
-    roof: 0.86,
-    crease: 0.12,
-    screen: [0.62, 0.06],
-    backlight: [-2.0, -1.64],
-    hoodDrop: 0.11,
-    trunkDrop: 0,
-    cabinHalfX: 0.71,
-    archY: -0.22,
-    archR: [0.36, 0.355],
-    doorSeams: [-0.66],
-    sideGlass: [
-      [-0.6, Infinity],
-      [-Infinity, -0.7],
-    ],
-    doorHandles: [-0.52],
-    lampY: [0.0, 0.17],
-    grilleX: 0.33,
-    lampX: [0.37, 0.77],
-    tailY: [0.0, 0.2],
-    tailX: 0.38,
-    bumperY: [-0.13, -0.12],
-    rearBumperDepth: 0.3,
-  },
-  // Kantig femdörrars halvkombi med lådformade hjulhus, fyra runda strålkastare och takspoiler.
-  hatch5: {
-    halfX: 0.8,
-    bottom: -0.3,
-    nose: 1.68,
-    tail: -2.05,
-    belt: 0.42,
-    roof: 0.86,
-    crease: 0.1,
-    screen: [0.64, 0.04],
-    backlight: [-2.0, -1.6],
-    hoodDrop: 0.08,
-    trunkDrop: 0,
-    cabinHalfX: 0.72,
-    archY: -0.21,
-    archR: [0.37, 0.37],
-    doorSeams: [-0.56, -1.42],
-    sideGlass: [
-      [-0.52, Infinity],
-      [-1.3, -0.6],
-      [-Infinity, -1.36],
-    ],
-    doorHandles: [-0.44, -1.28],
-    lampY: [0.04, 0.22],
-    grilleX: 0.34,
-    lampX: [0.36, 0.76],
-    tailY: [0.0, 0.24],
-    tailX: 0.5,
-    bumperY: [-0.11, -0.12],
-    rearBumperDepth: 0.3,
-    flare: 0.1,
-    roundLamps: [
-      [0.64, 0.088],
-      [0.46, 0.07],
-    ],
-    hoodVents: true,
-    paintedBumpers: true,
-    spoiler: 'roof',
-    rallyRims: true,
-    // Tätt i en rad framför grillen, så de egna runda lyktorna syns utanför.
-    podX: [0.285, 0.095, -0.095, -0.285],
-  },
-  // Rundad tredörrars liftback-coupé: lång låg nos med smala lyktor, luftintag på huven, lång sluttande
-  // bakruta som slutar i en vinge på bakluckan.
-  liftback: {
-    halfX: 0.83,
-    bottom: -0.3,
-    nose: 1.98,
-    tail: -2.25,
-    belt: 0.36,
-    roof: 0.78,
-    crease: 0.08,
-    screen: [0.5, -0.2],
-    backlight: [-1.95, -0.95],
-    hoodDrop: 0.14,
-    trunkDrop: 0.04,
-    cabinHalfX: 0.69,
-    archY: -0.22,
-    archR: [0.37, 0.37],
-    doorSeams: [-0.72],
-    sideGlass: [
-      [-0.66, Infinity],
-      [-Infinity, -0.76],
-    ],
-    doorHandles: [-0.6],
-    lampY: [0.12, 0.2],
-    grilleX: 0.4,
-    lampX: [0.4, 0.78],
-    tailY: [0.04, 0.16],
-    tailX: 0.16,
-    bumperY: [-0.11, -0.12],
-    rearBumperDepth: 0.34,
-    flare: 0.04,
-    paintedBumpers: true,
-    spoiler: 'trunk',
-    hoodScoop: true,
-    lampBand: true,
-    round: 0.12,
-    rallyRims: true,
-  },
-  // Låg tvådörrars coupé: lång huv, kraftigt lutad vindruta, kort tak och kort bagagelucka.
-  coupe: {
-    halfX: 0.84,
-    bottom: -0.29,
-    nose: 1.84,
-    tail: -2.2,
-    belt: 0.35,
-    roof: 0.76,
-    crease: 0.14,
-    screen: [0.5, -0.12],
-    backlight: [-1.62, -1.02],
-    hoodDrop: 0.1,
-    trunkDrop: 0.03,
-    cabinHalfX: 0.7,
-    archY: -0.22,
-    archR: [0.375, 0.37],
-    doorSeams: [-0.78],
-    sideGlass: [
-      [-0.72, Infinity],
-      [-Infinity, -0.82],
-    ],
-    doorHandles: [-0.64],
-    lampY: [0.0, 0.14],
-    grilleX: 0.3,
-    lampX: [0.34, 0.76],
-    tailY: [0.03, 0.2],
-    tailX: 0.4,
-    bumperY: [-0.12, -0.09],
-    rearBumperDepth: 0.36,
-  },
+const BODIES: Record<CarModel['body'], BodyShape> = {
+  kvarn240,
+  kvarn240Turbo,
+  kvarnTurbo4x4,
+  soraTurbo,
+  arashiRs,
+  ljung1600,
+  ljung2000,
+  strandGt,
+  brenner5t,
+  volpeTurbo,
+  hoshi4wd,
 };
 
 type Hit = [x: number, y: number, z: number, nx: number, ny: number, nz: number];
@@ -722,7 +518,7 @@ export class CarMesh {
     model: CarModel,
   ) {
     const c = new THREE.Color(model.paint);
-    const b = SHAPES[model.body];
+    const b = BODIES[model.body];
     this.hits = zoneHits(b);
     const wheels = car.params.wheels;
     const wheelZ: Range = [wheels.find((w) => w.front)!.mount[2], wheels.find((w) => !w.front)!.mount[2]];

@@ -644,8 +644,8 @@ export interface Sponsor {
 
 export interface CarModel {
   make: () => CarParams;
-  /** Karossform för renderingen. */
-  body: 'sedan' | 'hatch' | 'hatch5' | 'liftback' | 'coupe';
+  /** Bilens egen kaross i src/render/bodies/ (samma namn som filen). */
+  body: 'kvarn240' | 'kvarn240Turbo' | 'kvarnTurbo4x4' | 'soraTurbo' | 'arashiRs' | 'ljung1600' | 'ljung2000' | 'strandGt' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
   /** En rad om bilen i bilväljaren. */
   blurb: string;
   /** Lackfärg. */
@@ -656,65 +656,65 @@ export interface CarModel {
 
 /** Bilarna man kan välja före en etapp. */
 export const CARS: CarModel[] = [
-  { make: kvarn240, body: 'sedan', paint: 0xc4553a, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
+  { make: kvarn240, body: 'kvarn240', paint: 0xc4553a, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
   {
     make: kvarn240Turbo,
-    body: 'sedan',
+    body: 'kvarn240Turbo',
     paint: 0x24365c,
     blurb: 'Samma kaross med turbo. Seg under 3 000 rpm, sedan kommer allt på en gång.',
   },
   {
     make: ljung1600,
-    body: 'hatch',
+    body: 'ljung1600',
     paint: 0xd9b22e,
     blurb: 'Liten och lätt framhjulsdriven halvkombi. Billig, kvick och understyr, men vrids runt med handbromsen.',
   },
   // Klass 2: låses upp när alla mästerskap i klass 1 är vunna.
   {
     make: ljung2000,
-    body: 'hatch',
+    body: 'ljung2000',
     paint: 0xf2f2ee,
     blurb: 'Kitcar på Ljungens kaross. Varvglad och nervös, och spärren fram drar i ratten när du gasar.',
   },
   {
     make: strandGt,
-    body: 'coupe',
+    body: 'strandGt',
     paint: 0x2f7d4f,
     blurb: 'Lätt bakhjulsdriven coupé med kort hjulbas. Mycket gas och vrider sig lätt; för den som vill sladda.',
   },
   {
     make: kvarnTurbo4x4,
-    body: 'sedan',
+    body: 'kvarnTurbo4x4',
     paint: 0x1a1a1e,
     blurb: 'Fyrhjulsdriven turbosedan i Grupp A-stil. Mest effekt och grepp, men tung och seg under 3 000 rpm.',
   },
   {
     make: hoshi4wd,
-    body: 'liftback',
+    body: 'hoshi4wd',
     paint: 0xf2f2ee,
     blurb: 'Rundad japansk turbocoupé med fyrhjulsdrift. Enormt mellanregister, stabil i fart men trög att vrida in.',
   },
   {
     make: volpeTurbo,
-    body: 'hatch5',
+    body: 'volpeTurbo',
     paint: 0xc8141c,
     blurb: 'Kantig italiensk halvkombi med kort hjulbas och mer moment bak. Vrider sig villigt, men nervös på krön.',
   },
   {
     make: brenner5t,
-    body: 'coupe',
+    body: 'brenner5t',
     paint: 0xd8d4c8,
     blurb: 'Femcylindrig turbocoupé med motorn långt fram och låst mittdiff. Stort turbohål och tung nos som understyr.',
   },
   {
     make: soraTurbo,
-    body: 'sedan',
+    body: 'soraTurbo',
     paint: 0x2a4fa8,
     blurb: 'Boxersedan med låg tyngdpunkt och mjuk fjädring. Stabil över ojämnheter och drar jämnt ur kurvorna.',
   },
   {
     make: arashiRs,
-    body: 'sedan',
+    body: 'arashiRs',
     paint: 0x8f9399,
     blurb: 'Mest moment i klassen och hårt låsta diffar. Vass: bakvagnen kommer om du lyfter av gasen i kurvan.',
   },

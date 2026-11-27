@@ -6,7 +6,7 @@
 import * as THREE from 'three/webgpu';
 import { color, float, mix, select, smoothstep, texture, vec2, vec3 } from 'three/tsl';
 import type { Sponsor } from '../physics/params';
-import type { BodyShape } from './carMesh';
+import type { BodyShape } from './bodies/shape';
 
 type Range = readonly [number, number];
 
