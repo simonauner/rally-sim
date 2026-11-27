@@ -937,6 +937,8 @@ def warp(wheels, track):
 
 def apply_warp(objs, f):
     """Töjer delarnas nät; panelerna (body) behåller origo i bilens origo, övriga delar flyttas med."""
+    # matrix_world räknas om först när scenen uppdateras; annars står nyss skapade delar kvar i origo.
+    bpy.context.view_layer.update()
     for obj in objs:
         mw = obj.matrix_world.copy()
         at = Vector((0, 0, 0)) if obj.name == 'body' else f(to_car(mw.translation))
