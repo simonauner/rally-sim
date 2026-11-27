@@ -1,0 +1,6 @@
+# Nedladdat och härlett: rallyts kartor, OSM-uttag och mellanfiler går att ta fram igen.
+maps/
+*/map.osm
+*/map.bmp
+*/red.json
+*/parts.json

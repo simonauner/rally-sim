@@ -1,0 +1,302 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.4 2390de5a",
+  "osm3s": {
+    "timestamp_osm_base": "2026-11-27T03:01:04Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 25869331,
+  "lat": 59.3113619,
+  "lon": 14.1117600,
+  "tags": {
+    "name": "Kristinehamn",
+    "name:ru": "Кристинехамн",
+    "name:sv": "Kristinehamn",
+    "place": "town",
+    "population": "18829",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "KRISTINEHAMN",
+    "ref:SE:scb": "5720",
+    "wikidata": "Q215832",
+    "wikipedia": "sv:Kristinehamn"
+  }
+},
+{
+  "type": "node",
+  "id": 25869336,
+  "lat": 60.0320521,
+  "lon": 13.7002392,
+  "tags": {
+    "name": "Hagfors",
+    "name:ru": "Хагфорс",
+    "name:sv": "Hagfors",
+    "place": "town",
+    "population": "4896",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "HAGFORS",
+    "ref:SE:scb": "5688"
+  }
+},
+{
+  "type": "node",
+  "id": 26980859,
+  "lat": 59.5316393,
+  "lon": 14.2726055,
+  "tags": {
+    "name": "Storfors",
+    "name:ru": "Стурфорс",
+    "name:sv": "Storfors",
+    "place": "town",
+    "population": "2260",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "STORFORS",
+    "ref:SE:scb": "5812",
+    "wikidata": "Q2062839"
+  }
+},
+{
+  "type": "node",
+  "id": 26983541,
+  "lat": 59.8341700,
+  "lon": 13.5481044,
+  "tags": {
+    "name": "Munkfors",
+    "name:ru": "Мункфорс",
+    "name:sv": "Munkfors",
+    "place": "town",
+    "population": "2943",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "MUNKFORS",
+    "ref:SE:scb": "5760"
+  }
+},
+{
+  "type": "node",
+  "id": 28831940,
+  "lat": 59.1329314,
+  "lon": 12.9248679,
+  "tags": {
+    "name": "Säffle",
+    "name:ru": "Сефле",
+    "place": "town",
+    "population": "9490",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "SÄFFLE",
+    "ref:SE:scb": "5840",
+    "wikidata": "Q368574",
+    "wikipedia": "sv:Säffle"
+  }
+},
+{
+  "type": "node",
+  "id": 29531595,
+  "lat": 59.8401813,
+  "lon": 13.1354808,
+  "tags": {
+    "name": "Sunne",
+    "name:ru": "Сунне",
+    "place": "town",
+    "population": "5155",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "SUNNE",
+    "ref:SE:scb": "5824",
+    "wikidata": "Q1886476"
+  }
+},
+{
+  "type": "node",
+  "id": 29532120,
+  "lat": 59.6059394,
+  "lon": 13.4636486,
+  "tags": {
+    "name": "Deje",
+    "place": "town",
+    "population": "2715",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "DEJE",
+    "ref:SE:scb": "5632"
+  }
+},
+{
+  "type": "node",
+  "id": 29537571,
+  "lat": 59.5290618,
+  "lon": 13.4826031,
+  "tags": {
+    "name": "Forshaga",
+    "name:ru": "Форсхага",
+    "name:sv": "Forshaga",
+    "place": "town",
+    "population": "6457",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "FORSHAGA",
+    "ref:SE:scb": "5664",
+    "wikidata": "Q1303800",
+    "wikipedia": "sv:Forshaga"
+  }
+},
+{
+  "type": "node",
+  "id": 29563324,
+  "lat": 59.6022350,
+  "lon": 13.7286680,
+  "tags": {
+    "name": "Molkom",
+    "place": "village",
+    "population": "1888",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "MOLKOM",
+    "ref:SE:scb": "5756"
+  }
+},
+{
+  "type": "node",
+  "id": 29815562,
+  "lat": 59.5020632,
+  "lon": 13.3175439,
+  "tags": {
+    "name": "Kil",
+    "name:ru": "Чиль",
+    "name:sv": "Kil",
+    "place": "town",
+    "population": "7661",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "KIL",
+    "ref:SE:scb": "5708",
+    "wikidata": "Q1024656",
+    "wikipedia": "sv:Kil, Värmland"
+  }
+},
+{
+  "type": "node",
+  "id": 29816037,
+  "lat": 59.3518935,
+  "lon": 13.1056834,
+  "tags": {
+    "name": "Grums",
+    "name:ru": "Грумс",
+    "place": "town",
+    "population": "5033",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "GRUMS",
+    "ref:SE:scb": "5676",
+    "wikidata": "Q1550418"
+  }
+},
+{
+  "type": "node",
+  "id": 29816047,
+  "lat": 59.3953811,
+  "lon": 13.1934701,
+  "tags": {
+    "name": "Vålberg",
+    "place": "town",
+    "population": "2818",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "VÅLBERG",
+    "ref:SE:scb": "5864",
+    "wikidata": "Q2182282"
+  }
+},
+{
+  "type": "node",
+  "id": 367324695,
+  "lat": 59.3844824,
+  "lon": 13.8528775,
+  "tags": {
+    "name": "Väse",
+    "place": "village",
+    "population": "516",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "VÄSE",
+    "ref:SE:scb": "5872"
+  }
+},
+{
+  "type": "node",
+  "id": 367325870,
+  "lat": 59.4133819,
+  "lon": 13.6743730,
+  "tags": {
+    "name": "Skattkärr",
+    "place": "town",
+    "population": "1982",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "SKATTKÄRR",
+    "ref:SE:scb": "5800"
+  }
+},
+{
+  "type": "node",
+  "id": 367495387,
+  "lat": 59.3238210,
+  "lon": 13.1041323,
+  "tags": {
+    "name": "Slottsbron",
+    "place": "village",
+    "population": "1054",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "SLOTTSBRON",
+    "ref:SE:scb": "5810",
+    "wikidata": "Q1837539"
+  }
+},
+{
+  "type": "node",
+  "id": 448697022,
+  "lat": 59.7135483,
+  "lon": 14.1680314,
+  "tags": {
+    "name": "Filipstad",
+    "name:ru": "Филипстад",
+    "name:sv": "Filipstad",
+    "name:uk": "Філіпстад",
+    "place": "town",
+    "population": "6334",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "FILIPSTAD",
+    "ref:SE:scb": "5660",
+    "wikidata": "Q847769",
+    "wikipedia": "sv:Filipstad"
+  }
+},
+{
+  "type": "node",
+  "id": 1705289628,
+  "lat": 60.1355208,
+  "lon": 13.0067884,
+  "tags": {
+    "name": "Torsby",
+    "name:ru": "Турсбю",
+    "place": "town",
+    "population": "4477",
+    "population:date": "2018-03-28",
+    "population:source": "SCB",
+    "ref:SE:pts:postort": "TORSBY",
+    "ref:SE:scb": "5844",
+    "wikidata": "Q3582130"
+  }
+}
+
+  ]
+}
