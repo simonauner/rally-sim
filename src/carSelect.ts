@@ -209,8 +209,8 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   // Bilnamnet med pilar; inga <button> eftersom showMenu gör alla knappar i menyn till menyval.
   const navHtml = (list: CarModel[], m: CarModel, attr: string, detail = '') => {
     const extra = [list.length > 1 ? `${list.indexOf(m) + 1}/${list.length}` : '', detail].filter(Boolean).join(' · ');
-    const name = `<b>${locked(m) ? LOCK_ICON : ''}${m.make().name}</b>${extra ? `<small>${extra}</small>` : ''}`;
-    return `<div class="car-nav">${list.length > 1 ? `<span ${attr}="-1">‹</span>${name}<span ${attr}="1">›</span>` : name}</div>`;
+    const name = `<b>${locked(m) ? LOCK_ICON : ''}${m.make().name}</b>`;
+    return `<div class="car-nav">${list.length > 1 ? `<span ${attr}="-1">‹</span>${name}<span ${attr}="1">›</span>` : name}</div>${extra ? `<div class="car-extra">${extra}</div>` : ''}`;
   };
   // carSpecs kör en accelerationssimulering, så värdena sparas per bil.
   const data = new Map<CarModel, Row[]>();
