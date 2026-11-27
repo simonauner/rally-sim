@@ -1,11 +1,13 @@
 /** Spelarens inställningar, sparade i webbläsaren, och menyn för dem. */
 
 import { showMenu } from './menu';
+import { DIFFICULTY_PACE, type Difficulty } from './career/championship';
 
 const VOICE_KEY = 'rally.codriver';
 const SOUND_KEY = 'rally.sound';
 const MENU_SOUND_KEY = 'rally.menusound';
 const MENU_CARS_KEY = 'rally.menucars';
+const DIFFICULTY_KEY = 'rally.difficulty';
 
 function read(key: string) {
   try {
@@ -27,6 +29,11 @@ let voice = read(VOICE_KEY) !== 'off';
 let sound = read(SOUND_KEY);
 let menuSound = read(MENU_SOUND_KEY) !== 'off';
 let menuCars = read(MENU_CARS_KEY) !== 'off';
+const savedDifficulty = read(DIFFICULTY_KEY);
+let difficulty: Difficulty = savedDifficulty && savedDifficulty in DIFFICULTY_PACE ? (savedDifficulty as Difficulty) : 'easy';
+
+const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'lätt', medium: 'medel', hard: 'svår' };
 
 export const settings = {
   /** Om kartläsaren läser upp noterna; de visas på skärmen ändå. */
@@ -62,6 +69,14 @@ export const settings = {
     menuCars = on;
     write(MENU_CARS_KEY, on ? 'on' : 'off');
   },
+  /** Motståndarnas fart i nya mästerskap. */
+  get difficulty() {
+    return difficulty;
+  },
+  set difficulty(d: Difficulty) {
+    difficulty = d;
+    write(DIFFICULTY_KEY, d);
+  },
   /** Ingen har svarat på välkomstfrågorna än. */
   get firstVisit() {
     return sound === null;
@@ -94,19 +109,21 @@ export async function showWelcome() {
 /** Inställningsmenyn, från både huvud- och pausmenyn. */
 export async function showSettings(solid: boolean) {
   for (;;) {
-    const c = await showMenu<'sound' | 'menuSound' | 'voice' | 'back'>({
+    const c = await showMenu<'sound' | 'menuSound' | 'voice' | 'difficulty' | 'back'>({
       title: 'Inställningar',
       solid,
       items: [
         { label: 'Ljud', detail: settings.sound ? 'på' : 'av', value: 'sound' },
         { label: 'Menyljud', detail: settings.menuSound ? 'på' : 'av', value: 'menuSound' },
         { label: 'Kartläsarens röst', detail: settings.voice ? 'på' : 'av', note: 'Noterna visas på skärmen ändå.', value: 'voice' },
+        { label: 'Motståndare', detail: DIFFICULTY_LABEL[settings.difficulty], note: 'Gäller mästerskap som startas efter ändringen.', value: 'difficulty' },
         { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
     });
     if (c === 'back') return;
-    if (c === 'sound') settings.sound = !settings.sound;
+    if (c === 'difficulty') settings.difficulty = DIFFICULTIES[(DIFFICULTIES.indexOf(settings.difficulty) + 1) % DIFFICULTIES.length]!;
+    else if (c === 'sound') settings.sound = !settings.sound;
     else if (c === 'menuSound') settings.menuSound = !settings.menuSound;
     else settings.voice = !settings.voice;
   }

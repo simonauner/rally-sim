@@ -96,7 +96,13 @@ export interface ChampionshipProgress {
   /** Frö för motståndarnas slump, och fältet med tider för de etapper spelaren kört. */
   seed?: number;
   rivals?: Rival[];
+  /** Svårighetsgradens takt (DIFFICULTY_PACE); saknas i framsteg sparade före den och betyder lätt. */
+  difficulty?: number;
 }
+
+/** Fältets takt per svårighetsgrad, som faktor på mästerskapets grundtakt (lägre = snabbare). */
+export const DIFFICULTY_PACE = { easy: 1, medium: 0.97, hard: 0.94 } as const;
+export type Difficulty = keyof typeof DIFFICULTY_PACE;
 
 /** Prispengar per kilometer och placering: betydligt mer än för enstaka etapper. */
 const CHAMPIONSHIP_MEDALS = [
@@ -146,8 +152,9 @@ export function legWeather(p: ChampionshipProgress, leg = p.leg): Weather {
 }
 
 /** Ett nytt mästerskap med ett slumpat fält motståndare. */
-export function newProgress(def: ChampionshipDef, car: string, seed: number): ChampionshipProgress {
-  return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, fieldPace(def)) };
+export function newProgress(def: ChampionshipDef, car: string, seed: number, difficulty: Difficulty = 'easy'): ChampionshipProgress {
+  const d = DIFFICULTY_PACE[difficulty];
+  return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, fieldPace(def) * d), difficulty: d };
 }
 
 /**
@@ -157,10 +164,11 @@ export function newProgress(def: ChampionshipDef, car: string, seed: number): Ch
 export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipProgress {
   const def = championshipById(p.id)!;
   const seed = p.seed ?? p.times.length * 1000 + Math.round(time * 100);
-  let rivals = p.rivals ?? newRivals(seed, fieldPace(def));
+  const pace = fieldPace(def) * (p.difficulty ?? 1);
+  let rivals = p.rivals ?? newRivals(seed, pace);
   const times = [...p.times, time];
   const slowdown = def.legs.map((_, i) => WEATHER_SLOWDOWN[legWeather({ ...p, seed }, i)]);
-  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown, fieldPace(def) - 0.015);
+  for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown, pace - 0.015);
   return { ...p, seed, rivals };
 }
 
@@ -206,6 +214,7 @@ export function isProgress(value: unknown): value is ChampionshipProgress {
   if (!Array.isArray(p.times) || p.times.length !== p.leg || !p.times.every((t) => Number.isFinite(t) && t > 0)) return false;
   if (p.rivals !== undefined && !(Array.isArray(p.rivals) && p.rivals.every((v) => isRival(v) && v.times.length === p.leg))) return false;
   if (p.seed !== undefined && !Number.isFinite(p.seed)) return false;
+  if (p.difficulty !== undefined && !Object.values(DIFFICULTY_PACE).includes(p.difficulty as never)) return false;
   if (p.damage === null) return true;
   const d = p.damage;
   const parts = d && d.body ? [d.body.front, d.body.rear, d.body.left, d.body.right, d.body.roof] : [];

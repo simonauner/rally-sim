@@ -132,6 +132,9 @@ const CAR = 'Kvarn 240 GL';
   const old = { id: def.id, car: 'Kvarn 240 GL', leg: 1, times: [91], damage: null };
   const caught = raceRivals(old, 94);
   check('motståndare: gammalt framsteg', caught.rivals!.length === RIVAL_COUNT && caught.rivals!.every((v) => v.times.length === 2), `${caught.rivals![0]!.times.join(', ')}`);
+  const fastest = (d: 'easy' | 'medium' | 'hard') => Math.min(...newProgress(def, kvarn240.name, 7, d).rivals!.map((v) => v.pace));
+  const hard = newProgress(def, kvarn240.name, 7, 'hard');
+  check('motståndare: svårighetsgrad', fastest('hard') < fastest('medium') && fastest('medium') < fastest('easy') && isProgress(hard) && raceRivals(hard, 90).rivals![0]!.times.length === 1 && !isProgress({ ...hard, difficulty: 0.5 }), `${fastest('easy').toFixed(3)} / ${fastest('medium').toFixed(3)} / ${fastest('hard').toFixed(3)}`);
 }
 
 // Historik: köp loggas, listan kapas och trasiga rader underkänns.

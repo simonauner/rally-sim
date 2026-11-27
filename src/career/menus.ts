@@ -57,6 +57,7 @@ import {
   type ChampionshipProgress,
 } from "./championship";
 import { RIVAL_COUNT, standings, type Standing } from "./rivals";
+import { settings } from "../settings";
 import { formatTime, lampStatus } from "../hud";
 import {
   loadCareer,
@@ -724,6 +725,7 @@ async function startChampionship(
     def,
     nameOf(model),
     Math.floor(Math.random() * 2 ** 31),
+    settings.difficulty,
   );
   const weather = legWeather(progress, 0);
   // Bilväljaren lämnar huvudmenyns kurva bakom sig; förhandsvisningen visar etappens ljus och väder.
