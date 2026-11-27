@@ -3,8 +3,8 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { abs, attribute, color, fract, positionGeometry, select, uniform, vec3 } from 'three/tsl';
 import { LAMP_BROKEN, type Car, type DamageState } from '../physics/car';
 import type { DamageEvent } from '../physics/collision';
-import type { CarModel, Sponsor } from '../physics/params';
-import { startNumber, withDecals } from './decals';
+import type { CarModel } from '../physics/params';
+import { bodyDecals, decalTexture, roofDecals, startNumber } from './decals';
 
 const GLASS = new THREE.Color(0x2b3a42);
 const DARK = new THREE.Color(0x3a3a3a);
@@ -277,8 +277,7 @@ function buildBody(
   paint: THREE.Color,
   lampGlow: LampGlow,
   tailGlow: FloatUniform,
-  number: number,
-  sponsors: Sponsor[],
+  decals: THREE.Texture,
 ): DeformablePart {
   const { bottom, nose, tail, belt, crease, screen, backlight, archY, archR } = b;
   const g = roundedBox(2 * b.halfX, belt - bottom, nose - tail, [14, 14, Math.round((nose - tail) * 21)], 0.05, [
@@ -362,7 +361,7 @@ function buildBody(
   );
 
   const painted = select(seam.or(lidSeam), color(paint.clone().multiplyScalar(0.72)), select(archLip, color(paint.clone().multiplyScalar(0.86)), color(paint)));
-  const trimmed = withDecals(select(stripChrome, color(CHROME), select(strip, color(DARK), painted)), p, side, top, b, wheelZ, paint, number, sponsors);
+  const trimmed = bodyDecals(select(stripChrome, color(CHROME), select(strip, color(DARK), painted)), p, side, b, decals, paint);
   const body = select(archs, color(BLACK), select(p.y.lessThan(bottom + 0.17), color(SILL), trimmed));
   const tailColor = select(tailReverse, color(REVERSE), select(tailAmber, color(AMBER), color(TAIL)));
   const mat = new THREE.MeshToonNodeMaterial();
@@ -390,7 +389,7 @@ function buildBody(
 }
 
 /** Kupé med lutande vindruta och bakruta, svarta fönsterlister och lodräta mittstolpar. */
-function buildCabin(b: BodyShape, paint: THREE.Color): DeformablePart {
+function buildCabin(b: BodyShape, paint: THREE.Color, decals: THREE.Texture): DeformablePart {
   const { screen, backlight, belt } = b;
   const H = b.roof - belt + 0.01;
   const L = screen[0] - backlight[0];
@@ -438,7 +437,10 @@ function buildCabin(b: BodyShape, paint: THREE.Color): DeformablePart {
   const aPillar = u.greaterThan(0.9).and(ax.greaterThan(hx - 0.12)).and(tIn(0.05, 0.95));
   const trim = sideTrim.or(endTrim).or(aPillar);
   const mat = new THREE.MeshToonNodeMaterial();
-  mat.colorNode = select(glass, color(GLASS), select(trim, color(BLACK), color(paint)));
+  // Taket: plana ovansidan, med x och z som efter formningen.
+  const roof = t.greaterThan(0.97).and(abs(u).lessThan(0.95));
+  const painted = roofDecals(color(paint), p.x.mul(0.83), u.mul(topHalf).add(topMid), roof, b, decals, paint);
+  mat.colorNode = select(glass, color(GLASS), select(trim, color(BLACK), painted));
   return new DeformablePart(g, mat);
 }
 
@@ -550,9 +552,10 @@ export class CarMesh {
     const wheelZ: Range = [wheels.find((w) => w.front)!.mount[2], wheels.find((w) => !w.front)!.mount[2]];
     // Främre stötfångaren går bak till hjulhuset, den bakre en bit runt hörnen.
     const front = b.nose + 0.1 - (wheelZ[0] + b.archR[0] + 0.04);
+    const decals = decalTexture(b, wheelZ, c, startNumber(car.params.name), model.sponsors?.() ?? []);
     this.parts = [
-      buildBody(b, wheelZ, c, this.lampGlow, this.tailGlow, startNumber(car.params.name), model.sponsors?.() ?? []),
-      buildCabin(b, c),
+      buildBody(b, wheelZ, c, this.lampGlow, this.tailGlow, decals),
+      buildCabin(b, c, decals),
       buildBumper(b.halfX, b.nose + 0.1 - front / 2, b.bumperY[0], front),
       buildBumper(b.halfX, b.tail - 0.09 + b.rearBumperDepth / 2, b.bumperY[1], b.rearBumperDepth),
     ];
