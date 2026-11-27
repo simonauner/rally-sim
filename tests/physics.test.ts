@@ -137,7 +137,7 @@ for (const [surface, tyre, lo, hi] of [
 
 // 4. Sidgrepp (g) i en cirkel: håll gasen så farten ligger kring 18 m/s och full styrning.
 for (const [surface, tyre, lo, hi] of [
-  ['asphalt', 'tarmac', 0.85, 1.25],
+  ['asphalt', 'tarmac', 0.8, 1.25],
   ['gravel', 'gravel', 0.65, 1.0],
 ] as const) {
   const car = makeCar(new FlatWorld(surface), tyre);
@@ -460,11 +460,11 @@ for (const def of STAGES) {
       return Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a)));
     };
     const turn = turnAt(hit.s + 10);
-    // Hårnålar (över ca 90° på 30 m) tas i krypfart, annars aldrig under 9 m/s. Inför en hårnål
+    // Hårnålar (över ca 90° på 30 m) tas i krypfart, annars aldrig under 8 m/s. Inför en hårnål
     // bromsar föraren i tid, upp till 80 m före (ca 3 m/s²); andra kurvor ser den 10–40 m fram.
     let hairpin = Infinity;
     for (let d = 10; d <= 80; d += 10) if (turnAt(hit.s + 10 + d) > 1.5) hairpin = Math.min(hairpin, Math.sqrt(25 + 6 * d));
-    const target = Math.min(hairpin, Math.max(turn > 1.5 ? 5 : 9, 24 - turn * 18)) * gripK(hit.surface);
+    const target = Math.min(hairpin, Math.max(turn > 1.5 ? 5 : 8, 24 - turn * 18)) * gripK(hit.surface);
     return {
       ...idle,
       steer: Math.max(-1, Math.min(1, Math.atan2(Math.sin(err), Math.cos(err)) * 4)),
