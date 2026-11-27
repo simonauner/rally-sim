@@ -55,9 +55,13 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
           const s = STAGES.find((x) => x.name === leg);
           if (!s) return [];
           const best = loadRecord(s);
-          // Under namnet: ljus, bästa tid och källan, en rad var.
-          const facts = [LIGHT_NAMES[s.light ?? 'day'], best ? `bästa ${formatTime(best.time)}` : '', extra?.(s) ?? ''].filter(Boolean).join(' · ');
-          const lines = [facts, s.credit ? 'verklig väg · kartdata © OpenStreetMap contributors' : ''].filter(Boolean);
+          // Under namnet: ljus, bästa tid, det extra och källan, en rad var.
+          const lines = [
+            LIGHT_NAMES[s.light ?? 'day'],
+            best ? `bästa ${formatTime(best.time)}` : '',
+            extra?.(s) ?? '',
+            s.credit ? 'verklig väg · kartdata © OpenStreetMap contributors' : '',
+          ].filter(Boolean);
           return [{ label: s.name, note: lines.map((l) => `<span>${l}</span>`).join('') || undefined, image: stageImage(s.name), value: s.name }];
         }),
         { label: '← Tillbaka', value: '' },
