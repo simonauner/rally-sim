@@ -398,6 +398,19 @@ for (const def of STAGES) {
     for (let j = i + 150; j < stage.xs.length; j += 2)
       minSep = Math.min(minSep, Math.hypot(stage.xs[i]! - stage.xs[j]!, stage.zs[i]! - stage.zs[j]!));
   check(`${def.name}: vägen korsar inte sig själv`, minSep > 2 * STAGE_CORRIDOR, `${stage.length} m lång, minsta avstånd ${minSep.toFixed(0)} m`);
+  // Terrängen hänger ihop: inga kanter i korridoren, inte heller på insidan av snäva kurvor och
+  // hårnålar eller vid korsande vägar. Vallarna vid vintervägar ger upp till ca 0,8 m per 2 m.
+  let step = 0;
+  for (let i = 0; i < stage.xs.length; i += 100)
+    for (let a = -40; a <= 40; a += 4)
+      for (let b = -40; b <= 40; b += 4) {
+        const x = stage.xs[i]! + a;
+        const z = stage.zs[i]! + b;
+        if (stage.project(x, z, STAGE_CORRIDOR).d > STAGE_CORRIDOR - 2) continue;
+        const h = stage.heightAt(x, z);
+        step = Math.max(step, Math.abs(stage.heightAt(x + 2, z) - h), Math.abs(stage.heightAt(x, z + 2) - h));
+      }
+  check(`${def.name}: terrängen saknar kanter`, step < 1.5, `största höjdsteg ${step.toFixed(2)} m på 2 m`);
   const sideRoads = (def.spurs ?? []).every((sp) => {
     const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
     const mx = (a.x + b.x) / 2;

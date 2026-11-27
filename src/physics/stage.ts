@@ -15,8 +15,8 @@ export interface StagePoint {
 }
 
 /**
- * En korsande väg som etappen inte kör på, avspärrad vid etappen. Ligger plant på etappens
- * höjd vid första punkten och tar slut i skogen.
+ * En korsande väg som etappen inte kör på, avspärrad vid etappen. Följer höjden från etappens
+ * närmaste punkt, så terrängen runt den hänger ihop med etappens, och tar slut i skogen.
  */
 export interface Spur {
   points: { x: number; z: number }[];
@@ -84,7 +84,7 @@ export class Stage extends World {
   readonly widths: Float64Array;
   readonly surfaces: SurfaceId[];
   readonly length: number;
-  readonly spurs: (Spur & { y: number })[];
+  readonly spurs: Spur[];
   /** Avspärrningar tvärs över de korsande vägarna, en per väg. Lokalt x går tvärs över vägen. */
   readonly barriers: { x: number; z: number; y: number; yaw: number; halfWidth: number }[];
   private grid = new Map<number, number[]>();
@@ -153,7 +153,7 @@ export class Stage extends World {
       if (!list) this.grid.set(key, (list = []));
       list.push(i);
     }
-    this.spurs = (def.spurs ?? []).map((sp) => ({ ...sp, y: this.project(sp.points[0]!.x, sp.points[0]!.z).roadY }));
+    this.spurs = def.spurs ?? [];
     this.placeTrees();
     this.barriers = this.spurs.map((sp) => {
       const [a, b] = sp.points as [{ x: number; z: number }, { x: number; z: number }];
@@ -168,6 +168,33 @@ export class Stage extends World {
       const z = a.z + dz * t;
       return { x, z, y: this.heightAt(x, z), yaw: Math.atan2(dx, dz), halfWidth: sp.width / 2 + 0.6 };
     });
+  }
+
+  /**
+   * Vägens höjd i snitt runt (x, z): var fjärde meter av vägen inom ca 35 m bortom den närmaste,
+   * viktad så att de närmaste väger mest. `d` är avståndet till närmaste punkten.
+   */
+  private nearbyRoadY(x: number, z: number, d: number): number {
+    const sigma = 12;
+    const reach = d + 3 * sigma;
+    const r = Math.ceil(reach / CELL);
+    const cx = Math.floor(x / CELL);
+    const cz = Math.floor(z / CELL);
+    let sum = 0;
+    let weight = 0;
+    for (let i = cx - r; i <= cx + r; i++) {
+      for (let j = cz - r; j <= cz + r; j++) {
+        for (const k of this.grid.get(this.key(i, j)) ?? []) {
+          if (k % 4) continue;
+          const dk = Math.hypot(this.xs[k]! - x, this.zs[k]! - z);
+          if (dk > reach) continue;
+          const w = Math.exp(-(((dk - d) / sigma) ** 2) / 2);
+          sum += w * this.ys[k]!;
+          weight += w;
+        }
+      }
+    }
+    return weight > 0 ? sum / weight : this.hit.roadY;
   }
 
   /** Skog i korridoren längs vägarna, minst 7 m från vägkanten. */
@@ -270,7 +297,7 @@ export class Stage extends World {
 
   /**
    * Som project, men närmaste väg av etappen och de korsande vägarna. För en korsande väg
-   * gäller d, roadY, width och surface; s är fortfarande etappens.
+   * gäller d, width och surface; s och roadY är fortfarande etappens.
    */
   roadAt(x: number, z: number, maxD = Infinity): StageHit {
     const h = this.project(x, z, maxD);
@@ -285,7 +312,6 @@ export class Stage extends World {
         const d = Math.hypot(ax + ex * t - x, az + ez * t - z);
         if (d < h.d) {
           h.d = d;
-          h.roadY = sp.y;
           h.width = sp.width;
           h.surface = sp.surface;
         }
@@ -295,8 +321,13 @@ export class Stage extends World {
   }
 
   override heightAt(x: number, z: number): number {
-    const { d, roadY, width } = this.roadAt(x, z);
+    const { d, width, roadY: nearY } = this.roadAt(x, z);
     const hw = width / 2;
+    // Utanför vägkanten följer terrängen ett medel av vägen runt omkring, inte bara närmaste
+    // punkten: annars blir det en kant på insidan av snäva kurvor och hårnålar, där närmaste
+    // punkt hoppar till en annan del av vägen. Vägen och vägkanten har vägens egen höjd.
+    const blend = smooth(hw + 2, hw + 12, d);
+    const roadY = blend > 0 ? nearY + (this.nearbyRoadY(x, z, d) - nearY) * blend : nearY;
     // Vinterväg har plogade snövallar där andra vägar har dike.
     const edge = this.def.winter ? SNOWBANK_HEIGHT * smooth(hw + 0.3, hw + 1.4, d) * (1 - smooth(hw + 2.4, hw + 4.5, d)) : -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
     const bank = smooth(hw + 2.5, hw + 8, d) * 0.12 * (d - hw - 2.5);
@@ -320,7 +351,7 @@ export class Stage extends World {
  */
 export const STAGE_SKOGSBERG: StageDef = {
   name: 'Skogsberg',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   points: [
     { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
@@ -369,7 +400,7 @@ export const STAGE_SKOGSBERG: StageDef = {
  */
 export const STAGE_MYRKULLA: StageDef = {
   name: 'Myrkulla',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   points: [
     { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
@@ -425,7 +456,7 @@ export const STAGE_MYRKULLA: StageDef = {
  */
 export const STAGE_FROSTBERGA: StageDef = {
   name: 'Frostberga',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   winter: true,
   points: [
@@ -467,7 +498,7 @@ export const STAGE_FROSTBERGA: StageDef = {
 /** Skymningsetapp: fiktiv, ca 1,9 km snabbt tallmogrus med en asfaltsbit på mitten. */
 export const STAGE_TALLMON: StageDef = {
   name: 'Tallmon',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   light: 'dusk',
   points: [
@@ -506,7 +537,7 @@ export const STAGE_TALLMON: StageDef = {
 /** Gryningsetapp: fiktiv, ca 1,9 km över kala ljunghedar med två krön och en lerig sänka. */
 export const STAGE_LJUNGHEDEN: StageDef = {
   name: 'Ljungheden',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   light: 'dawn',
   points: [
@@ -544,7 +575,7 @@ export const STAGE_LJUNGHEDEN: StageDef = {
 /** Nattetapp på vintern: fiktiv, ca 1,6 km snö med en plogad grusbit, bara i strålkastarljus. */
 export const STAGE_ISVALLEN: StageDef = {
   name: 'Isvallen',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   winter: true,
   light: 'night',
@@ -586,7 +617,7 @@ export const STAGE_ISVALLEN: StageDef = {
  */
 export const STAGE_FORSBACKEN: StageDef = {
   name: 'Forsbäcken',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   points: [
     { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
@@ -623,7 +654,7 @@ export const STAGE_FORSBACKEN: StageDef = {
 /** Fiktiv kustetapp, ca 2 km: mest bred asfalt, med en grusbit runt udden på mitten. */
 export const STAGE_HAMNUDDEN: StageDef = {
   name: 'Hamnudden',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   points: [
     { x: 0, z: -20, y: 0, width: 8, surface: 'asphalt' },
@@ -659,7 +690,7 @@ export const STAGE_HAMNUDDEN: StageDef = {
 /** Gryningsetapp: fiktiv, ca 2 km grus och lera över myren, med ett långt vadställe i sänkan. */
 export const STAGE_VADMYRA: StageDef = {
   name: 'Vadmyra',
-  version: '1.0.0',
+  version: '1.0.1',
   recordsSince: '1.0.0',
   light: 'dawn',
   points: [
