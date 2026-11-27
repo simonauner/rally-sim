@@ -26,8 +26,9 @@ dem bara medvetet.
 - Fast fysiksteg 240 Hz, frikopplat från rendering.
 - Koordinater: bilens lokala x = vänster, y = upp, z = framåt. Styrvinkel positiv = vänster.
 - Bilar och märken är fiktiva. Använd aldrig verkliga märkes- eller modellnamn.
-- Banor är fiktiva, utom verkliga vägar från öppen kartdata (OpenStreetMap, ODbL) som anger
-  källan i `StageDef.credit`. Använd ortsnamn, aldrig ett rallys varumärke som etappnamn.
+- Banor är verkliga vägar från öppen kartdata (OpenStreetMap, ODbL, i `src/physics/real/`) som
+  anger källan i `StageDef.credit`. Använd ortsnamn, aldrig ett rallys varumärke som etappnamn.
+  Testerna har två fiktiva etapper som fixturer (`tests/stages.ts`).
 - Språk i UI och kommentarer: svenska.
 - Grafik: WebGPU enbart. `?webgl` finns bara för felsökning i miljöer utan WebGPU.
 
@@ -39,4 +40,4 @@ dem bara medvetet.
 ## Nästa steg (fas 1)
 
 Fas 1 är klar: spline-etappen (`src/physics/stage.ts`), tidtagningen (`src/physics/timing.ts`), ghosten (`src/physics/ghost.ts`), dammet (`src/render/dust.ts`), pacenotes (`src/physics/pacenotes.ts`) och motorljudet.
-Huvud- och pausmeny finns (`src/menu.ts`). Konto och synk av rekord finns (`src/account/`, `sync/`). Karriär med kassa, garage, bilhandlare och mästerskap finns (`src/career/`). Etapper: Skogsberg och Myrkulla (även baklänges), plus Tallmon i skymning och Ljungheden i gryning, däcken väljs före start (`src/tyreMenu.ts`). Klass 2 (tre snabbare bilar, egna delar och mästerskap) låses upp när klass 1 är vunnen. Verkliga vägar ur Rally Sweden: Vinterrallyt körs på Bygdsiljum i fem delar (sista på natten, med strålkastare), Forsrallyt på Bäck i tre och Israllyt på Andersvattnet i fyra (`src/physics/bygdsiljum.ts`, `back.ts`, `andersvattnet.ts`). Nästa: se README.
+Huvud- och pausmeny finns (`src/menu.ts`). Konto och synk av rekord finns (`src/account/`, `sync/`). Karriär med kassa, garage, bilhandlare och mästerskap finns (`src/career/`). Däcken väljs före start (`src/tyreMenu.ts`). Klass 2 (tre snabbare bilar, egna delar och mästerskap) låses upp när klass 1 är vunnen. Alla etapper är verkliga vägar ur Rally Sweden och Royal Rally of Scandinavia, i delar per mästerskap (se README). Nästa: se README.

@@ -41,7 +41,8 @@ const CAR = 'Kvarn 240 GL';
 
 // 2. Prispengar.
 {
-  const p = [85, 95, 110, 130].map((t) => prizeFor('Skogsberg', t));
+  const [g, sv, b] = STAGE_TARGETS.Grinsbol!;
+  const p = [g - 1, sv - 1, b - 1, b + 10].map((t) => prizeFor('Grinsbol', t));
   check('prispengar efter tid', p.map((x) => x.medal).join() === 'guld,silver,brons,' && p[3]!.prize === FINISH_PRIZE && p[0]!.prize > p[1]!.prize, p.map((x) => `${x.medal ?? 'mål'} ${x.prize}`).join(', '));
   check('okänd etapp', prizeFor('Ingenstans', 50).prize === FINISH_PRIZE, 'målpeng');
 }
@@ -79,9 +80,9 @@ const CAR = 'Kvarn 240 GL';
   const def = CHAMPIONSHIPS[0]!;
   const legsExist = CHAMPIONSHIPS.every((c) => c.legs.every((name) => STAGES.some((s) => s.name === name)) && !!championshipTargets(c));
   const targets = championshipTargets(def);
-  check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 279 && def.legs.length === 3 && STAGES.every((s) => CHAMPIONSHIPS.some((c) => c.legs.includes(s.name))), `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
+  check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === def.legs.reduce((sum, leg) => sum + STAGE_TARGETS[leg]![0], 0) && def.legs.length === 3 && STAGES.every((s) => CHAMPIONSHIPS.some((c) => c.legs.includes(s.name))), `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
   const prizes = [1, 2, 3, 4].map((place) => championshipPrize(def, place));
-  check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize === 8000, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
+  check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize > prizes[1]!.prize && prizes[2]!.prize > prizes[3]!.prize && prizes[0]!.prize % 500 === 0, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
   const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };
   const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
   const noLamp: CarDamage = { ...crashed, lamps: [0.6, 0] };
@@ -187,10 +188,12 @@ const CAR = 'Kvarn 240 GL';
   const base = kvarnTurbo4x4();
   const built = applyUpgrades(base, Object.fromEntries(own.map((id) => [id, 1])));
   check('klass 2: delarna verkar', built.mass === base.mass - 50 && built.gearbox.shiftTime < base.gearbox.shiftTime && built.brake.handbrake > base.brake.handbrake && built.engine.inertia < base.engine.inertia && built.gripScale > base.gripScale, `${base.mass} → ${built.mass} kg`);
-  const gold1 = prizeFor('Skogsberg', 88, 1);
-  const slow2 = prizeFor('Skogsberg', 88, 2);
-  const gold2 = prizeFor('Skogsberg', 80, 2);
-  check('klass 2: gränser och priser', gold1.medal === 'guld' && slow2.medal === 'silver' && gold2.medal === 'guld' && gold2.prize === MEDALS[0].prize * 2 && championshipPrize(tier2[0]!, 1).prize === championshipPrize({ ...tier2[0]!, tier: 1 }, 1).prize * 2, `88 s: klass 1 ${gold1.medal}, klass 2 ${slow2.medal}; 80 s klass 2 ${gold2.medal} ${gold2.prize} kr`);
+  // Samma tid strax under klass 1-guld räcker till silver i klass 2; guld där kräver 8 % snabbare.
+  const g1 = STAGE_TARGETS.Grinsbol![0];
+  const gold1 = prizeFor('Grinsbol', g1 - 2, 1);
+  const slow2 = prizeFor('Grinsbol', g1 - 2, 2);
+  const gold2 = prizeFor('Grinsbol', Math.round(g1 * 0.92) - 1, 2);
+  check('klass 2: gränser och priser', gold1.medal === 'guld' && slow2.medal === 'silver' && gold2.medal === 'guld' && gold2.prize === MEDALS[0].prize * 2 && championshipPrize(tier2[0]!, 1).prize === championshipPrize({ ...tier2[0]!, tier: 1 }, 1).prize * 2, `${g1 - 2} s: klass 1 ${gold1.medal}, klass 2 ${slow2.medal}; ${Math.round(g1 * 0.92) - 1} s klass 2 ${gold2.medal} ${gold2.prize} kr`);
   // Samma etapper i klass 1-gränser: summan av guldtiderna.
   const t1 = tier2[0]!.legs.reduce((sum, leg) => sum + STAGE_TARGETS[leg]![0], 0);
   const t2 = championshipTargets(tier2[0]!)![0];

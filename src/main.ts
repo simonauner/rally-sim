@@ -14,7 +14,7 @@ import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
 import { CARS, type CarModel } from './physics/params';
-import { START_S, Stage, STAGE_ASJON, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
+import { START_S, Stage, STAGE_ASJON, STAGE_GRINSBOL, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
 import { pickTyre } from './tyreMenu';
 import { CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
@@ -177,7 +177,7 @@ async function main() {
   // Ladda man om sidan ska kassan inte räkna upp igen.
   if (query.has('karriar')) history.replaceState(null, '', location.pathname + (forceWebGL ? '?webgl' : ''));
   let model = CARS[0]!;
-  let stageDef: StageDef = STAGE_SKOGSBERG;
+  let stageDef: StageDef = STAGE_GRINSBOL;
   /** Karriärlopp ger prispengar; fri körning gör det inte. */
   let careerMode = false;
   /** Pågående mästerskap; ?mastarskap laddar dess nästa etapp direkt. */
@@ -207,7 +207,7 @@ async function main() {
   /** Kurvan med bilarna bakom menyerna, en för sommar och en för vinter; byggs första gången de visas. */
   const backdrops = new Map<boolean, MenuScene>();
   const backdropFor = (winter: boolean) => {
-    if (!backdrops.has(winter)) backdrops.set(winter, menuScene(renderer, winter ? STAGE_ASJON : STAGE_MYRKULLA));
+    if (!backdrops.has(winter)) backdrops.set(winter, menuScene(renderer, winter ? STAGE_ASJON : STAGE_GRINSBOL));
     return backdrops.get(winter)!;
   };
   /** Scenen som spelas bakom menyn just nu. */

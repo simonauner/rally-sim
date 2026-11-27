@@ -447,16 +447,29 @@ export const MEDALS = [
 ] as const;
 export const FINISH_PRIZE = 250;
 export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze: number]> = {
-  // Testföraren i tests/physics.test.ts tar cirka 89–92 s på Skogsberg och 127 s på Myrkulla
-  // åt båda hållen, utan att pressa bilen.
-  Skogsberg: [90, 100, 115],
-  'Skogsberg baklänges': [93, 103, 118],
-  Myrkulla: [128, 142, 163],
-  'Myrkulla baklänges': [128, 142, 163],
-  // Testföraren: Tallmon 94 s och Ljungheden 87 s. Gränserna är lite generösare i dåligt ljus,
-  // mest i mörker.
-  Tallmon: [96, 107, 122],
-  Ljungheden: [88, 98, 112],
+  // Värmskog i tre delar. Testföraren med grusdäck: Grinsbol 233 s, Tollesrud 218 s och
+  // Åsterud 222 s i skymning.
+  Grinsbol: [235, 260, 298],
+  Tollesrud: [219, 242, 278],
+  Åsterud: [226, 250, 287],
+  // Gårdsjö och Colins. Testföraren: Botten 280 s i gryning, Rannsjön 268 s, Larssäter 208 s och
+  // Stor-Jangen 214 s.
+  Botten: [286, 316, 363],
+  Rannsjön: [270, 299, 342],
+  Larssäter: [210, 232, 266],
+  'Stor-Jangen': [216, 239, 274],
+  // Royal Forest i fyra delar. Testföraren: Södra Hulteby 236 s, Ämten 223 s, Lindås 226 s och
+  // Lungsund 240 s.
+  'Södra Hulteby': [238, 263, 302],
+  Ämten: [225, 249, 285],
+  Lindås: [228, 252, 289],
+  Lungsund: [242, 268, 307],
+  // Ängebäckstorp och Ölme. Testföraren: Sundstorp 262 s, Bäckelid 270 s, Niklasdamm 217 s och
+  // Broby 202 s i skymning.
+  Sundstorp: [264, 292, 335],
+  Bäckelid: [272, 301, 345],
+  Niklasdamm: [219, 242, 278],
+  Broby: [207, 229, 262],
   // Bygdsiljum i fem delar på drygt 5 km. Testföraren med vinterdäck: Åsjön 290 s, Altarliden
   // 292 s, Bergtjärnen 294 s, Torpet 303 s (T-korsningen i krypfart) och Trollberget 293 s på natten.
   Åsjön: [292, 323, 370],

@@ -44,15 +44,33 @@ körning inte finns. `?testbana` hoppar över menyn och går direkt till testban
 
 ## Etapperna
 
-Etapperna är *Skogsberg* (ca 1,8 km: grus, en asfaltsbit och en lerig skogsdel) och *Myrkulla*
-(ca 2,7 km: snabbt grus, en lerig väg över myren, en lång stigning med krön och en asfaltsbit).
-Båda finns också baklänges, samma väg åt andra hållet med egna noter, rekord och ghost.
+Alla etapper är verkliga vägar (`src/physics/real/`): specialsträckor ur Rally Sweden (snö) och
+Royal Rally of Scandinavia (grus), delade i etapper på 3,4–6 km och uppkallade efter orter längs
+vägen. Geometrin kommer ur OpenStreetMap och höjden ur EU-DEM.
+
+| Mästerskap | Klass | Sträcka | Etapper |
+|---|---|---|---|
+| Skogsrallyt | 1 | Värmskog (grus) | Grinsbol, Tollesrud, Åsterud i skymning |
+| Myrkullarallyt | 1 | Gårdsjö och Colins (grus) | Botten i gryning, Rannsjön, Larssäter, Stor-Jangen |
+| Vinterrallyt | 1 | Bygdsiljum (snö) | Åsjön, Altarliden, Bergtjärnen, Torpet, Trollberget på natten |
+| Forsrallyt | 1 | Bäck (snö) | Näs, Rickleån, Valsfäboda i skymning |
+| Tallmoklassikern | 2 | Royal Forest (grus) | Södra Hulteby, Ämten, Lindås, Lungsund |
+| Ljunghedsrallyt | 2 | Ängebäckstorp och Ölme (grus) | Sundstorp, Bäckelid, Niklasdamm, Broby i skymning |
+| Israllyt | 2 | Andersvattnet (snö) | Storberget, Hösjöälven, Röjmyrberget, Flarkån i skymning |
+
+Rally Swedens sträckkartor har GPS-punkter; Royal Rallys sträckor är hittade på rallyts
+översiktskarta (ca 26 m per pixel) och kan avvika ±50 m. Där en skogsväg saknas i OpenStreetMap är
+den avritad från kartan. Hörn i korsningar är utjämnade och breddade så att bilen kommer runt,
+lutningen på grusetapperna är begränsad till 12 % (höjddatan tar annars med branter bredvid
+vägen), och efter mål finns 240 m att stanna på. Utanför vägkanten följer terrängen ett medel av
+vägen runt omkring, så det blir inga kanter på insidan av snäva kurvor. Vägdata © OpenStreetMap
+contributors, ODbL 1.0; den härledda datan i `src/physics/real/` delas under samma licens.
+Testerna kör dessutom två fiktiva etapper med kända korsningar och underlag (`tests/stages.ts`).
+
 Vinteretapperna kantas av snövallar i stället för dike: kör man i dem gräver hjulen ner sig, bilen
-bromsas kraftigt och tar en mild skada.
-Tre etapper körs i annat ljus (`light` på etappen): *Tallmon* i skymning (snabbt grus med en
-asfaltsbit), *Ljungheden* i gryning (ljunghedar med krön och en lerig sänka) och *Trollberget* på
-natten (snö, se Vinterrallyt nedan). Då lyser bilens strålkastare. En hård smäll framifrån slår sönder lyktan på den
-sidan, och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
+bromsas kraftigt och tar en mild skada. Etapper i skymning, gryning och natt (`light` på
+etappen) körs med bilens strålkastare. En hård smäll framifrån slår sönder lyktan på den sidan,
+och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
 inbromsning. I Fri körning väljer man först mästerskap och sedan etapp.
 
 Underlaget `water` (vadställen där vägen dyker ner i en bäck: vattnet bromsar bilen, greppar
@@ -151,21 +169,9 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
   bilar (Ljung 2000 16V med framhjulsdrift, Strand 2.0 GT med bakhjulsdrift och sex med
   fyrhjulsdrift och mittdiff: Kvarn Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé,
   Sora 2.0 Turbo och Arashi 2.0 RS). De har egna delar i garaget och egna mästerskap
-  (Tallmoklassikern och Ljunghedsrallyt på klass 1-etapperna, Israllyt på en verklig väg). Medaljgränserna och fältet är
+  (Tallmoklassikern, Ljunghedsrallyt och Israllyt). Medaljgränserna och fältet är
   8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
   Varje klass kör bara sina egna mästerskap.
-- **Forsrallyt** (klass 1) körs på en verklig väg: Bäck ur Rally Sweden, ca 10 km delad i tre
-  etapper (Näs, Rickleån och Valsfäboda i skymning, `src/physics/back.ts`). Skogsvägarna från Bäck
-  via Näs mot Rickleån saknas i OpenStreetMap och är avritade från rallyts sträckkarta.
-- **Vinterrallyt** (klass 1) körs på en verklig väg: Bygdsiljum ur Rally Sweden, ca 26 km delad i
-  fem etapper (Åsjön, Altarliden, Bergtjärnen, Torpet med en T-korsning och Trollberget på natten,
-  `src/physics/bygdsiljum.ts`). Sista biten före mål saknas i OpenStreetMap och är avritad från
-  rallyts sträckkarta. Hörn i korsningar är utjämnade och breddade så att bilen kommer runt.
-- **Israllyt** körs på en verklig väg: Andersvattnet ur Rally Sweden, ca 21 km delad i fyra
-  etapper (Storberget, Hösjöälven med en hårnål, Röjmyrberget och Flarkån i skymning). Geometrin
-  kommer ur OpenStreetMap och höjden ur EU-DEM (`src/physics/andersvattnet.ts`). Där vägen
-  svänger tillbaka mot sig själv blandas terrängens höjd mellan vägdelarna. Vägdata ©
-  OpenStreetMap contributors, ODbL 1.0; den härledda datan i filen delas under samma licens.
 
 Pengarna köper uppgraderingar i garaget (motor, bromsar, fjädring, däck, tre nivåer var) och
 bilar hos bilhandlaren. Man börjar med Kvarn 240 GL. Regler och priser finns i

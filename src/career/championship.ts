@@ -24,14 +24,13 @@ export interface ChampionshipDef {
 }
 
 export const CHAMPIONSHIPS: ChampionshipDef[] = [
-  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Skogsberg', 'Skogsberg baklänges', 'Tallmon'], pace: 0.985, tier: 1 },
-  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Ljungheden', 'Myrkulla', 'Myrkulla baklänges'], pace: 0.965, tier: 1 },
+  { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Grinsbol', 'Tollesrud', 'Åsterud'], pace: 0.985, tier: 1 },
+  { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Botten', 'Rannsjön', 'Larssäter', 'Stor-Jangen'], pace: 0.965, tier: 1 },
   // Fem etapper ger fältet fler chanser att hinna ikapp, så grundtakten är lite lägre än tre etappers.
   { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Åsjön', 'Altarliden', 'Bergtjärnen', 'Torpet', 'Trollberget'], pace: 0.95, tier: 1 },
-  // Klass 2 kör klass 1-etapperna i nya kombinationer, och Israllyt den verkliga vägen
-  // Andersvattnet i fyra delar, mot ett snabbare fält.
-  { id: 'tallmoklassikern', name: 'Tallmoklassikern', legs: ['Tallmon', 'Skogsberg', 'Myrkulla'], pace: 0.985, tier: 2 },
-  { id: 'ljunghedsrallyt', name: 'Ljunghedsrallyt', legs: ['Ljungheden', 'Myrkulla baklänges', 'Skogsberg baklänges'], pace: 0.965, tier: 2 },
+  // Klass 2 har egna verkliga sträckor och ett snabbare fält.
+  { id: 'tallmoklassikern', name: 'Tallmoklassikern', legs: ['Södra Hulteby', 'Ämten', 'Lindås', 'Lungsund'], pace: 0.985, tier: 2 },
+  { id: 'ljunghedsrallyt', name: 'Ljunghedsrallyt', legs: ['Sundstorp', 'Bäckelid', 'Niklasdamm', 'Broby'], pace: 0.965, tier: 2 },
   { id: 'israllyt', name: 'Israllyt', legs: ['Storberget', 'Hösjöälven', 'Röjmyrberget', 'Flarkån'], pace: 0.945, tier: 2 },
   // Ligger sist så att klass 2 fortfarande öppnas av de tre första klass 1-mästerskapen.
   { id: 'forsrallyt', name: 'Forsrallyt', legs: ['Näs', 'Rickleån', 'Valsfäboda'], pace: 0.945, tier: 1 },
