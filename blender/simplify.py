@@ -17,6 +17,9 @@ def simplify(obj, ratio):
     tål mindre. Bucklorna blir grövre veck på plana paneler, vilket räcker."""
     bm = bmesh.new()
     bm.from_mesh(obj.data)
+    # Kortaste diagonalen: decimeringens egen triangulering (beauty) ger strimmor på välvda rutor.
+    bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='SHORT_EDGE', ngon_method='EAR_CLIP')
+    bm.to_mesh(obj.data)
     lock = set()
     for e in bm.edges:
         fs = e.link_faces
