@@ -160,11 +160,17 @@ export class NoteCaller {
     if (this.next < 0) this.next = this.notes.length;
   }
 
-  /** Noter som ska läsas upp nu: ungefär tre sekunder före, minst 40 och högst 150 m. */
+  /**
+   * Noter som ska läsas upp nu: ungefär tre sekunder före (40–150 m), men fem sekunder före
+   * (60–250 m) för snäva kurvor (grad 1–2) som kräver lång inbromsning. Noter före en snäv kurva
+   * läses upp samtidigt, så ordningen behålls.
+   */
   update(s: number, speed: number): PaceNote[] {
-    const lead = Math.min(150, Math.max(40, speed * 3));
-    const out: PaceNote[] = [];
-    while (this.next < this.notes.length && this.notes[this.next]!.s - lead <= s) out.push(this.notes[this.next++]!);
+    const lead = (n: PaceNote) => (n.grade !== undefined && n.grade <= 2 ? Math.min(250, Math.max(60, speed * 5)) : Math.min(150, Math.max(40, speed * 3)));
+    let last = this.next;
+    for (let j = this.next; j < this.notes.length && this.notes[j]!.s - 250 <= s; j++) if (this.notes[j]!.s - lead(this.notes[j]!) <= s) last = j + 1;
+    const out = this.notes.slice(this.next, last);
+    this.next = last;
     return out;
   }
 

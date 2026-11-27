@@ -379,6 +379,10 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   caller.seek(1000);
   const firstAfter = caller.update(1000, 50)[0];
   check('pacenotes: hoppar fram vid teleport', !!firstAfter && firstAfter.s > 1000, `första ${firstAfter?.s.toFixed(0)} m`);
+  // Snäv kurva läses upp fem sekunder före, och noten före den följer med så ordningen håller.
+  const note = (kind: PaceNote['kind'], at: number, grade?: number): PaceNote => ({ kind, s: at, end: at, speech: { sv: '', en: '' }, label: '', grade });
+  const early = new NoteCaller([note('crest', 280), note('corner', 300, 2), note('corner', 400, 4)]).update(110, 40);
+  check('pacenotes: snäva kurvor läses upp tidigt', early.map((n) => n.s).join() === '280,300', `vid 110 m i 40 m/s: ${early.map((n) => n.s).join(', ')}`);
 }
 
 {
