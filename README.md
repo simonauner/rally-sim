@@ -132,7 +132,7 @@ tests/         fysiktester med förväntade intervall
 
 ### Bilar från Blender
 
-Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V och Kvarn 240 (GL och Turbo, samma modell) är modellerade i Blender i stället för byggda av en form i
+Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Kvarn 240 (GL och Turbo, samma modell), Ljung 1600 S och Ljung 2000 16V är modellerade i Blender i stället för byggda av en form i
 `src/render/bodies/`. `blender/<bil>/<bil>.blend` är källan (t.ex. `blender/soraTurbo/soraTurbo.blend`): redigera den i Blender och för över den till spelet med
 
 ```sh
@@ -155,6 +155,8 @@ början och skriver över den gamla. Byggskripten glesar ut karossen efter färg
 (färgkanter och skarpa kanter låses), så nätet håller sig nära formen med en tredjedel av trianglarna. Hoshins strålkastare är uppfällda (`popup…`).
 Kvarnens lyktor, grill och stötfångare är egna delar (`headlamp…`, `grille`, `bumper…`, `taillamp…`).
 Volpen har dessutom takspoiler, huvventiler och extraljus som egna delar (`spoiler`, `vents…`, `pod`).
+Ljungen har runda dubbla strålkastare och svarta plastbreddare runt hjulhusen (`flare…`). Ljung 2000 16V byggs av
+samma skript (`blender/ljung1600/build.py -- ljung2000`): samma kaross och hjulbas, breddad över kitcarens bredare spårvidd.
 
 ### Fysikens viktigaste val
 

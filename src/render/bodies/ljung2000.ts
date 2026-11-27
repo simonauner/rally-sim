@@ -1,32 +1,36 @@
 import type { BodyShape } from './shape';
 
-/** Ljung 2000 16V: liten tredörrars halvkombi: kort sluttande huv, lång dörr, nästan lodrät baklucka. */
+/**
+ * Ljung 2000 16V: Ljung 1600 S:s kaross och hjulbas, breddad över kitcarens bredare spårvidd. Karossen
+ * ritas av Blendermodellen (blender/ljung2000/, byggd av blender/ljung1600/build.py), så formen här används
+ * bara till skadezonerna, dekalerna, lyktornas sken och följer modellens mått.
+ */
 export const ljung2000: BodyShape = {
-  halfX: 0.825,
-  bottom: -0.3,
-  nose: 1.65,
-  tail: -2.07,
-  belt: 0.36,
-  roof: 0.86,
-  crease: 0.12,
-  screen: [0.62, 0.06],
-  backlight: [-2.0, -1.64],
-  hoodDrop: 0.11,
+  halfX: 0.851,
+  bottom: -0.227,
+  nose: 1.576,
+  tail: -2.044,
+  belt: 0.443,
+  roof: 0.862,
+  crease: 0.221,
+  screen: [0.478, -0.012],
+  backlight: [-1.945, -1.522],
+  hoodDrop: 0.19,
   trunkDrop: 0,
-  cabinHalfX: 0.71,
-  archY: -0.22,
-  archR: [0.36, 0.355],
-  doorSeams: [-0.66],
+  cabinHalfX: 0.74,
+  archY: -0.207,
+  archR: [0.335, 0.335],
+  doorSeams: [0.501, -0.652],
   sideGlass: [
-    [-0.6, Infinity],
-    [-Infinity, -0.7],
+    [-0.599, Infinity],
+    [-Infinity, -0.71],
   ],
-  doorHandles: [-0.52],
-  lampY: [0.0, 0.17],
-  grilleX: 0.33,
-  lampX: [0.37, 0.77],
-  tailY: [0.0, 0.2],
-  tailX: 0.38,
-  bumperY: [-0.13, -0.12],
+  doorHandles: [-0.498],
+  lampY: [0.04, 0.216],
+  grilleX: 0.312,
+  lampX: [0.33, 0.696],
+  tailY: [0.279, 0.465],
+  tailX: 0.56,
+  bumperY: [-0.06, 0.046],
   rearBumperDepth: 0.3,
 };

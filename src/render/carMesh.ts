@@ -185,6 +185,8 @@ const MODEL_LOADERS: Partial<Record<CarModel['body'], () => Promise<ModelData>>>
   kvarn240: () => import('./models/kvarn240').then((m) => m.kvarn240),
   kvarn240Turbo: () => import('./models/kvarn240').then((m) => m.kvarn240),
   volpeTurbo: () => import('./models/volpeTurbo').then((m) => m.volpeTurbo),
+  ljung1600: () => import('./models/ljung1600').then((m) => m.ljung1600),
+  ljung2000: () => import('./models/ljung2000').then((m) => m.ljung2000),
 };
 const MODELS: Partial<Record<CarModel['body'], ModelData>> = {};
 const loading: Partial<Record<CarModel['body'], Promise<void>>> = {};
