@@ -161,6 +161,16 @@ export interface BodyShape {
   tailX: number;
   bumperY: Range;
   rearBumperDepth: number;
+  /** Lådformade utbyggda hjulhus: hur långt (m) de sticker ut från sidan. */
+  flare?: number;
+  /** Fyra runda strålkastare i en svart panel i stället för rektangulära lyktor: [x, radie] per lykta och sida. */
+  roundLamps?: [number, number][];
+  /** Ventiler i motorhuven, lackade stötfångare och takspoiler. */
+  hoodVents?: boolean;
+  paintedBumpers?: boolean;
+  roofSpoiler?: boolean;
+  /** Vita fälgar med en tät ring av hål, som rallyfälgar, i stället för navkapslar. */
+  rallyRims?: boolean;
 }
 
 const SHAPES: Record<CarModel['body'], BodyShape> = {
@@ -224,6 +234,46 @@ const SHAPES: Record<CarModel['body'], BodyShape> = {
     tailX: 0.38,
     bumperY: [-0.13, -0.12],
     rearBumperDepth: 0.3,
+  },
+  // Kantig femdörrars halvkombi med lådformade hjulhus, fyra runda strålkastare och takspoiler.
+  hatch5: {
+    halfX: 0.8,
+    bottom: -0.3,
+    nose: 1.68,
+    tail: -2.05,
+    belt: 0.42,
+    roof: 0.86,
+    crease: 0.1,
+    screen: [0.64, 0.04],
+    backlight: [-2.0, -1.6],
+    hoodDrop: 0.08,
+    trunkDrop: 0,
+    cabinHalfX: 0.72,
+    archY: -0.21,
+    archR: [0.37, 0.37],
+    doorSeams: [-0.56, -1.42],
+    sideGlass: [
+      [-0.52, Infinity],
+      [-1.3, -0.6],
+      [-Infinity, -1.36],
+    ],
+    doorHandles: [-0.44, -1.28],
+    lampY: [0.04, 0.22],
+    grilleX: 0.34,
+    lampX: [0.36, 0.76],
+    tailY: [0.0, 0.24],
+    tailX: 0.5,
+    bumperY: [-0.11, -0.12],
+    rearBumperDepth: 0.3,
+    flare: 0.1,
+    roundLamps: [
+      [0.64, 0.088],
+      [0.46, 0.07],
+    ],
+    hoodVents: true,
+    paintedBumpers: true,
+    roofSpoiler: true,
+    rallyRims: true,
   },
   // Låg tvådörrars coupé: lång huv, kraftigt lutad vindruta, kort tak och kort bagagelucka.
   coupe: {
@@ -299,6 +349,18 @@ function buildBody(
     x *= 1 - 0.03 * clamp01((y - crease) / (belt - crease));
     pos.setXY(i, x, y);
   }
+  // Utbyggda hjulhus: sidan under en hylla strax under gördellinjen skjuts ut kring hjulen,
+  // med korta sluttande övergångar så de blir lådformade.
+  if (b.flare) {
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      if (Math.abs(x) < b.halfX - 0.12) continue;
+      const out = clamp01((belt - 0.06 - pos.getY(i)) / 0.04);
+      const along = Math.max(...wheelZ.map((zw, w) => clamp01((archR[w]! + 0.2 - Math.abs(pos.getZ(i) - zw)) / 0.05)));
+      const k = clamp01((Math.abs(x) - (b.halfX - 0.12)) / 0.12);
+      pos.setX(i, x + Math.sign(x) * b.flare * out * along * k);
+    }
+  }
   // Hjulhus: lyft plåten ytterst över hjulen upp till en båge, så hela hjulet syns.
   // Bara |x| > 0.5 lyfts, så kvarvarande plåt innanför bildar hjulhusets innervägg.
   for (let i = 0; i < pos.count; i++) {
@@ -335,7 +397,19 @@ function buildBody(
   const indicator = band(lampY[0], lampY[0] + 0.09).and(
     lampUnit.and(ax.greaterThan(lampX[0] + 0.6 * (lampX[1] - lampX[0]))).or(side.and(p.z.greaterThan(nose - 0.08))),
   );
-  const lamp = lampUnit.and(indicator.not());
+  let lamp = lampUnit.and(indicator.not());
+  let lampFrame = lampRim;
+  if (b.roundLamps) {
+    // Runda lyktor med kromring i en svart panel som går från grillen ut till hörnet.
+    const dist = ([x, r]: [number, number]) => ax.sub(x).mul(ax.sub(x)).add(p.y.sub((lampY[0] + lampY[1]) / 2).pow(2)).sqrt().div(r);
+    const near = (lim: number) => b.roundLamps!.map((l) => dist(l).lessThan(lim)).reduce((a, c) => a.or(c));
+    lamp = front.and(near(0.82));
+    lampFrame = front.and(near(1)).or(lampUnit);
+  }
+  // Ventilspringor i huven, ute vid kanterna så startnumret får plats emellan.
+  const vents = b.hoodVents
+    ? top.and(p.z.greaterThan(nose - 0.8)).and(p.z.lessThan(nose - 0.5)).and(ax.greaterThan(0.46)).and(ax.lessThan(0.66)).and(fract(p.z.mul(28)).lessThan(0.45))
+    : null;
 
   // Bak: höga lyktor som går runt hörnen, röd med blinkersband överst och backljus inåt.
   const tailZone = band(...tailY).and(rear.and(ax.greaterThan(b.tailX)).or(side.and(p.z.lessThan(tail + 0.14))));
@@ -361,7 +435,8 @@ function buildBody(
       .or(ax.sub(b.halfX - 0.05).abs().lessThan(0.006).and(p.z.greaterThan(screen[0]))),
   );
 
-  const painted = select(seam.or(lidSeam), color(paint.clone().multiplyScalar(0.72)), select(archLip, color(paint.clone().multiplyScalar(0.86)), color(paint)));
+  const shaded = select(seam.or(lidSeam), color(paint.clone().multiplyScalar(0.72)), select(archLip, color(paint.clone().multiplyScalar(0.86)), color(paint)));
+  const painted = vents ? select(vents, color(BLACK), shaded) : shaded;
   const trimmed = bodyDecals(select(stripChrome, color(CHROME), select(strip, color(DARK), painted)), p, side, b, decals, paint);
   const body = select(archs, color(BLACK), select(p.y.lessThan(bottom + 0.17), color(SILL), trimmed));
   const tailColor = select(tailReverse, color(REVERSE), select(tailAmber, color(AMBER), color(TAIL)));
@@ -375,7 +450,7 @@ function buildBody(
       select(
         indicator,
         color(AMBER),
-        select(lampRim, color(CHROME), select(tailZone, tailColor, select(plate, color(PLATE), body))),
+        select(lampFrame, b.roundLamps ? select(lampUnit.and(lamp.not()), color(BLACK), color(CHROME)) : color(CHROME), select(tailZone, tailColor, select(plate, color(PLATE), body))),
       ),
     ),
   );
@@ -446,12 +521,17 @@ function buildCabin(b: BodyShape, paint: THREE.Color, decals: THREE.Texture): De
 }
 
 /** Stor svart stötfångare med kromlist överst, som går runt hörnen. */
-function buildBumper(halfX: number, z: number, y: number, depth: number): DeformablePart {
+function buildBumper(halfX: number, z: number, y: number, depth: number, paint?: THREE.Color): DeformablePart {
   const g = roundedBox(2 * halfX + 0.08, 0.2, depth, [8, 3, 6], 0.05, [0, y, z]);
   g.computeVertexNormals();
   const mat = new THREE.MeshToonNodeMaterial();
   const h = positionGeometry.y.sub(y);
-  mat.colorNode = select(h.greaterThan(0.035).and(h.lessThan(0.055)), color(CHROME), color(BLACK));
+  // Lackad stötfångare: svart underkant och, fram, svarta luftintag med lameller.
+  const intake = abs(positionGeometry.x).lessThan(halfX - 0.2).and(h.lessThan(0.04)).and(h.greaterThan(-0.07));
+  const slat = fract(h.mul(45)).lessThan(0.3);
+  mat.colorNode = paint
+    ? select(h.lessThan(-0.075), color(BLACK), select(intake.and(positionGeometry.z.sub(z).mul(Math.sign(z)).greaterThan(depth / 2 - 0.03)), select(slat, color(DARK), color(BLACK)), color(paint)))
+    : select(h.greaterThan(0.035).and(h.lessThan(0.055)), color(CHROME), color(BLACK));
   return new DeformablePart(g, mat);
 }
 
@@ -496,7 +576,7 @@ function addLampPod(g: THREE.Group, b: BodyShape, lampGlow: LampGlow) {
   }
 }
 
-function buildDetails(b: BodyShape, wheelZ: Range): THREE.Group {
+function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Group {
   const g = new THREE.Group();
   const black = new THREE.MeshToonMaterial({ color: BLACK });
   const add = (w: number, h: number, l: number, x: number, y: number, z: number, m: THREE.Material, name = '') => {
@@ -507,6 +587,15 @@ function buildDetails(b: BodyShape, wheelZ: Range): THREE.Group {
     g.add(mesh);
   };
   add(0.5, 0.11, 0.02, 0, b.bumperY[0], b.nose + 0.11, new THREE.MeshToonMaterial({ color: PLATE }));
+  if (b.roofSpoiler) {
+    // Takspoiler över bakrutans överkant, lutad bakåt, på två fästen.
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(2 * b.cabinHalfX * 0.8, 0.025, 0.2), new THREE.MeshToonMaterial({ color: paint }));
+    lip.position.set(0, b.roof + 0.035, b.backlight[1] - 0.1);
+    lip.rotation.x = -0.25;
+    lip.castShadow = true;
+    g.add(lip);
+    for (const s of [1, -1]) add(0.03, 0.04, 0.1, s * 0.45, b.roof + 0.01, b.backlight[1] - 0.06, black);
+  }
   const mirrorZ = b.screen[0] - 0.12;
   for (const s of [1, -1]) {
     // Spegeln sitter på dörren i sidorutans främre hörn.
@@ -519,7 +608,7 @@ function buildDetails(b: BodyShape, wheelZ: Range): THREE.Group {
   return g;
 }
 
-function buildWheel(radius: number): THREE.Group {
+function buildWheel(radius: number, rally = false): THREE.Group {
   const g = new THREE.Group();
   const tyre = new THREE.Mesh(
     new THREE.CylinderGeometry(radius, radius, 0.22, 28).rotateZ(Math.PI / 2),
@@ -528,12 +617,14 @@ function buildWheel(radius: number): THREE.Group {
   // Släta navkapslar med en ring av korta slitsar, som visar rotationen.
   const cap = (r: number, w: number, c: number) =>
     new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 28).rotateZ(Math.PI / 2), new THREE.MeshToonMaterial({ color: c }));
-  g.add(tyre, cap(radius * 0.7, 0.232, 0xd6d6d6), cap(radius * 0.2, 0.24, 0xb4b4b4));
-  const slotMat = new THREE.MeshToonMaterial({ color: 0x6a6a6a });
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.236, radius * 0.2, 0.03), slotMat);
-    s.position.set(0, Math.cos(a) * radius * 0.47, Math.sin(a) * radius * 0.47);
+  g.add(tyre, cap(radius * (rally ? 0.72 : 0.7), 0.232, rally ? 0xf2f2ee : 0xd6d6d6), cap(radius * 0.2, 0.24, 0xb4b4b4));
+  // Rallyfälgen: tät ring av smala hål nära kanten, så den liknar en ekrad fälg.
+  const slotMat = new THREE.MeshToonMaterial({ color: rally ? 0x2a2a2a : 0x6a6a6a });
+  const [count, at, len] = rally ? [20, 0.52, 0.32] : [10, 0.47, 0.2];
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.236, radius * len, rally ? 0.018 : 0.03), slotMat);
+    s.position.set(0, Math.cos(a) * radius * at, Math.sin(a) * radius * at);
     s.rotation.x = -a;
     g.add(s);
   }
@@ -582,11 +673,11 @@ export class CarMesh {
     this.parts = [
       buildBody(b, wheelZ, c, this.lampGlow, this.tailGlow, decals),
       buildCabin(b, c, decals),
-      buildBumper(b.halfX, b.nose + 0.1 - front / 2, b.bumperY[0], front),
-      buildBumper(b.halfX, b.tail - 0.09 + b.rearBumperDepth / 2, b.bumperY[1], b.rearBumperDepth),
+      buildBumper(b.halfX + (b.flare ?? 0), b.nose + 0.1 - front / 2, b.bumperY[0], front, b.paintedBumpers ? c : undefined),
+      buildBumper(b.halfX + (b.flare ?? 0), b.tail - 0.09 + b.rearBumperDepth / 2, b.bumperY[1], b.rearBumperDepth, b.paintedBumpers ? c : undefined),
     ];
     this.parts.forEach((p) => this.group.add(p.mesh));
-    this.detailGroup = buildDetails(b, wheelZ);
+    this.detailGroup = buildDetails(b, wheelZ, c);
     if (tierOf(car.params.name) === 2) addLampPod(this.detailGroup, b, this.lampGlow);
     this.group.add(this.detailGroup);
     this.details = (this.detailGroup.children as THREE.Mesh[]).map((mesh) => ({
@@ -612,7 +703,7 @@ export class CarMesh {
       this.group.add(spot, spot.target, bumper, bumper.target);
     });
     for (let i = 0; i < 4; i++) {
-      const w = buildWheel(car.params.wheelRadius);
+      const w = buildWheel(car.params.wheelRadius, b.rallyRims);
       this.wheels.push(w);
     }
   }

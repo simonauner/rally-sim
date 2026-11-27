@@ -476,7 +476,8 @@ export function volpeTurbo(): CarParams {
     body: { halfX: 0.88, halfZ: 1.95, bottomY: -0.3, topY: 0.92 },
     susp: { ...p.susp, kFront: 34000, kRear: 32000, arbFront: 12000, arbRear: 14000 },
     steer: { ...p.steer, rate: 2.2, centerRate: 3.6 },
-    frontShare: 0.35,
+    // 47/53 som i förebilden: epicyklisk mittdiff med viskokoppling.
+    frontShare: 0.47,
     centerDiff: { lock: 0.45, preload: 90 },
     engine: {
       ...p.engine,
@@ -604,7 +605,7 @@ export interface Sponsor {
 export interface CarModel {
   make: () => CarParams;
   /** Karossform för renderingen. */
-  body: 'sedan' | 'hatch' | 'coupe';
+  body: 'sedan' | 'hatch' | 'hatch5' | 'coupe';
   /** En rad om bilen i bilväljaren. */
   blurb: string;
   /** Lackfärg. */
@@ -655,8 +656,8 @@ export const CARS: CarModel[] = [
   },
   {
     make: volpeTurbo,
-    body: 'hatch',
-    paint: 0x8c1c2c,
+    body: 'hatch5',
+    paint: 0xc8141c,
     blurb: 'Kantig italiensk halvkombi med kort hjulbas och mer moment bak. Vrider sig villigt, men nervös på krön.',
   },
   {
