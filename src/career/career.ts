@@ -20,6 +20,11 @@ export const CAR_PRICES: Record<string, number> = {
   'Ljung 2000 16V': 30000,
   'Strand 2.0 GT': 38000,
   'Kvarn Turbo 4x4': 50000,
+  'Brenner 5T Coupé': 45000,
+  'Sora 2.0 Turbo': 52000,
+  'Hoshi 2.0 4WD': 55000,
+  'Volpe 2.0 Turbo 16V': 60000,
+  'Arashi 2.0 RS': 65000,
 };
 
 /**
@@ -27,7 +32,16 @@ export const CAR_PRICES: Record<string, number> = {
  * när alla mästerskap i klass 1 är vunna. Bilar som saknas här räknas som klass 1.
  */
 export type Tier = 1 | 2;
-const CAR_TIERS: Record<string, Tier> = { 'Ljung 2000 16V': 2, 'Strand 2.0 GT': 2, 'Kvarn Turbo 4x4': 2 };
+const CAR_TIERS: Record<string, Tier> = {
+  'Ljung 2000 16V': 2,
+  'Strand 2.0 GT': 2,
+  'Kvarn Turbo 4x4': 2,
+  'Hoshi 2.0 4WD': 2,
+  'Volpe 2.0 Turbo 16V': 2,
+  'Brenner 5T Coupé': 2,
+  'Sora 2.0 Turbo': 2,
+  'Arashi 2.0 RS': 2,
+};
 export const tierOf = (car: string): Tier => CAR_TIERS[car] ?? 1;
 
 /**

@@ -177,7 +177,7 @@ const CAR = 'Kvarn 240 GL';
   check('forsrallyt: öppnas av vinterrallyt', !championshipUnlocked(almost, fors) && championshipUnlocked(firstThree, fors) && tierUnlocked(firstThree, 2), `${tier1.length} mästerskap i klass 1`);
   check('klass 2: upplåsning', !tierUnlocked(almost, 2) && tierUnlocked(allOne, 2) && tierUnlocked(newCareer(), 1) && openTwo(almost) === '000' && openTwo(allOne) === '100' && openTwo(withWin(allOne, tier2[0]!)) === '110', `${openTwo(almost)} → ${openTwo(allOne)}`);
   const names = CARS.map((m) => m.make().name);
-  check('klass 2: tre bilar', names.filter((n) => tierOf(n) === 2).length === 3 && names.every((n) => tierOf(n) === 1 || tierOf(n) === 2), names.map((n) => `${n} ${tierOf(n)}`).join(', '));
+  check('klass 2: åtta bilar', names.filter((n) => tierOf(n) === 2).length === 8 && names.every((n) => tierOf(n) === 1 || tierOf(n) === 2), names.map((n) => `${n} ${tierOf(n)}`).join(', '));
   const T2 = 'Kvarn Turbo 4x4';
   const rich = buyCar(buyCar({ ...newCareer(), money: 200_000 }, T2) as ReturnType<typeof newCareer>, CAR) as ReturnType<typeof newCareer>;
   const own = upgradesFor(T2).map((u) => u.id);

@@ -95,7 +95,7 @@ for (const m of CARS) {
   const two = specs.filter((x) => x.tier === 2);
   const slowestTwo = Math.max(...two.map((x) => x.s.zeroTo100));
   const fastestOne = Math.min(...specs.filter((x) => x.tier === 1).map((x) => x.s.zeroTo100));
-  check('klass 2: steg upp', two.length === 3 && two.every((x) => x.kgHp > 4 && x.kgHp < 5) && slowestTwo < fastestOne - 1, two.map((x) => `${x.name} ${x.kgHp.toFixed(1)} kg/hk, ${x.s.zeroTo100.toFixed(1)} s`).join(' · '));
+  check('klass 2: steg upp', two.length === 8 && two.every((x) => x.kgHp > 4 && x.kgHp < 5) && slowestTwo < fastestOne - 1, two.map((x) => `${x.name} ${x.kgHp.toFixed(1)} kg/hk, ${x.s.zeroTo100.toFixed(1)} s`).join(' · '));
 }
 
 // Mittdiffen: grundfördelningen när axlarna går lika fort, och mer moment bak när framaxeln spinner.

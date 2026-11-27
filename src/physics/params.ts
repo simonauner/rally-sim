@@ -410,6 +410,190 @@ export function kvarnTurbo4x4(): CarParams {
   };
 }
 
+/** Fyra hjul med samma fästhöjd; z räknas från tyngdpunkten. */
+const wheelsAt = (y: number, xF: number, xR: number, zF: number, zR: number): WheelDef[] => [
+  { mount: [xF, y, zF], front: true, left: true },
+  { mount: [-xF, y, zF], front: true, left: false },
+  { mount: [xR, y, zR], front: false, left: true },
+  { mount: [-xR, y, zR], front: false, left: false },
+];
+
+/**
+ * Klass 2: en fiktiv japansk halvkombi med fyrhjulsdrift och tvåliters turbo. Lätt och neutral,
+ * den mest lättkörda fyrhjulsdrivna bilen: snäll mittdiff och jämn momentkurva.
+ */
+export function hoshi4wd(): CarParams {
+  const p = kvarnTurbo4x4();
+  const mass = 1200;
+  const R = 0.31;
+  const cg = 0.5;
+  const wheelbase = 2.5;
+  return {
+    ...p,
+    name: 'Hoshi 2.0 4WD',
+    mass,
+    inertia: boxInertia(mass, 4.1, 1.77, 1.38, 0.78),
+    cgHeight: cg,
+    wheelRadius: R,
+    wheelbase,
+    trackFront: 1.5,
+    wheels: wheelsAt(R - cg + 0.125, 0.75, 0.75, wheelbase * 0.42, -wheelbase * 0.58),
+    body: { halfX: 0.88, halfZ: 2.02, bottomY: -0.3, topY: 0.88 },
+    susp: { ...p.susp, kFront: 32000, kRear: 29000, arbFront: 13000, arbRear: 12000 },
+    frontShare: 0.45,
+    centerDiff: { lock: 0.4, preload: 80 },
+    engine: {
+      ...p.engine,
+      limiterRpm: 7000,
+      curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 7400],
+      curveNm: [110, 140, 200, 280, 330, 345, 350, 330, 270, 210],
+      launchRpm: 4800,
+    },
+    gauges: { rpmMax: 8000, rpmRed: 7000, speedMin: 20, speedMax: 220 },
+  };
+}
+
+/**
+ * Klass 2: en fiktiv italiensk kantig halvkombi med fyrhjulsdrift, kort hjulbas och mer moment bak.
+ * Vrider sig villigt in i kurvorna men är nervös på krön; för den som vill sladda med fyra hjul.
+ */
+export function volpeTurbo(): CarParams {
+  const p = kvarnTurbo4x4();
+  const mass = 1200;
+  const R = 0.31;
+  const cg = 0.52;
+  const wheelbase = 2.48;
+  return {
+    ...p,
+    name: 'Volpe 2.0 Turbo 16V',
+    mass,
+    inertia: boxInertia(mass, 3.9, 1.77, 1.4, 0.75),
+    cgHeight: cg,
+    wheelRadius: R,
+    wheelbase,
+    trackFront: 1.5,
+    wheels: wheelsAt(R - cg + 0.125, 0.75, 0.76, wheelbase * 0.43, -wheelbase * 0.57),
+    body: { halfX: 0.88, halfZ: 1.95, bottomY: -0.3, topY: 0.92 },
+    susp: { ...p.susp, kFront: 34000, kRear: 32000, arbFront: 12000, arbRear: 14000 },
+    steer: { ...p.steer, rate: 2.2, centerRate: 3.6 },
+    frontShare: 0.35,
+    centerDiff: { lock: 0.45, preload: 90 },
+    engine: {
+      ...p.engine,
+      curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
+      curveNm: [105, 130, 190, 280, 340, 360, 360, 330, 270, 210],
+    },
+  };
+}
+
+/**
+ * Klass 2: en fiktiv tysk coupé från början av 80-talet med femcylindrig turbo långt fram och
+ * fyrhjulsdrift med nästan låst mittdiff. Massor av effekt efter ett stort turbohål, men tung nos
+ * som understyr; bromsa tidigt och gasa sent.
+ */
+export function brenner5t(): CarParams {
+  const p = kvarnTurbo4x4();
+  const mass = 1250;
+  const R = 0.31;
+  const cg = 0.53;
+  const wheelbase = 2.52;
+  return {
+    ...p,
+    name: 'Brenner 5T Coupé',
+    mass,
+    inertia: boxInertia(mass, 4.4, 1.73, 1.35, 0.85),
+    cgHeight: cg,
+    wheelRadius: R,
+    wheelbase,
+    trackFront: 1.46,
+    // Motorn hänger framför framaxeln: 58 % av vikten fram.
+    wheels: wheelsAt(R - cg + 0.125, 0.73, 0.74, wheelbase * 0.42, -wheelbase * 0.58),
+    body: { halfX: 0.86, halfZ: 2.2, bottomY: -0.29, topY: 0.8 },
+    susp: { ...p.susp, kFront: 36000, kRear: 28000, arbFront: 17000, arbRear: 9000 },
+    brake: { ...p.brake, bias: 0.66 },
+    steer: { ...p.steer, rate: 1.9, centerRate: 3.3 },
+    frontShare: 0.5,
+    centerDiff: { lock: 0.8, preload: 150 },
+    engine: {
+      ...p.engine,
+      idleRpm: 900,
+      limiterRpm: 7000,
+      curveRpm: [900, 1500, 2500, 3500, 4000, 4500, 5500, 6500, 7000, 7400],
+      curveNm: [100, 115, 140, 200, 310, 360, 370, 330, 275, 210],
+      inertia: 0.22,
+      launchRpm: 5000,
+    },
+    gearbox: { ...p.gearbox, ratios: [3.0, 2.0, 1.5, 1.18, 0.95], final: 4.4, shiftTime: 0.2 },
+    gauges: { rpmMax: 8000, rpmRed: 7000, speedMin: 20, speedMax: 240 },
+  };
+}
+
+/**
+ * Klass 2: en fiktiv japansk sedan med boxermotor, låg tyngdpunkt och mjuk fjädring. Stabil och
+ * förlåtande över ojämnheter, och drar jämnt ur kurvorna.
+ */
+export function soraTurbo(): CarParams {
+  const p = kvarnTurbo4x4();
+  const mass = 1230;
+  const R = 0.31;
+  const cg = 0.47;
+  const wheelbase = 2.52;
+  return {
+    ...p,
+    name: 'Sora 2.0 Turbo',
+    mass,
+    inertia: boxInertia(mass, 4.35, 1.74, 1.4, 0.8),
+    cgHeight: cg,
+    wheelRadius: R,
+    wheelbase,
+    trackFront: 1.48,
+    wheels: wheelsAt(R - cg + 0.125, 0.74, 0.74, wheelbase * 0.44, -wheelbase * 0.56),
+    body: { halfX: 0.87, halfZ: 2.17, bottomY: -0.3, topY: 0.9 },
+    susp: { ...p.susp, kFront: 30000, kRear: 27000, bump: 2500, rebound: 4000, arbFront: 13000, arbRear: 11000 },
+    frontShare: 0.5,
+    centerDiff: { lock: 0.5, preload: 100 },
+    engine: {
+      ...p.engine,
+      curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
+      curveNm: [115, 150, 230, 310, 345, 355, 355, 330, 275, 215],
+    },
+  };
+}
+
+/**
+ * Klass 2: en fiktiv japansk sedan med fyrhjulsdrift, mest moment i klassen och hårt låsta diffar.
+ * Vass: lyfter du av gasen i en kurva kommer bakvagnen.
+ */
+export function arashiRs(): CarParams {
+  const p = kvarnTurbo4x4();
+  const mass = 1240;
+  const R = 0.31;
+  const cg = 0.5;
+  const wheelbase = 2.51;
+  return {
+    ...p,
+    name: 'Arashi 2.0 RS',
+    mass,
+    inertia: boxInertia(mass, 4.35, 1.77, 1.42, 0.78),
+    cgHeight: cg,
+    wheelRadius: R,
+    wheelbase,
+    trackFront: 1.51,
+    wheels: wheelsAt(R - cg + 0.125, 0.755, 0.755, wheelbase * 0.43, -wheelbase * 0.57),
+    body: { halfX: 0.88, halfZ: 2.18, bottomY: -0.3, topY: 0.9 },
+    susp: { ...p.susp, kFront: 35000, kRear: 33000, arbFront: 14000, arbRear: 15000 },
+    steer: { ...p.steer, rate: 2.2, centerRate: 3.6 },
+    diff: { lock: 0.55, preload: 80 },
+    frontShare: 0.38,
+    centerDiff: { lock: 0.55, preload: 110 },
+    engine: {
+      ...p.engine,
+      curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
+      curveNm: [110, 140, 220, 320, 370, 385, 380, 345, 285, 220],
+    },
+  };
+}
+
 /** En dekal på karossen: fiktivt namn, textfärg och eventuell bakgrund (CSS-färger). */
 export interface Sponsor {
   name: string;
@@ -462,5 +646,35 @@ export const CARS: CarModel[] = [
     body: 'sedan',
     paint: 0x1a1a1e,
     blurb: 'Fyrhjulsdriven turbosedan i Grupp A-stil. Mest effekt och grepp, men tung och seg under 3 000 rpm.',
+  },
+  {
+    make: hoshi4wd,
+    body: 'hatch',
+    paint: 0xd23a1e,
+    blurb: 'Fyrhjulsdriven japansk halvkombi med turbo. Lätt, neutral och den snällaste fyrhjulsdrivna bilen.',
+  },
+  {
+    make: volpeTurbo,
+    body: 'hatch',
+    paint: 0x8c1c2c,
+    blurb: 'Kantig italiensk halvkombi med kort hjulbas och mer moment bak. Vrider sig villigt, men nervös på krön.',
+  },
+  {
+    make: brenner5t,
+    body: 'coupe',
+    paint: 0xd8d4c8,
+    blurb: 'Femcylindrig turbocoupé med motorn långt fram och låst mittdiff. Stort turbohål och tung nos som understyr.',
+  },
+  {
+    make: soraTurbo,
+    body: 'sedan',
+    paint: 0x2a4fa8,
+    blurb: 'Boxersedan med låg tyngdpunkt och mjuk fjädring. Stabil över ojämnheter och drar jämnt ur kurvorna.',
+  },
+  {
+    make: arashiRs,
+    body: 'sedan',
+    paint: 0x8f9399,
+    blurb: 'Mest moment i klassen och hårt låsta diffar. Vass: bakvagnen kommer om du lyfter av gasen i kurvan.',
   },
 ];
