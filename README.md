@@ -147,7 +147,8 @@ heter `rim` är bara fälgen och sätts i ett ihåligt däck. Färgen väljs per
 `shell.py` (karossen, lyktorna och panelerna), `parts.py` (vinge, avgassystem, hjul och övriga detaljer)
 och `common.py` (mått, material och nätverktyg). Samlingen
 *Reference* (hjul och mark) exporteras inte. `blender/<bil>/build.py` bygger en ny .blend från
-början och skriver över den gamla. Hoshins strålkastare är uppfällda (`popup…`).
+början och skriver över den gamla. Byggskripten glesar ut karossen efter färgsättningen med `blender/simplify.py`
+(färgkanter och skarpa kanter låses), så nätet håller sig nära formen med en tredjedel av trianglarna. Hoshins strålkastare är uppfällda (`popup…`).
 Kvarnens lyktor, grill och stötfångare är egna delar (`headlamp…`, `grille`, `bumper…`, `taillamp…`).
 Volpen har dessutom takspoiler, huvventiler och extraljus som egna delar (`spoiler`, `vents…`, `pod`).
 
