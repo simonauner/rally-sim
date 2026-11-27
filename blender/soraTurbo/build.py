@@ -56,7 +56,12 @@ def main():
     body = shell.build_body()
     shell.cut_planes(body)
     shell.assign_materials(body, shell.face_material)
-    objs = [body, *shell.lamps(body), *shell.panels(body), *parts.details()]
+    lamps = shell.lamps(body)
+    panels = shell.panels(body)
+    for obj in [body, *panels]:
+        shell.flare(obj)
+    shell.body_side(body)
+    objs = [body, *lamps, *panels, *parts.details()]
     for obj in objs:
         for c in obj.users_collection:
             c.objects.unlink(obj)

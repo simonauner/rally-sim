@@ -264,6 +264,10 @@ SEAM_W = 0.012
 DOOR_SEAMS = (0.78, -0.68)
 BUMPER_SEAM = {'front': 0.03, 'rear': 0.155}
 SIDE_ZONE = lambda c: abs(c[0]) > 0.7 and -0.3 < c[1] < 0.47  # noqa: E731
+# Sidan: en svag linje längs dörrarna och skärmarna, och tröskeln (sidokjolen) under dörrarna.
+CREASE_Y, SKIRT_Y = 0.2, -0.17
+# Utbuktningen runt hjulhusen: en ring från hjulhusets kant och FLARE_W utåt.
+ARCH_R, FLARE_W, FLARE_OUT = 0.375, 0.11, 0.022
 # Bakluckans skarvar: längs ovansidan och ner mellan lyktorna och luckan till stötfångaren.
 LID_X = (0.62, 0.39)
 DECK_ZONE = lambda c: c[2] < -1.5 and c[1] > 0.15  # noqa: E731
@@ -279,7 +283,7 @@ CUTS = [
      + [TAIL_TOP, plane(0.111, 1, 0, 0.2556)]),
     (CABIN_ZONE, [BELT, A_LINE, C_LINE, Y(ROOF_EDGE), Y(BACKLIGHT_Y), Z(DOOR_FRONT), Z(QUARTER_REAR), *(Z(v) for v in B_PILLAR),
                   SCREEN_SIDE, plane(-0.45, 0.09, 0, 0.3105), *mirrored(BACKLIGHT_X)]),
-    (SIDE_ZONE, [Z(v + d) for v in DOOR_SEAMS for d in (-SEAM_W / 2, SEAM_W / 2)]),
+    (SIDE_ZONE, [Z(v + d) for v in DOOR_SEAMS for d in (-SEAM_W / 2, SEAM_W / 2)] + [Y(CREASE_Y), Y(CREASE_Y + 0.008), Y(SKIRT_Y)]),
     (FRONT_ZONE, [Y(BUMPER_SEAM['front'] + d) for d in (0, SEAM_W)]),
     (REAR_ZONE, [Y(BUMPER_SEAM['rear'] + d) for d in (0, SEAM_W)]),
     (DECK_ZONE, [p for v in LID_X for d in (0, SEAM_W) for p in mirrored(v + d)]),
@@ -319,6 +323,11 @@ def pane_material(p, n):
     if QUARTER_REAR <= z <= B_PILLAR[0]:
         return M['paint'] if above(p, C_LINE) else M['glass']
     return M['black'] if z > B_PILLAR[0] else M['paint']
+
+
+def arch_distance(z, y):
+    """Avståndet från närmaste hjulhus centrum, sett från sidan."""
+    return min(math.hypot(z - zw, y - yw - 0.035) for zw, yw in WHEELS)
 
 
 def face_material(p, n):
@@ -366,6 +375,8 @@ def face_material(p, n):
         if y < REAR_LIP_Y and n.z < -0.25:
             return M['black']
     if SIDE_ZONE(p) and y > -0.22 and any(abs(z - v) < SEAM_W / 2 for v in DOOR_SEAMS):
+        return M['shade']
+    if SIDE_ZONE(p) and abs(n.x) > 0.6 and CREASE_Y < y < CREASE_Y + 0.008 and arch_distance(z, y) > ARCH_R + FLARE_W:
         return M['shade']
     if DECK_ZONE(p) and y > BUMPER_SEAM['rear']:
         lid = LID_X[0] if n.y > 0.5 else LID_X[1] if n.z < -0.5 else None
@@ -552,7 +563,7 @@ def is_door(s):
         if x * s < 0.55 or abs(n.x) < 0.35:
             return False
         if y < belt_y(z):
-            return -0.26 < y and DOOR_SEAMS[1] < z < DOOR_SEAMS[0]
+            return SKIRT_Y < y and DOOR_SEAMS[1] < z < DOOR_SEAMS[0]
         # Ramlös dörruta: från B-stolpen fram till A-stolpen, under takets list.
         return y < ROOF_EDGE and B_PILLAR[1] < z < DOOR_SEAMS[0] and not above(c, A_LINE)
 
@@ -618,3 +629,67 @@ def panels(body):
         and (abs(c[0]) < LID_X[1] or (abs(c[0]) < LID_X[0] and n.y > 0.5)),
     )
     return parts + [front, rear, lid]
+
+
+# --- Sidan: utbuktade hjulhus, tröskel, sidoblinkers och tanklock ---------------------------
+
+
+def flare(obj):
+    """Skärmarna buktar ut runt hjulhusen: plåten närmast hålet förskjuts utåt och planar ut mot
+    FLARE_W, så kanten mot hålet blir en tydlig läpp. Förskjutningen räknas per hörn ur läget, så den
+    blir lika i alla delar (skärm, dörr, stötfångare) och skarvarna möts."""
+    mw = obj.matrix_world
+
+    def densify(bm, info):
+        # Glest nät ger spetsiga trianglar när bara några hörn flyttas: dela kanterna kring hjulhusen.
+        for _ in range(2):
+            near = []
+            for e in bm.edges:
+                if e.calc_length() < 0.035:
+                    continue
+                x, y, z = to_car(mw @ ((e.verts[0].co + e.verts[1].co) / 2))
+                if abs(x) > 0.55 and y < 0.32 and arch_distance(z, y) < ARCH_R + FLARE_W + 0.05:
+                    near.append(e)
+            bmesh.ops.subdivide_edges(bm, edges=near, cuts=1, use_grid_fill=True)
+            bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
+
+    edit(obj, densify)
+    inv = mw.inverted()
+    for v in obj.data.vertices:
+        x, y, z = to_car(mw @ v.co)
+        if abs(x) < 0.6 or y > 0.3:
+            continue
+        d = arch_distance(z, y) - ARCH_R
+        if d < -0.01 or d > FLARE_W:
+            continue
+        k = (1 - clamp01(d / FLARE_W)) ** 1.5 * clamp01((abs(x) - 0.6) / 0.15)
+        p = to_blender(x + math.copysign(FLARE_OUT * k, x), y, z)
+        v.co = inv @ p
+
+
+def surface_x(bm, s, y, z):
+    """Plåtens x vid (y, z) på sidan s, från närmaste hörn."""
+    target = Vector(to_blender(s * 0.84, y, z))
+    return to_car(min(bm.verts, key=lambda v: (v.co - target).length).co)[0]
+
+
+def body_side(body):
+    """Tröskeln sticker ut lite mellan hjulen, en orange sidoblinkers sitter på framskärmen bakom
+    hjulhuset och tanklocket på höger bakskärm."""
+    front_arch, rear_arch = WHEELS[0][0] - ARCH_R - FLARE_W, WHEELS[1][0] + ARCH_R + FLARE_W
+
+    def fn(bm, info):
+        for s in (1, -1):
+            skirt = []
+            for f in bm.faces:
+                c, n, m = info(f)
+                if c[0] * s > 0.6 and n.x * s > 0.6 and -0.31 < c[1] < SKIRT_Y and rear_arch < c[2] < front_arch:
+                    skirt.append(f)
+            push(bm, skirt, (s * 0.014, 0, 0), wall='shade')
+            x = surface_x(bm, s, 0.25, 0.9)
+            box(bm, (x + s * 0.002, 0.25, 0.9), (0.006, 0.034, 0.08), 'black')
+            box(bm, (x + s * 0.005, 0.25, 0.9), (0.004, 0.024, 0.066), 'amber')
+        x = surface_x(bm, -1, 0.33, -1.17)
+        box(bm, (x - 0.002, 0.33, -1.17), (0.004, 0.11, 0.12), 'paint', side_mat='shade')
+
+    edit(body, fn)

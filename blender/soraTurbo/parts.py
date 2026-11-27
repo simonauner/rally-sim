@@ -163,15 +163,27 @@ def simple(name, at, parts):
     return new_object(name, bm, at)
 
 
+def mirror(s, side):
+    """Strömlinjeformad spegel: en svart trekantsplatta i sidorutans främre hörn, en kort lackad arm och
+    ett kåpa som växer utåt, med svart glas bakåt. Origo i plattan."""
+    bm = bmesh.new()
+    sail = [(0.08, -0.03), (-0.06, -0.03), (-0.06, 0.09)]
+    prism(bm, sail, 0, s * 0.02, 'black')
+    box(bm, (s * 0.045, 0.02, -0.03), (0.05, 0.025, 0.045), 'paint')
+
+    def end(x, y0, y1, z0, z1):
+        return [(s * x, y0, z0), (s * x, y1, z0), (s * x, y1, z1), (s * x, y0, z1)]
+
+    # Kåpan: smalare inåt, större utåt; framsidan lackad, glaset en tunn svart skiva bakom.
+    hexa(bm, end(0.065, -0.025, 0.055, -0.075, 0.02) + end(0.2, -0.035, 0.065, -0.07, 0.035), 'paint')
+    hexa(bm, end(0.075, -0.02, 0.05, -0.08, -0.074) + end(0.19, -0.028, 0.058, -0.075, -0.069), 'black')
+    return new_object(f'mirror_{side}', bm, (s * 0.78, 0.5, 0.44))
+
+
 def details():
     objs = [wing(), exhaust(), wheel()]
     for s, side in ((1, 'L'), (-1, 'R')):
-        # Lackad spegel på en kort fot från dörrens framkant, med svart glas bakåt.
-        objs.append(simple(f'mirror_{side}', (s * 0.8, 0.52, 0.43), [
-            ((s * 0.03, 0.02, 0), (0.15, 0.09, 0.09), 'paint'),
-            ((s * 0.03, 0.02, -0.046), (0.13, 0.072, 0.004), 'black'),
-            ((-s * 0.05, -0.01, 0.01), (0.08, 0.03, 0.05), 'paint'),
-        ]))
+        objs.append(mirror(s, side))
         for zw, nm in ((WHEELS[0][0], 'F'), (WHEELS[1][0], 'R')):
             objs.append(simple(f'flap_{nm}{side}', (s * 0.715, -0.39, zw - 0.46), [((0, 0, 0), (0.2, 0.16, 0.015), 'black')]))
     # Upphöjt intag till laddluftkylaren på huven, med svart öppning framåt.
