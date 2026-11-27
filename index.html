@@ -60,6 +60,9 @@
       #menu button.flipped { align-items: center; background: #1b1b1b; color: #fff; border-color: #1b1b1b; animation: flip 0.22s ease-out; }
       #menu button.unflip { animation: flip 0.22s ease-out; }
       @keyframes flip { from { transform: perspective(600px) rotateX(-90deg); } }
+      /* Låst val: raden skakar på huvudet. */
+      #menu button.shake { animation: shake 0.45s ease-in-out; }
+      @keyframes shake { 15% { transform: translateX(-7px); } 35% { transform: translateX(6px); } 55% { transform: translateX(-4px); } 75% { transform: translateX(2px); } }
       #menu button.flipped .choices { display: flex; gap: 6px; }
       #menu button.flipped .choices b { padding: 2px 12px; border: 2px solid #fff6; border-radius: 6px; font-weight: 600; }
       #menu button.flipped .choices b.on { background: #fff; color: #1b1b1b; border-color: #fff; }

@@ -13,7 +13,10 @@ export interface MenuItem<T> {
   value: T;
   /** Sant om valet inte går, t.ex. för lite pengar: då låter det duh-duh i stället för klick. Läses vid klicket. */
   denied?: () => boolean;
-  /** Låst: grå text med hänglås, och duh-duh vid klick om inte denied säger annat. Värdet returneras ändå. */
+  /**
+   * Låst: grå text med hänglås. Utan denied skakar raden på huvudet med duh-duh och menyn står kvar med
+   * markeringen på raden; med denied gäller den, och värdet returneras som vanligt.
+   */
   locked?: boolean;
   /** Frågan när raden vänds för att bekräftas, t.ex. vid köp. Läses vid klicket; Ja ger värdet, Nej vänder tillbaka. */
   confirm?: () => string;
@@ -192,6 +195,18 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     const done = (value: T, item?: MenuItem<T>) => {
       if (closing) return;
       const denied = item?.denied ? item.denied() : item?.locked;
+      if (item?.locked && !item.denied) {
+        const i = opts.items.indexOf(item);
+        select(i);
+        blip(220, 0.14);
+        blip(165, 0.22, 0.17);
+        // Starta om skakningen även om den redan pågår.
+        const b = buttons[i]!;
+        b.classList.remove('shake');
+        void b.offsetWidth;
+        b.classList.add('shake');
+        return;
+      }
       // Första valet av en rad som ska bekräftas vänder den i stället för att välja.
       if (item?.confirm && !denied && flipped?.i !== opts.items.indexOf(item)) {
         flip(opts.items.indexOf(item), item.confirm());
