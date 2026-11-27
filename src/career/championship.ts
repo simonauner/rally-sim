@@ -118,6 +118,11 @@ export interface ChampionshipProgress {
 /** Fältets takt per svårighetsgrad, som faktor på mästerskapets grundtakt (lägre = snabbare). */
 export const DIFFICULTY_PACE = { easy: 1, medium: 0.97, hard: 0.94 } as const;
 export type Difficulty = keyof typeof DIFFICULTY_PACE;
+/** Medaljpengarna per svårighetsgrad: svårare fält ger mer, lättare mindre (Skogsrallyt: 15 500 / 20 500 / 25 500). */
+export const DIFFICULTY_PRIZE: Record<Difficulty, number> = { easy: 0.75, medium: 1, hard: 1.25 };
+/** Svårighetsgraden mästerskapet startades med; framsteg sparade före den räknas som lätt. */
+export const difficultyOf = (p: ChampionshipProgress) =>
+  (Object.keys(DIFFICULTY_PACE) as Difficulty[]).find((k) => DIFFICULTY_PACE[k] === (p.difficulty ?? 1))!;
 
 /** Prispengar per kilometer och placering: betydligt mer än för enstaka etapper. */
 const CHAMPIONSHIP_MEDALS = [
@@ -131,8 +136,11 @@ export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
 export const championshipKm = (def: ChampionshipDef) => def.legs.reduce((sum, leg) => sum + (STAGE_LENGTHS[leg] ?? 0), 0) / 1000;
 
 /** Medaljerna med prispengar som växer med sträckan, så att långa mästerskap bär sina reparationer. */
-export const championshipMedals = (def: ChampionshipDef) =>
-  CHAMPIONSHIP_MEDALS.map((m) => ({ name: m.name, prize: Math.round((m.prize * championshipKm(def)) / 500) * 500 * TIER_PRIZE[def.tier] }));
+export const championshipMedals = (def: ChampionshipDef, difficulty: Difficulty) =>
+  CHAMPIONSHIP_MEDALS.map((m) => ({
+    name: m.name,
+    prize: Math.round((m.prize * championshipKm(def) * DIFFICULTY_PRIZE[difficulty]) / 500) * 500 * TIER_PRIZE[def.tier],
+  }));
 
 export const championshipById = (id: string) => CHAMPIONSHIPS.find((c) => c.id === id) ?? null;
 
@@ -144,8 +152,8 @@ export function championshipTargets(def: ChampionshipDef): [number, number, numb
 }
 
 /** Prispengarna efter placering i mästerskapet (1 = vinst). */
-export function championshipPrize(def: ChampionshipDef, place: number): { medal: string | null; prize: number } {
-  const medal = championshipMedals(def)[place - 1];
+export function championshipPrize(def: ChampionshipDef, place: number, difficulty: Difficulty): { medal: string | null; prize: number } {
+  const medal = championshipMedals(def, difficulty)[place - 1];
   return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE * TIER_PRIZE[def.tier] };
 }
 

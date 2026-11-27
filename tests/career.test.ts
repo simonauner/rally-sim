@@ -1,6 +1,6 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
-import { afterLeg, bestPlace, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { afterLeg, bestPlace, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { CARS, kvarn240, kvarnTurbo4x4 } from '../src/physics/params';
@@ -81,8 +81,10 @@ const CAR = 'Kvarn 240 GL';
   const legsExist = CHAMPIONSHIPS.every((c) => c.legs.every((name) => STAGES.some((s) => s.name === name)) && !!championshipTargets(c));
   const targets = championshipTargets(def);
   check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === def.legs.reduce((sum, leg) => sum + STAGE_TARGETS[leg]![0], 0) && def.legs.length === 3 && STAGES.every((s) => CHAMPIONSHIPS.some((c) => c.legs.includes(s.name))), `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
-  const prizes = [1, 2, 3, 4].map((place) => championshipPrize(def, place));
+  const prizes = [1, 2, 3, 4].map((place) => championshipPrize(def, place, 'medium'));
   check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize > prizes[1]!.prize && prizes[2]!.prize > prizes[3]!.prize && prizes[0]!.prize % 500 === 0, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
+  const byDifficulty = (['easy', 'medium', 'hard'] as const).map((d) => championshipPrize(def, 1, d).prize);
+  check('mästerskap: prispengar per svårighetsgrad', byDifficulty.join() === '15500,20500,25500' && difficultyOf(newProgress(def, 'Kvarn 240 GL', 1, 'hard')) === 'hard' && difficultyOf({ id: def.id, car: 'Kvarn 240 GL', leg: 0, times: [], damage: null }) === 'easy', byDifficulty.join(' / '));
   const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };
   const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
   const noLamp: CarDamage = { ...crashed, lamps: [0.6, 0] };
@@ -216,7 +218,7 @@ const CAR = 'Kvarn 240 GL';
   const gold1 = prizeFor('Grinsbol', g1 - 2, 1);
   const slow2 = prizeFor('Grinsbol', g1 - 2, 2);
   const gold2 = prizeFor('Grinsbol', Math.round(g1 * 0.92) - 1, 2);
-  check('klass 2: gränser och priser', gold1.medal === 'guld' && slow2.medal === 'silver' && gold2.medal === 'guld' && gold2.prize === MEDALS[0].prize * 2 && championshipPrize(tier2[0]!, 1).prize === championshipPrize({ ...tier2[0]!, tier: 1 }, 1).prize * 2, `${g1 - 2} s: klass 1 ${gold1.medal}, klass 2 ${slow2.medal}; ${Math.round(g1 * 0.92) - 1} s klass 2 ${gold2.medal} ${gold2.prize} kr`);
+  check('klass 2: gränser och priser', gold1.medal === 'guld' && slow2.medal === 'silver' && gold2.medal === 'guld' && gold2.prize === MEDALS[0].prize * 2 && championshipPrize(tier2[0]!, 1, 'medium').prize === championshipPrize({ ...tier2[0]!, tier: 1 }, 1, 'medium').prize * 2, `${g1 - 2} s: klass 1 ${gold1.medal}, klass 2 ${slow2.medal}; ${Math.round(g1 * 0.92) - 1} s klass 2 ${gold2.medal} ${gold2.prize} kr`);
   // Samma etapper i klass 1-gränser: summan av guldtiderna.
   const t1 = tier2[0]!.legs.reduce((sum, leg) => sum + STAGE_TARGETS[leg]![0], 0);
   const t2 = championshipTargets(tier2[0]!)![0];

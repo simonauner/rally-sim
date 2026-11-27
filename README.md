@@ -195,7 +195,7 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
   gratis efteråt, så bilarna i garaget tar aldrig skada.
 - **Mästerskap** (Skogsrallyt, Myrkullarallyt, Vinterrallyt och Forsrallyt, tre till fem etapper vardera, några i skymning, gryning eller natt; prispengarna växer med antalet etapper): man kör mot sju
   slumpade fiktiva förare, och efter varje etapp visas ställningen. Placeringen avgör
-  prispengarna, som är större än för enstaka lopp. Fältets bästa kör på guldtid; har man
+  prispengarna, som är större än för enstaka lopp och skalas med svårighetsgraden (lätt ×0,75, svår ×1,25, `DIFFICULTY_PRIZE`). Fältets bästa kör på guldtid; har man
   egna rekord på etapperna läggs de två snabbaste nära ens takt, och är man snabbare än hela
   fältet hittar en eller två av dem samma fart till nästa etapp (`src/career/rivals.ts`). Skador följer med mellan etapperna; på servicen lagar man för egna
   pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis

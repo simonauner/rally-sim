@@ -37,6 +37,7 @@ import {
   CHAMPIONSHIPS,
   championshipById,
   championshipPrize,
+  difficultyOf,
   carUnlocked,
   carUnlockHint,
   championshipUnlocked,
@@ -189,7 +190,7 @@ export async function careerMenu(
                 }
               : {
                   label: "Mästerskap",
-                  detail: `upp till ${formatMoney(Math.max(...CHAMPIONSHIPS.map((ch) => championshipMedals(ch)[0]!.prize)))}`,
+                  detail: `upp till ${formatMoney(Math.max(...CHAMPIONSHIPS.map((ch) => championshipMedals(ch, settings.difficulty)[0]!.prize)))}`,
                   value: "champ",
                 },
             {
@@ -343,7 +344,7 @@ function championshipNote(career: CareerState, def: ChampionshipDef) {
   return [
     `${def.legs.length} etapper`,
     `Totalt: ${km} km`,
-    championshipUnlocked(career, def) ? `Prispengar: ${formatMoney(championshipMedals(def)[0]!.prize)} ${trophy(1)}` : unlockHint(career, def),
+    championshipUnlocked(career, def) ? `Prispengar: ${formatMoney(championshipMedals(def, settings.difficulty)[0]!.prize)} ${trophy(1)}` : unlockHint(career, def),
     place && `<b>${trophy(place)}bäst ${place}:a</b>`,
   ]
     .filter(Boolean)
@@ -680,6 +681,7 @@ async function startChampionship(
       solid: true,
       body: `<img class="banner" src="${CHAMPIONSHIP_IMAGES[def.id]}" alt=""><div>Klass ${def.tier}. Etapper: ${def.legs.join(", ")}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen. Omstart finns inte.</div><table class="specs">${championshipMedals(
         def,
+        settings.difficulty,
       )
         .map(
           (m, i) =>
@@ -824,7 +826,7 @@ export async function championshipLegDone(
   const place = table.findIndex((s) => s.player) + 1;
 
   if (times.length === def.legs.length) {
-    const { prize } = championshipPrize(def, place);
+    const { prize } = championshipPrize(def, place, difficultyOf(p));
     const career = loadCareer().career;
     commit(
       logged(
