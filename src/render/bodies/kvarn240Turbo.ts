@@ -1,33 +1,37 @@
 import type { BodyShape } from './shape';
 
-/** Kvarn 240 Turbo: kantig 80-talssedan: lång flat huv och baklucka, stora fyrkantiga lyktor. */
+/**
+ * Kvarn 240 Turbo: kantig 80-talssedan: lång flat huv och baklucka, stora fyrkantiga lyktor. Karossen ritas av
+ * Blendermodellen (blender/kvarn240/), så formen här används bara till skadezonerna, dekalerna, lyktornas
+ * sken och följer modellens mått.
+ */
 export const kvarn240Turbo: BodyShape = {
-  halfX: 0.85,
+  halfX: 0.855,
   bottom: -0.31,
   nose: 1.96,
-  tail: -2.53,
-  belt: 0.4,
-  roof: 0.83,
-  crease: 0.19,
-  screen: [0.546, 0.123],
-  backlight: [-1.67, -1.318],
-  hoodDrop: 0.08,
-  trunkDrop: 0.05,
-  cabinHalfX: 0.74,
-  archY: -0.24,
-  archR: [0.39, 0.38], // bakre hjulhuset sluter tätare om hjulet
-  doorSeams: [-0.4, -1.22],
+  tail: -2.555,
+  belt: 0.405,
+  roof: 0.84,
+  crease: 0.24,
+  screen: [0.608, 0.149],
+  backlight: [-1.735, -1.324],
+  hoodDrop: 0.088,
+  trunkDrop: 0.01,
+  cabinHalfX: 0.77,
+  archY: -0.23,
+  archR: [0.37, 0.37],
+  doorSeams: [-0.372, -1.194],
   sideGlass: [
-    [-0.37, Infinity],
-    [-1.06, -0.45],
-    [-Infinity, -1.11],
+    [-0.33, Infinity],
+    [-1.19, -0.4],
+    [-Infinity, -1.225],
   ],
-  doorHandles: [-0.27, -1.1],
-  lampY: [0.03, 0.255],
-  grilleX: 0.39,
-  lampX: [0.43, 0.79],
-  tailY: [0.04, 0.24],
-  tailX: 0.46,
-  bumperY: [-0.1, -0.055],
+  doorHandles: [-0.252, -1.08],
+  lampY: [0.03, 0.25],
+  grilleX: 0.262,
+  lampX: [0.272, 0.858],
+  tailY: [0.035, 0.212],
+  tailX: 0.44,
+  bumperY: [-0.08, -0.08],
   rearBumperDepth: 0.46,
 };
