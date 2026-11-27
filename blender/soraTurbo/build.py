@@ -72,7 +72,8 @@ def piecewise(points, x):
 # --- Karossens nedre del: huv, sidor, stötfångare och baklucka ------------------------------
 
 # Främre och bakre konturen sett från sidan: hur långt fram/bak plåten går på höjden y.
-FRONT = [(-0.30, 1.93), (-0.2, 1.985), (-0.10, 1.99), (0.05, 1.98), (0.15, 1.955), (0.21, 1.9)]
+# Fram: stötfångaren sticker ut med en avsats i överkanten, strålkastarna och grillen sitter indragna under huven.
+FRONT = [(-0.30, 1.93), (-0.26, 1.975), (-0.10, 1.995), (0.02, 1.99), (0.04, 1.955), (0.15, 1.94), (0.21, 1.9)]
 REAR = [(-0.27, -2.30), (-0.15, -2.36), (0.0, -2.355), (0.2, -2.335), (0.45, -2.30), (0.53, -2.24)]
 
 
@@ -88,15 +89,22 @@ def body_top(z):
     return lerp(0.57, 0.53, (-1.49 - z) / 0.76)
 
 
+def hood_crown(z):
+    """Ovansidans välvning: huven ligger lite lägre än skärmarnas överkant, bakluckan välvs uppåt."""
+    return lerp(0.03, -0.02, clamp01((z - 0.5) / 0.4))
+
+
 def body_bottom(z):
     return piecewise([(-2.36, -0.27), (-1.9, -0.32), (1.6, -0.32), (1.99, -0.30)], z)
 
 
 def body_halfwidth(z):
     """Halva bredden sett ovanifrån: rundade hörn fram och bak."""
-    w = 0.845
-    if z > 1.55:
-        w *= 1 - 0.2 * clamp01((z - 1.55) / 0.44) ** 2
+    # Skärmarna buktar ut lite kring hjulen; dörrarna är smalare.
+    flare = max(clamp01(1 - abs(z - zw) / 0.6) for zw, _ in WHEELS)
+    w = 0.83 + 0.015 * flare ** 0.5
+    if z > 1.5:
+        w *= 1 - 0.28 * clamp01((z - 1.5) / 0.49) ** 2.4
     if z < -1.95:
         w *= 1 - 0.15 * clamp01((-1.95 - z) / 0.41) ** 2
     return w
@@ -193,7 +201,7 @@ def lower_body():
             top, bottom = mid + 0.005, mid - 0.005
         # Lodräta sidor, en rundad axel som lutar inåt mot huven och rundade trösklar.
         shoulder = lambda y, t=top: 1 - 0.06 * clamp01((y - (t - 0.2)) / 0.2)  # noqa: E731
-        rings.append((z, rounded_rect_ring(body_halfwidth(z), bottom, top, 0.12, 0.1, 64, shoulder, crown=0.03)))
+        rings.append((z, rounded_rect_ring(body_halfwidth(z), bottom, top, 0.12, 0.06, 64, shoulder, crown=hood_crown(z))))
     return loft('lower', rings)
 
 
@@ -288,11 +296,14 @@ def mirrored(x):
 Y = lambda y: plane(0, 1, 0, y)  # noqa: E731
 Z = lambda z: plane(0, 0, 1, z)  # noqa: E731
 
-# Fronten: strålkastare, grill, blinkers, dimljus och intag.
-LAMP_Y, LAMP_X, GRILLE_X = (0.11, 0.2), (0.24, 0.76), 0.21
-BLINK_Y, BLINK_X = (-0.02, 0.045), (0.5, 0.72)
-FOG_Y, FOG_X = (-0.165, -0.055), (0.565, 0.675)
-INTAKE_Y, INTAKE_X = (-0.23, -0.07), 0.44
+# Fronten: strålkastare med två reflektorer och en kromad mittlist, mörk grill emellan, blinkers högt i
+# stötfångarens hörn, lackade kåpor över dimljusen, ett stort mörkt intag med en lackad mittstag och en
+# svart läpp längst ner.
+LAMP_Y, LAMP_X, LAMP_DIV, GRILLE_X = (0.085, 0.205), (0.25, 0.8), (0.45, 0.47), 0.23
+BLINK_Y, BLINK_X = (-0.03, 0.012), (0.52, 0.8)
+FOG_Y, FOG_X = (-0.2, -0.045), (0.4, 0.66)
+INTAKE_Y, INTAKE_X, INTAKE_BAR = (-0.24, 0.0), 0.35, 0.025
+LIP_Y = -0.265
 # Bak: lyktor (klara nertill) och nummerplåt.
 TAIL_Y, TAIL_X, TAIL_CLEAR = (0.19, 0.35), (0.38, 0.75), 0.235
 PLATE_Y, PLATE_X = (-0.13, 0.0), 0.26
@@ -317,8 +328,8 @@ REAR_ZONE = lambda c: c[2] < -2.0  # noqa: E731
 CABIN_ZONE = lambda c: -1.6 < c[2] < 0.6 and c[1] > 0.38  # noqa: E731
 
 CUTS = [
-    (FRONT_ZONE, [Y(v) for v in (*LAMP_Y, *BLINK_Y, *FOG_Y, *INTAKE_Y)]
-     + [p for v in (*LAMP_X, GRILLE_X, *BLINK_X, *FOG_X, INTAKE_X) for p in mirrored(v)]),
+    (FRONT_ZONE, [Y(v) for v in (*LAMP_Y, *BLINK_Y, *FOG_Y, *INTAKE_Y, LIP_Y)]
+     + [p for v in (*LAMP_X, *LAMP_DIV, GRILLE_X, *BLINK_X, *FOG_X, INTAKE_X, INTAKE_BAR) for p in mirrored(v)]),
     (REAR_ZONE, [Y(v) for v in (*TAIL_Y, TAIL_CLEAR, *PLATE_Y)] + [p for v in (*TAIL_X, PLATE_X) for p in mirrored(v)]),
     (CABIN_ZONE, [BELT, A_LINE, C_LINE, Y(ROOF_EDGE), Y(BACKLIGHT_Y), Z(DOOR_FRONT), Z(QUARTER_REAR), *(Z(v) for v in B_PILLAR),
                   SCREEN_SIDE, plane(-0.45, 0.09, 0, 0.3105), *mirrored(BACKLIGHT_X)]),
@@ -377,17 +388,25 @@ def face_material(p, n):
         pane = pane_material(p, n)
         if pane is not None:
             return pane
+    # Strålkastarna och blinkersen följer hörnet en bit in på skärmen.
+    if FRONT_ZONE(p) and n.z > 0.05 and z > 1.75 and ax > 0.6:
+        if inside(LAMP_Y, y) and ax < 0.8:
+            return M['lamp']
+        if inside(BLINK_Y, y) and ax < 0.8:
+            return M['amber']
     if FRONT_ZONE(p) and n.z > 0.25:
         if inside(LAMP_X, ax) and inside(LAMP_Y, y):
-            return M['lamp']
+            return M['chrome'] if inside(LAMP_DIV, ax) else M['lamp']
         if ax < GRILLE_X and inside(LAMP_Y, y):
             return M['black']
         if inside(BLINK_X, ax) and inside(BLINK_Y, y):
             return M['amber']
-        if inside(FOG_X, ax) and inside(FOG_Y, y):
-            return M['dark']
+        if y < LIP_Y:
+            return M['black']
         if ax < INTAKE_X and inside(INTAKE_Y, y):
-            return M['dark']
+            return M['paint'] if ax < INTAKE_BAR else M['dark']
+        if inside(FOG_X, ax) and inside(FOG_Y, y):
+            return M['shade']
     if REAR_ZONE(p) and (n.z < -0.25 or abs(n.x) > 0.5):
         if inside(TAIL_Y, y) and ax > TAIL_X[0] and (n.z < -0.25 or z < -2.18):
             return M['reverse'] if y < TAIL_CLEAR and ax < TAIL_X[1] else M['tail']
@@ -463,9 +482,9 @@ def details():
     for s, side in ((1, 'L'), (-1, 'R')):
         objs.append(part(f'wingend_{side}', box(0.02, 0.12, 0.28), 'paint', (s * 0.74, 0.735, -2.12)))
     # Upphöjt intag till laddluftkylaren på huven, med svart öppning framåt.
-    objs.append(part('scoop', box(0.52, 0.07, 0.38), 'paint', (0, 0.385, 1.12)))
-    objs.append(part('scoop_mouth', box(0.42, 0.04, 0.01), 'black', (0, 0.39, 1.315)))
-    objs.append(part('plate_front', box(0.46, 0.11, 0.02), 'plate', (0, -0.15, 2.0)))
+    objs.append(part('scoop', box(0.6, 0.08, 0.38), 'paint', (0, 0.375, 1.12)))
+    objs.append(part('scoop_mouth', box(0.5, 0.05, 0.01), 'black', (0, 0.385, 1.315)))
+    objs.append(part('plate_front', box(0.34, 0.06, 0.02), 'plate', (0, 0.0, 1.995)))
     objs.append(part('exhaust', cylinder_z(0.05, 0.18), 'chrome', (-0.45, -0.3, -2.33)))
     # Extraljusrampen (klass 2): fyra lampor tätt i en lackad låda på huvens framkant.
     objs.append(part('pod_body', box(0.8, 0.1, 0.22), 'paint', (0, 0.22, 1.78)))
