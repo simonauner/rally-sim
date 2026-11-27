@@ -54,17 +54,22 @@ function hash(i: number): number {
   return s - Math.floor(s);
 }
 
-/** Mjukt brus i rummet (värdebrus på ett gitter med rutan `cell`), 0..1. Kanal `k` ger ett annat brus. */
-function valueNoise(x: number, y: number, z: number, cell: number, k: number): number {
+/** Mjukt brus i rummet (värdebrus på ett gitter med rutan `cell`), 0..1. */
+function valueNoise(x: number, y: number, z: number, cell: number): number {
   const fx = x / cell, fy = y / cell, fz = z / cell;
   const ix = Math.floor(fx), iy = Math.floor(fy), iz = Math.floor(fz);
   const s = (t: number) => t * t * (3 - 2 * t);
   const tx = s(fx - ix), ty = s(fy - iy), tz = s(fz - iz);
-  const h = (a: number, b: number, c: number) => hash(((ix + a) * 73 + (iy + b) * 179 + (iz + c) * 283 + k * 1013) % 100003);
+  const h = (a: number, b: number, c: number) => hash(((ix + a) * 73 + (iy + b) * 179 + (iz + c) * 283) % 100003);
   const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
   const plane = (c: number) => lerp(lerp(h(0, 0, c), h(1, 0, c), tx), lerp(h(0, 1, c), h(1, 1, c), tx), ty);
   return lerp(plane(0), plane(1), tz);
 }
+
+/** Djupaste bucklan: plåten viker sig eller bucklas grovt, den veckas inte ihop som ett dragspel. */
+const MAX_DENT = 0.15;
+/** Bucklans styrka varierar mjukt över plåten i rutor av den här storleken, så den blir ojämn men grov. */
+const DENT_CELL = 0.35;
 
 /** En kroppsdel vars hörn kan flyttas när bilen skadas. */
 class DeformablePart {
@@ -72,18 +77,13 @@ class DeformablePart {
   private pos: THREE.BufferAttribute;
   private orig: Float32Array;
   private disp: Float32Array;
-  /** Fyra slumptal per hörn: bucklans styrka och skrynklan i x, y och z. */
+  /** Bucklans styrka per hörn, ur ett mjukt brus i rummet: hörn på samma plats (vid en färgkant) får samma. */
   private noise: Float32Array;
 
-  /**
-   * `noiseCell` > 0 tar slumpen ur ett mjukt brus i rummet i stället för per hörn: för oregelbundna nät
-   * (Blendermodeller), där hörn på samma plats vid en färgkant annars glipar och täta hörn blir taggiga.
-   */
   /** `side` (0..1) skalar bucklor från träffar rakt från sidan: en styvare långsida. */
   constructor(
     geo: THREE.BufferGeometry,
     material: THREE.Material,
-    noiseCell = 0,
     private side = 1,
   ) {
     this.mesh = new THREE.Mesh(geo, material);
@@ -93,34 +93,28 @@ class DeformablePart {
     this.pos = geo.getAttribute('position') as THREE.BufferAttribute;
     this.orig = new Float32Array(this.pos.array as Float32Array);
     this.disp = new Float32Array(this.orig.length);
-    this.noise = new Float32Array(this.pos.count * 4);
     const o = this.orig;
-    [0, 7, 13, 19].forEach((off, k) => {
-      for (let i = 0; i < this.pos.count; i++) {
-        this.noise[i * 4 + k] = noiseCell > 0 ? valueNoise(o[i * 3]!, o[i * 3 + 1]!, o[i * 3 + 2]!, noiseCell, k) : hash(i + off);
-      }
-    });
+    this.noise = new Float32Array(this.pos.count);
+    for (let i = 0; i < this.pos.count; i++) this.noise[i] = valueNoise(o[i * 3]!, o[i * 3 + 1]!, o[i * 3 + 2]!, DENT_CELL);
   }
 
   dent(local: THREE.Vector3, dir: THREE.Vector3, amount: number, radius: number) {
-    const MAX = 0.55;
     const r2 = radius * radius;
     amount *= 1 + (this.side - 1) * Math.abs(dir.x);
     for (let i = 0; i < this.pos.count; i++) {
-      const dx = this.orig[i * 3]! + this.disp[i * 3]! - local.x;
-      const dy = this.orig[i * 3 + 1]! + this.disp[i * 3 + 1]! - local.y;
-      const dz = this.orig[i * 3 + 2]! + this.disp[i * 3 + 2]! - local.z;
+      // Avståndet från den oskadda ytan, så upprepade träffar fördjupar samma buckla i stället för att vandra inåt.
+      const dx = this.orig[i * 3]! - local.x;
+      const dy = this.orig[i * 3 + 1]! - local.y;
+      const dz = this.orig[i * 3 + 2]! - local.z;
       const d2 = dx * dx + dy * dy + dz * dz;
       if (d2 > r2 * 5) continue;
-      const w = Math.exp(-d2 / r2);
-      const n = this.noise;
-      const k = amount * w * (0.8 + 0.4 * n[i * 4]!);
-      let x = this.disp[i * 3]! + dir.x * k + (n[i * 4 + 1]! - 0.5) * 0.12 * k;
-      let y = this.disp[i * 3 + 1]! + dir.y * k + (n[i * 4 + 2]! - 0.5) * 0.12 * k;
-      let z = this.disp[i * 3 + 2]! + dir.z * k + (n[i * 4 + 3]! - 0.5) * 0.12 * k;
+      const k = amount * Math.exp(-d2 / r2) * (0.7 + 0.6 * this.noise[i]!);
+      let x = this.disp[i * 3]! + dir.x * k;
+      let y = this.disp[i * 3 + 1]! + dir.y * k;
+      let z = this.disp[i * 3 + 2]! + dir.z * k;
       const len = Math.hypot(x, y, z);
-      if (len > MAX) {
-        const s = MAX / len;
+      if (len > MAX_DENT) {
+        const s = MAX_DENT / len;
         x *= s;
         y *= s;
         z *= s;
@@ -279,7 +273,7 @@ function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow:
     if (part.name === 'body' || part.name.startsWith('body_')) {
       // Dekalerna och bucklorna räknas i bilens koordinater, så panelerna har sitt origo i bilens.
       if (part.at.some((c) => c !== 0)) throw new Error(`${part.name}: panelens origo ska ligga i bilens origo`);
-      panels.push(new DeformablePart(g, panelMaterial, 0.12, 0.35));
+      panels.push(new DeformablePart(g, panelMaterial, 0.35));
       continue;
     }
     const mesh = new THREE.Mesh(g, modelMaterial(data, paint, lampGlow[part.at[0] > 0 ? 0 : 1], tailGlow));
