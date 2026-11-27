@@ -448,6 +448,8 @@ interface Detail {
   mesh: THREE.Mesh;
   home: THREE.Vector3;
   dent: number;
+  /** Stänkskydd: hänger under karossen, så träffar ovanför räknas och de lossnar lättare. */
+  flap: boolean;
   loose: boolean;
   vel: THREE.Vector3;
   spin: THREE.Vector3;
@@ -460,8 +462,9 @@ const DETACH_DENT = 0.12;
 function buildDetails(b: BodyShape, wheelZ: Range): THREE.Group {
   const g = new THREE.Group();
   const black = new THREE.MeshToonMaterial({ color: BLACK });
-  const add = (w: number, h: number, l: number, x: number, y: number, z: number, m: THREE.Material) => {
+  const add = (w: number, h: number, l: number, x: number, y: number, z: number, m: THREE.Material, name = '') => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), m);
+    mesh.name = name;
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     g.add(mesh);
@@ -472,8 +475,8 @@ function buildDetails(b: BodyShape, wheelZ: Range): THREE.Group {
     // Spegeln sitter på dörren i sidorutans främre hörn.
     add(0.08, 0.05, 0.08, s * (b.cabinHalfX + 0.03), b.belt + 0.05, mirrorZ + 0.01, black); // spegelfot
     add(0.15, 0.12, 0.08, s * (b.cabinHalfX + 0.14), b.belt + 0.1, mirrorZ, black); // spegel
-    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[0] - 0.46, black); // stänkskydd fram
-    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[1] - 0.46, black); // stänkskydd bak
+    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[0] - 0.46, black, 'flap'); // stänkskydd fram
+    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[1] - 0.46, black, 'flap'); // stänkskydd bak
     for (const z of b.doorHandles) add(0.02, 0.03, 0.14, s * (b.halfX + 0.005), b.belt - 0.09, z, black);
   }
   return g;
@@ -551,6 +554,7 @@ export class CarMesh {
       mesh,
       home: mesh.position.clone(),
       dent: 0,
+      flap: mesh.name === 'flap',
       loose: false,
       vel: new THREE.Vector3(),
       spin: new THREE.Vector3(),
@@ -588,8 +592,10 @@ export class CarMesh {
       for (const part of this.parts) part.dent(e.local, e.normal, amount, radius);
       for (const d of this.details) {
         if (d.loose) continue;
-        d.dent += amount * Math.exp(-d.home.distanceToSquared(e.local) / (radius * radius));
-        if (d.dent > DETACH_DENT) this.detach(d, fall);
+        // Stänkskyddet sitter i karossens underkant: mät bara i sidled och längsled.
+        const d2 = d.flap ? (d.home.x - e.local.x) ** 2 + (d.home.z - e.local.z) ** 2 : d.home.distanceToSquared(e.local);
+        d.dent += amount * Math.exp(-d2 / (radius * radius));
+        if (d.dent > (d.flap ? DETACH_DENT * 0.6 : DETACH_DENT)) this.detach(d, fall);
       }
     }
     for (const part of this.parts) part.commit();
