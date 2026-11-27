@@ -8,15 +8,16 @@ import math
 import bmesh
 from mathutils import Vector
 
-from common import TRACK, WHEELS, box, hexa, new_object, prism, revolve
+from common import TRACK, WHEELS, box, face, hexa, new_object, prism, revolve, vert
 
 
 # --- Vinge -----------------------------------------------------------------------------------
 
-WING_AT = (0, 0.85, -2.17)
-WING_SPAN = 1.5
-WING_CHORD = 0.32
-WING_AOA = 0.14  # radianer; bakkanten upp
+# Ett lågt blad strax ovanför bakluckans bakkant, kraftigt lutat: överkanten 1,15 m över marken.
+WING_AT = (0, 0.55, -1.98)
+WING_SPAN = 1.42
+WING_CHORD = 0.3
+WING_AOA = 0.32  # radianer; bakkanten upp
 
 
 def aerofoil(chord, thickness=0.12, camber=0.04, peak=0.4, n=14):
@@ -49,8 +50,8 @@ def wing():
     plate = [(c + 0.03, -0.075), (c + 0.05, 0.02), (c - 0.03, 0.065), (-c - 0.02, 0.105), (-c - 0.06, 0.04), (-c - 0.03, -0.085)]
     for s in (1, -1):
         prism(bm, plate, s * half, s * (half + 0.012), 'paint')
-    # Fenorna: breda vid foten på bakluckan (som ligger 0,31–0,33 under bladet), smala och bakåtlutade upptill.
-    fin = [(0.21, -0.335), (0.07, -0.005), (-0.09, 0.015), (-0.07, -0.345)]
+    # Fenorna: breda vid foten på bakluckan (som ligger 0,1 under bladet), smalare upptill.
+    fin = [(0.12, -0.11), (0.07, -0.0), (-0.1, 0.03), (-0.08, -0.12)]
     for s in (1, -1):
         prism(bm, fin, s * 0.485, s * 0.515, 'paint')
     return new_object('wing', bm, WING_AT)
@@ -163,39 +164,58 @@ def simple(name, at, parts):
     return new_object(name, bm, at)
 
 
-def mirror(s, side):
+MIRROR_AT = (0.39, 0.44)  # (y, z) för spegelns fot i sidorutans främre hörn
+
+
+def mirror(s, side, surface):
     """Strömlinjeformad spegel: en svart trekantsplatta i sidorutans främre hörn, en kort lackad arm och
-    ett kåpa som växer utåt, med svart glas bakåt. Origo i plattan."""
+    en kåpa som växer utåt, med svart glas bakåt. Plattans insida följer karossens yta (surface(s, y, z)
+    ger x där), så spegeln sitter fast i dörren hur formen än ändras. Origo i plattan."""
+    y0, z0 = MIRROR_AT
     bm = bmesh.new()
     sail = [(0.08, -0.03), (-0.06, -0.03), (-0.06, 0.09)]
-    prism(bm, sail, 0, s * 0.02, 'black')
-    box(bm, (s * 0.045, 0.02, -0.03), (0.05, 0.025, 0.045), 'paint')
+    # Insidan 3 mm in i plåten, utsidan 20 mm ut.
+    inner = [surface(s, y0 + dy, z0 + dz) - s * 0.003 for dz, dy in sail]
+    x0 = inner[0]
+    a = [vert(bm, (x - x0, dy, dz)) for x, (dz, dy) in zip(inner, sail)]
+    b = [vert(bm, (x - x0 + s * 0.023, dy, dz)) for x, (dz, dy) in zip(inner, sail)]
+    face(bm, list(reversed(a)), 'black')
+    face(bm, b, 'black')
+    for k in range(3):
+        k1 = (k + 1) % 3
+        face(bm, [a[k], a[k1], b[k1], b[k]], 'black')
+    # Armen ut från plattans nedre del, och kåpan längst ut.
+    out = max(abs(x - x0) for x in inner) * s + s * 0.02
+    box(bm, (out + s * 0.025, 0.02, -0.03), (0.05, 0.025, 0.045), 'paint')
 
     def end(x, y0, y1, z0, z1):
-        return [(s * x, y0, z0), (s * x, y1, z0), (s * x, y1, z1), (s * x, y0, z1)]
+        return [(out + s * x, y0, z0), (out + s * x, y1, z0), (out + s * x, y1, z1), (out + s * x, y0, z1)]
 
     # Kåpan: smalare inåt, större utåt; framsidan lackad, glaset en tunn svart skiva bakom.
-    hexa(bm, end(0.065, -0.025, 0.055, -0.075, 0.02) + end(0.2, -0.035, 0.065, -0.07, 0.035), 'paint')
-    hexa(bm, end(0.075, -0.02, 0.05, -0.08, -0.074) + end(0.19, -0.028, 0.058, -0.075, -0.069), 'black')
-    return new_object(f'mirror_{side}', bm, (s * 0.78, 0.5, 0.44))
+    hexa(bm, end(0.045, -0.025, 0.055, -0.075, 0.02) + end(0.18, -0.035, 0.065, -0.07, 0.035), 'paint')
+    hexa(bm, end(0.055, -0.02, 0.05, -0.08, -0.074) + end(0.17, -0.028, 0.058, -0.075, -0.069), 'black')
+    return new_object(f'mirror_{side}', bm, (x0, y0, z0))
 
 
-def details():
+def details(surface):
+    """De lösa delarna. surface(s, y, z) ger karossens yta (x) på sidan s, för delar som sitter på den."""
     objs = [wing(), exhaust(), wheel()]
     for s, side in ((1, 'L'), (-1, 'R')):
-        objs.append(mirror(s, side))
+        objs.append(mirror(s, side, surface))
         for zw, nm in ((WHEELS[0][0], 'F'), (WHEELS[1][0], 'R')):
             objs.append(simple(f'flap_{nm}{side}', (s * 0.715, -0.39, zw - 0.46), [((0, 0, 0), (0.2, 0.16, 0.015), 'black')]))
     # Upphöjt intag till laddluftkylaren på huven, med svart öppning framåt.
-    objs.append(simple('scoop', (0, 0.375, 1.12), [((0, 0, 0), (0.6, 0.08, 0.38), 'paint'), ((0, 0.01, 0.195), (0.5, 0.05, 0.01), 'black')]))
+    objs.append(simple('scoop', (0, 0.34, 1.04), [((0, 0, 0), (0.6, 0.08, 0.32), 'paint'), ((0, 0.01, 0.165), (0.5, 0.05, 0.01), 'black')]))
+    # Luftintag till kupén framtill på taket, med svart öppning framåt.
+    objs.append(simple('roofvent', (0, 0.835, -0.2), [((0, 0, 0), (0.34, 0.05, 0.3), 'paint'), ((0, 0.003, 0.152), (0.28, 0.03, 0.006), 'black')]))
     objs.append(simple('plate_front', (0, 0.0, 1.995), [((0, 0, 0), (0.34, 0.06, 0.02), 'plate')]))
     # Extraljusrampen (klass 2): fyra lampor tätt i en lackad låda på huvens framkant.
-    objs.append(simple('pod_body', (0, 0.22, 1.78), [((0, 0, 0), (0.8, 0.1, 0.22), 'paint')]))
+    objs.append(simple('pod_body', (0, 0.205, 1.78), [((0, 0, 0), (0.8, 0.1, 0.22), 'paint')]))
     for i, x in enumerate((0.3, 0.1, -0.1, -0.3)):
         bm = bmesh.new()
         revolve(bm, [(-0.05, 0.002, 'paint'), (-0.05, 0.09, 'paint'), (0.05, 0.09, 'paint'), (0.05, 0.002, 'paint')], 'z', 20)
-        objs.append(new_object(f'pod_lamp_{i}', bm, (x, 0.28, 1.86)))
+        objs.append(new_object(f'pod_lamp_{i}', bm, (x, 0.265, 1.86)))
         bm = bmesh.new()
         revolve(bm, [(-0.005, 0.002, 'lamp'), (-0.005, 0.075, 'lamp'), (0.005, 0.075, 'lamp'), (0.005, 0.002, 'lamp')], 'z', 20)
-        objs.append(new_object(f'pod_lens_{i}', bm, (x, 0.28, 1.915)))
+        objs.append(new_object(f'pod_lens_{i}', bm, (x, 0.265, 1.915)))
     return objs

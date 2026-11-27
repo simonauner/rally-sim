@@ -20,16 +20,25 @@ FRONT = [(-0.30, 1.93), (-0.26, 1.975), (-0.10, 1.995), (0.02, 1.99), (0.04, 1.9
 REAR = [(-0.27, -2.30), (-0.2, -2.355), (0.0, -2.365), (0.13, -2.36), (0.16, -2.325), (0.3, -2.315), (0.46, -2.3), (0.51, -2.285), (0.53, -2.255)]
 
 
+# Höjderna är uppmätta på ett sidofoto av rallyversionen, som sitter lägre än standardbilen: taket
+# 1,30 m över marken, sidorutornas underkant 0,85–0,88 m och bakluckan 0,95 m.
+
+
 def body_top(z):
-    """Ovansidans mittlinje: huv, gördellinje under kupén och baklucka."""
+    """Ovansidans mittlinje: huv, gördellinje under kupén och en låg baklucka."""
     if z >= 0.51:
         s = (z - 0.51) / (1.9 - 0.51)
-        return 0.43 - 0.22 * clamp01(s) ** 1.6
+        return 0.37 - 0.17 * clamp01(s) ** 1.8
     if z >= -1.0:
-        return lerp(0.44, 0.47, (0.51 - z) / 1.51)
-    if z >= -1.49:
-        return lerp(0.47, 0.57, ((-1.0 - z) / 0.49) ** 1.5)
-    return lerp(0.57, 0.53, (-1.49 - z) / 0.76)
+        return belt_y(z) + 0.01
+    if z >= -1.62:
+        return lerp(belt_y(-1.0) + 0.01, 0.465, clamp01((-1.0 - z) / 0.62))
+    return lerp(0.465, 0.44, (-1.62 - z) / 0.63)
+
+
+def belt_y(z):
+    """Sidorutornas nederkant (planet BELT) på z: stiger svagt bakåt."""
+    return 0.36 - 0.022 * z
 
 
 def hood_crown(z):
@@ -151,13 +160,15 @@ def lower_body():
 # --- Kupén: vindruta, tak, bakruta och sidorutor ---------------------------------------------
 
 # Taklinjen sett från sidan: vindrutans fot, takets framkant, takets bakkant och bakrutans fot.
-ROOF = [(-1.49, 0.555), (-1.2, 0.76), (-0.91, 0.905), (-0.4, 0.92), (0.05, 0.915), (0.3, 0.68), (0.51, 0.44)]
+# Lång bakruta från bakluckan till taket, kort platt tak och en vindruta i rak lutning.
+ROOF = [(-1.62, 0.46), (-1.5, 0.525), (-1.3, 0.66), (-1.1, 0.77), (-0.95, 0.805), (-0.8, 0.815), (-0.15, 0.815),
+        (-0.05, 0.8), (0.51, 0.44)]
 
 
 def greenhouse():
     rings = []
-    for z in stations(-1.49, 0.51, 0.0):
-        base = lerp(0.44, 0.47, (0.51 - z) / 2.0) - 0.06
+    for z in stations(-1.62, 0.51, 0.0):
+        base = belt_y(z) - 0.05
         top = piecewise(ROOF, z)
         if top - base < 0.02:
             top = base + 0.02
@@ -251,30 +262,30 @@ REAR_LIP_Y = -0.2
 TAIL_TOP = plane(-0.111, 1, 0, 0.2556)  # för |x|
 # Kupén: rutornas nederkant, dörrutans framkant (A-stolpen), B-stolpen, kvartsrutans överkant
 # (C-stolpen), takkanten, vindrutans och bakrutans sidor.
-BELT = plane(0, 1, 0.015, 0.47265)
-A_LINE = plane(0, 0.45, 0.39, 0.3948)
-C_LINE = plane(0, 0.36, -0.30, 0.5826)
+BELT = plane(0, 1, 0.022, 0.36)
+A_LINE = plane(0, 0.56, 0.36, 0.3708)  # parallell med vindrutan, genom (z 0,47, y 0,36)
+C_LINE = plane(0, 1, -1.54, 2.469)  # kvartsrutans bakkant, från (z −1,35, y 0,39) till (−1,11, 0,76)
 B_PILLAR = (-0.66, -0.61)
-DOOR_FRONT, QUARTER_REAR = 0.47, -1.27
-ROOF_EDGE = 0.85
+DOOR_FRONT, QUARTER_REAR = 0.47, -1.36
+ROOF_EDGE = 0.755
 SCREEN_SIDE = plane(0.45, 0.09, 0, 0.3105)  # för |x|
-BACKLIGHT_X, BACKLIGHT_Y = 0.52, 0.6
+BACKLIGHT_X, BACKLIGHT_Y = 0.52, 0.5
 # Skarvar: dörrarnas fram- och bakkant och stötfångarnas överkant fram och bak.
 SEAM_W = 0.012
 DOOR_SEAMS = (0.78, -0.68)
 BUMPER_SEAM = {'front': 0.03, 'rear': 0.155}
-SIDE_ZONE = lambda c: abs(c[0]) > 0.7 and -0.3 < c[1] < 0.47  # noqa: E731
+SIDE_ZONE = lambda c: abs(c[0]) > 0.7 and -0.3 < c[1] < 0.37  # noqa: E731
 # Sidan: en svag linje längs dörrarna och skärmarna, och tröskeln (sidokjolen) under dörrarna.
 CREASE_Y, SKIRT_Y = 0.2, -0.17
 # Utbuktningen runt hjulhusen: en ring från hjulhusets kant och FLARE_W utåt.
 ARCH_R, FLARE_W, FLARE_OUT = 0.375, 0.11, 0.022
 # Bakluckans skarvar: längs ovansidan och ner mellan lyktorna och luckan till stötfångaren.
 LID_X = (0.62, 0.39)
-DECK_ZONE = lambda c: c[2] < -1.5 and c[1] > 0.15  # noqa: E731
+DECK_ZONE = lambda c: c[2] < -1.62 and c[1] > 0.15  # noqa: E731
 
 FRONT_ZONE = lambda c: c[2] > 1.55  # noqa: E731
 REAR_ZONE = lambda c: c[2] < -2.0  # noqa: E731
-CABIN_ZONE = lambda c: -1.6 < c[2] < 0.6 and c[1] > 0.38  # noqa: E731
+CABIN_ZONE = lambda c: -1.7 < c[2] < 0.6 and c[1] > 0.3  # noqa: E731
 
 CUTS = [
     (FRONT_ZONE, [Y(v) for v in (*LAMP_Y, *BLINK_Y, *FOG_Y, *INTAKE_Y, LIP_Y)]
@@ -552,11 +563,6 @@ def lamps(body):
 # --- Paneler som bucklas var för sig ---------------------------------------------------------
 
 
-def belt_y(z):
-    """Sidorutornas nederkant (planet BELT) på z."""
-    return 0.47265 - 0.015 * z
-
-
 def is_door(s):
     def test(c, n, m):
         x, y, z = c
@@ -574,10 +580,10 @@ def door_handle(obj, s):
     """Handtag i en svart grop, i dörrens bakkant under gördellinjen."""
 
     def fn(bm, info):
-        target = Vector(to_blender(s * 0.84, 0.32, -0.47))
+        target = Vector(to_blender(s * 0.84, 0.27, -0.47))
         x = to_car(min(bm.verts, key=lambda v: (v.co - target).length).co)[0]
-        box(bm, (x + s * 0.002, 0.32, -0.47), (0.006, 0.055, 0.17), 'black')
-        box(bm, (x + s * 0.01, 0.325, -0.47), (0.014, 0.024, 0.14), 'paint', side_mat='shade')
+        box(bm, (x + s * 0.002, 0.27, -0.47), (0.006, 0.055, 0.17), 'black')
+        box(bm, (x + s * 0.01, 0.275, -0.47), (0.014, 0.024, 0.14), 'paint', side_mat='shade')
 
     edit(obj, fn)
 
@@ -625,7 +631,7 @@ def panels(body):
     lid = extract(
         body,
         'body_bootlid',
-        lambda c, n, m: c[2] < -1.49 and c[1] > BUMPER_SEAM['rear'] + SEAM_W and m != 'glass'
+        lambda c, n, m: c[2] < -1.62 and c[1] > BUMPER_SEAM['rear'] + SEAM_W and m != 'glass'
         and (abs(c[0]) < LID_X[1] or (abs(c[0]) < LID_X[0] and n.y > 0.5)),
     )
     return parts + [front, rear, lid]
@@ -689,7 +695,7 @@ def body_side(body):
             x = surface_x(bm, s, 0.25, 0.9)
             box(bm, (x + s * 0.002, 0.25, 0.9), (0.006, 0.034, 0.08), 'black')
             box(bm, (x + s * 0.005, 0.25, 0.9), (0.004, 0.024, 0.066), 'amber')
-        x = surface_x(bm, -1, 0.33, -1.17)
-        box(bm, (x - 0.002, 0.33, -1.17), (0.004, 0.11, 0.12), 'paint', side_mat='shade')
+        x = surface_x(bm, -1, 0.27, -1.17)
+        box(bm, (x - 0.002, 0.27, -1.17), (0.004, 0.11, 0.12), 'paint', side_mat='shade')
 
     edit(body, fn)

@@ -44,6 +44,7 @@ VIEWS = [
     ('taillight', 155, 6, 2.4, (0.5, 0.15, -2.3)),
     ('door', 75, 4, 4.2, (0.84, 0.3, 0.05)),
     ('exhaust', 200, 4, 2.0, (-0.4, -0.25, -2.3)),
+    ('mirror', 40, 12, 2.0, (0.75, 0.42, 0.45)),
 ]
 for name, yaw, pitch, d, (tx, ty, tz) in VIEWS:
     target = Vector((tx, -tz, ty))

@@ -10,12 +10,12 @@ export const soraTurbo: BodyShape = {
   bottom: -0.32,
   nose: 1.89,
   tail: -2.27,
-  belt: 0.44,
-  roof: 0.92,
+  belt: 0.37,
+  roof: 0.815,
   crease: 0.24,
-  screen: [0.51, 0.05],
-  backlight: [-1.49, -0.91],
-  hoodDrop: 0.22,
+  screen: [0.51, -0.05],
+  backlight: [-1.62, -0.9],
+  hoodDrop: 0.17,
   trunkDrop: 0.04,
   cabinHalfX: 0.75,
   archY: -0.14,
@@ -33,5 +33,5 @@ export const soraTurbo: BodyShape = {
   tailX: 0.4,
   bumperY: [-0.13, -0.12],
   rearBumperDepth: 0.36,
-  hoodScoopZ: [0.93, 1.31], // objektet 'scoop' i Blendermodellen
+  hoodScoopZ: [0.88, 1.2], // objektet 'scoop' i Blendermodellen
 };

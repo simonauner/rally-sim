@@ -12,8 +12,8 @@ Koordinater: allt räknas i bilens koordinater (x = vänster, y = upp, z = fram�
 och läggs in i Blender som X = x, Y = -z, Z = y, så bilen pekar mot -Y som i Blenders framvy.
 Marken ligger på y = -0,486 och hjulens centrum på y = -0,17 när bilen står still i spelet.
 
-Måtten följer förebilden (tvådörrars coupé från 1999): 4,35 m lång, 1,69 m bred, 1,405 m hög,
-hjulbas 2,52 m; höjder och lägen är uppmätta på sidofoton.
+Måtten följer förebilden (tvådörrars coupé från 1999): 4,35 m lång, 1,69 m bred, hjulbas 2,52 m. Höjderna
+är uppmätta på ett sidofoto av rallyversionen, som är lägre än standardbilens 1,405 m: taket 1,30 m.
 """
 
 import os
@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import parts  # noqa: E402
 import shell  # noqa: E402
-from common import GROUND, TRACK, WHEELS, to_blender  # noqa: E402
+from common import GROUND, TRACK, WHEELS, to_blender, to_car  # noqa: E402
 
 
 def reference(wheel):
@@ -49,6 +49,28 @@ def reference(wheel):
     coll.objects.link(g)
 
 
+def surface(parts):
+    """surface(s, y, z): karossens yta (x) på sidan s, med en stråle in från sidan mot delarna."""
+    import bmesh
+    from mathutils.bvhtree import BVHTree
+
+    bm = bmesh.new()
+    for obj in parts:
+        mesh = obj.data.copy()
+        mesh.transform(obj.matrix_world)
+        bm.from_mesh(mesh)
+        bpy.data.meshes.remove(mesh)
+    tree = BVHTree.FromBMesh(bm)
+
+    def at(s, y, z):
+        hit = tree.ray_cast(to_blender(s * 2.0, y, z), to_blender(-s, 0, 0))[0]
+        if hit is None:
+            raise RuntimeError(f'ingen kaross vid y={y}, z={z}')
+        return to_car(hit)[0]
+
+    return at
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     export = bpy.data.collections.new('Export')
@@ -61,7 +83,7 @@ def main():
     for obj in [body, *panels]:
         shell.flare(obj)
     shell.body_side(body)
-    objs = [body, *lamps, *panels, *parts.details()]
+    objs = [body, *lamps, *panels, *parts.details(surface([body, *panels]))]
     for obj in objs:
         for c in obj.users_collection:
             c.objects.unlink(obj)
