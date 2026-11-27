@@ -128,8 +128,8 @@ tests/         fysiktester med förväntade intervall
 
 ### Bilar från Blender
 
-Sora 2.0 Turbo är modellerad i Blender i stället för byggd av en form i `src/render/bodies/`.
-`blender/soraTurbo/soraTurbo.blend` är källan: redigera den i Blender och för över den till spelet med
+Sora 2.0 Turbo och Hoshi 2.0 4WD är modellerade i Blender i stället för byggda av en form i
+`src/render/bodies/`. `blender/<bil>/<bil>.blend` är källan (t.ex. `blender/soraTurbo/soraTurbo.blend`): redigera den i Blender och för över den till spelet med
 
 ```sh
 blender -b blender/soraTurbo/soraTurbo.blend -P blender/export.py   # skriver src/render/models/soraTurbo.ts
@@ -139,10 +139,11 @@ blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- /tmp/sora  
 Modellen ligger i bilens koordinater (origo i tyngdpunkten, marken på y = −0,486) med Blenders
 X = x, Y = −z, Z = y, så bilen pekar mot −Y. Objekten i samlingen *Export* blir bilens delar:
 `body` bucklas, övriga är lösa detaljer som ramlar av (`flap…` = stänkskydd, `pod…` = extraljus, bara
-klass 2). Färgen väljs per yta med materialets namn (`paint`, `shade`, `glass`, `black`, `dark`, `chrome`,
-`lamp`, `amber`, `tail`, `reverse`, `plate`); `paint` och `shade` följer bilens lack. Samlingen
-*Reference* (hjul och mark) exporteras inte. `blender/soraTurbo/build.py` bygger en ny .blend från
-början och skriver över den gamla.
+klass 2). En del som heter `rim` är fälgen och sätts i alla fyra hjulen, i ett ihåligt däck. Färgen väljs
+per yta med materialets namn (`paint`, `shade`, `glass`, `black`, `dark`, `chrome`, `lamp`, `amber`, `tail`,
+`reverse`, `plate`, `white`); `paint` och `shade` följer bilens lack. Samlingen
+*Reference* (hjul och mark) exporteras inte. `blender/<bil>/build.py` bygger en ny .blend från
+början och skriver över den gamla. Hoshins strålkastare är uppfällda (`popup…`).
 
 ### Fysikens viktigaste val
 

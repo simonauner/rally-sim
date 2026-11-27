@@ -20,6 +20,7 @@ import { volpeTurbo } from './bodies/volpeTurbo';
 import { hoshi4wd } from './bodies/hoshi4wd';
 import { partGeometry, type ModelData } from './models/model';
 import { soraTurbo as soraTurboModel } from './models/soraTurbo';
+import { hoshi4wd as hoshi4wdModel } from './models/hoshi4wd';
 
 
 const GLASS = new THREE.Color(0x2b3a42);
@@ -187,9 +188,9 @@ const BODIES: Record<CarModel['body'], BodyShape> = {
 };
 
 /** Bilar med en egen modell från Blender (blender/). Övriga byggs av formen i bodies/. */
-const MODELS: Partial<Record<CarModel['body'], ModelData>> = { soraTurbo: soraTurboModel };
+const MODELS: Partial<Record<CarModel['body'], ModelData>> = { soraTurbo: soraTurboModel, hoshi4wd: hoshi4wdModel };
 
-const PALETTE: Record<string, THREE.Color> = { glass: GLASS, black: BLACK, dark: DARK, chrome: CHROME, lamp: LAMP, amber: AMBER, tail: TAIL, reverse: REVERSE, plate: PLATE };
+const PALETTE: Record<string, THREE.Color> = { glass: GLASS, black: BLACK, dark: DARK, chrome: CHROME, lamp: LAMP, amber: AMBER, tail: TAIL, reverse: REVERSE, plate: PLATE, white: new THREE.Color(0xf2f2ee) };
 
 /**
  * Material för en del av en Blendermodell: färgen efter hörnets material, lacken (med dekaler på karossen)
@@ -211,13 +212,25 @@ function modelMaterial(data: ModelData, paint: THREE.Color, lamp: THREE.Node<'fl
   return mat;
 }
 
-/** Karossen och de lösa detaljerna ur en Blendermodell. Extraljusrampen ('pod…') bara om `pod`. */
+/**
+ * Karossen och de lösa detaljerna ur en Blendermodell. Extraljusrampen ('pod…') bara om `pod`. Delen 'rim'
+ * är fälgen, som sätts i alla fyra hjulen i stället för att bli en detalj.
+ */
 function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow: LampGlow, tailGlow: FloatUniform, decals: THREE.Texture, pod: boolean) {
   let body: DeformablePart | null = null;
+  let rim: THREE.Mesh | undefined;
   const details = new THREE.Group();
   for (const part of data.parts) {
     if (part.name.startsWith('pod') && !pod) continue;
     const g = partGeometry(part);
+    if (part.name === 'rim') {
+      // Platta ytor: fälgens skarpa kanter ska inte rundas av mjuka normaler.
+      const flat = g.toNonIndexed();
+      flat.computeVertexNormals();
+      rim = new THREE.Mesh(flat, modelMaterial(data, paint, lampGlow[0], tailGlow));
+      rim.castShadow = true;
+      continue;
+    }
     if (part.name === 'body') {
       // Dekaler på lacken: sidorna under gördellinjen, huven, bakluckan och taket.
       const p = attribute('rest', 'vec3');
@@ -234,7 +247,7 @@ function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow:
     details.add(mesh);
   }
   if (!body) throw new Error('Bilmodellen saknar body');
-  return { body, details };
+  return { body, details, rim };
 }
 
 type Hit = [x: number, y: number, z: number, nx: number, ny: number, nz: number];
@@ -580,6 +593,23 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
   return g;
 }
 
+/** Ett ihåligt däck runt en modellerad fälg (innerradie 0,205 m), så de insänkta ekrarna syns. */
+function buildModelWheel(radius: number, rim: THREE.Mesh): THREE.Group {
+  const inner = 0.205;
+  const profile = [
+    [inner, -0.105], [0.25, -0.11], [radius - 0.02, -0.108], [radius, -0.09],
+    [radius, 0.09], [radius - 0.02, 0.108], [0.25, 0.11], [inner, 0.105], [inner, -0.105],
+  ].map(([r, x]) => new THREE.Vector2(r, x));
+  const tyre = new THREE.Mesh(
+    new THREE.LatheGeometry(profile, 28).rotateZ(Math.PI / 2),
+    new THREE.MeshToonMaterial({ color: 0x242424, side: THREE.DoubleSide }),
+  );
+  tyre.castShadow = true;
+  const g = new THREE.Group();
+  g.add(tyre, rim.clone());
+  return g;
+}
+
 function buildWheel(radius: number, rally = false, gold = false): THREE.Group {
   const g = new THREE.Group();
   const tyre = new THREE.Mesh(
@@ -690,7 +720,7 @@ export class CarMesh {
       this.group.add(spot, spot.target, bumper, bumper.target);
     });
     for (let i = 0; i < 4; i++) {
-      const w = buildWheel(car.params.wheelRadius, b.rallyRims, b.goldRims);
+      const w = built?.rim ? buildModelWheel(car.params.wheelRadius, built.rim) : buildWheel(car.params.wheelRadius, b.rallyRims, b.goldRims);
       this.wheels.push(w);
     }
   }
