@@ -6,6 +6,7 @@ import { tierOf } from '../src/career/career';
 import { Barriers } from '../src/physics/barriers';
 import { rollWeather, type Weather } from '../src/physics/weather';
 import { bestTyre, lightAt, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_ASJON, STAGES } from '../src/physics/stage';
+import { STAGE_LENGTHS } from '../src/physics/real/lengths';
 import { STAGE_MYRKULLA, STAGE_SKOGSBERG } from './stages';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad, driveAlongRoad } from '../src/physics/autopilot';
@@ -424,6 +425,8 @@ for (const def of STAGES) {
       minSep = Math.min(minSep, Math.hypot(stage.xs[i]! - stage.xs[j]!, stage.zs[i]! - stage.zs[j]!));
   // Verkliga vägar kan svänga tätare än två korridorer, som i en hårnål; terrängen blandas då
   // mellan vägdelarna. Vägarna får bara inte mötas.
+  const length = Math.round(stage.finish - START_S);
+  check(`${def.name}: förberäknad längd`, STAGE_LENGTHS[def.name] === length, `'${def.name}': ${length} i real/lengths.ts, där står ${STAGE_LENGTHS[def.name]}`);
   check(`${def.name}: vägen korsar inte sig själv`, minSep > STAGE_CORRIDOR, `${stage.length} m lång, minsta avstånd ${minSep.toFixed(0)} m`);
   // Terrängen hänger ihop: inga kanter i korridoren, inte heller på insidan av snäva kurvor och
   // hårnålar eller vid korsande vägar. Vallarna vid vintervägar ger upp till ca 0,8 m per 2 m.

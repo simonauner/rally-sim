@@ -9,7 +9,8 @@ import type { DamageState } from '../physics/car';
 import { STAGE_TARGETS, TIER_PACE, TIER_PRIZE, tierOf, type Tier } from './career';
 import { isRival, newRivals, raceLeg, type Rival } from './rivals';
 import { rng } from '../physics/rng';
-import { Stage, STAGES, START_S } from '../physics/stage';
+import { STAGE_LENGTHS } from '../physics/real/lengths';
+import { STAGES } from '../physics/stage';
 import { rollWeather, WEATHER_SLOWDOWN, type Weather } from '../physics/weather';
 
 export interface ChampionshipDef {
@@ -126,18 +127,8 @@ const CHAMPIONSHIP_MEDALS = [
 ] as const;
 export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
 
-const legKm = new Map<string, number>();
-
-/** Mästerskapets etapper sammanlagt (km); varje etapp byggs bara en gång. */
-export function championshipKm(def: ChampionshipDef) {
-  return def.legs.reduce((sum, leg) => {
-    if (!legKm.has(leg)) {
-      const s = STAGES.find((x) => x.name === leg);
-      legKm.set(leg, s ? (new Stage(s).finish - START_S) / 1000 : 0);
-    }
-    return sum + legKm.get(leg)!;
-  }, 0);
-}
+/** Mästerskapets etapper sammanlagt (km), ur de förberäknade längderna. */
+export const championshipKm = (def: ChampionshipDef) => def.legs.reduce((sum, leg) => sum + (STAGE_LENGTHS[leg] ?? 0), 0) / 1000;
 
 /** Medaljerna med prispengar som växer med sträckan, så att långa mästerskap bär sina reparationer. */
 export const championshipMedals = (def: ChampionshipDef) =>
