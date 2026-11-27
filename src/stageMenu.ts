@@ -2,7 +2,8 @@ import { CHAMPIONSHIPS, championshipUnlocked, unlockHint } from './career/champi
 import { loadCareer } from './career/store';
 import { formatTime } from './hud';
 import { showMenu } from './menu';
-import { Stage, STAGES, START_S, surfaceShares, type Light, type StageDef } from './physics/stage';
+import { STAGE_LENGTHS } from './physics/real/lengths';
+import { STAGES, START_S, surfaceShares, type Light, type StageDef } from './physics/stage';
 import { SURFACES, type SurfaceId } from './physics/surfaces';
 import { loadRecord } from './records';
 
@@ -64,42 +65,46 @@ const MAP_COLORS: Record<SurfaceId, string> = { asphalt: '#9aa4b0', gravel: '#d9
 
 /** Förhandsvisning av en etapp: tid på dygnet, längd, underlag och karta ovanifrån färgad efter underlag. */
 export function stagePreviewHtml(def: StageDef): string {
-  const st = new Stage(def);
-  const end = st.finish;
+  // Kartan ritas direkt ur etappens punkter (var 20:e meter), utan att bygga hela etappen.
+  const pts = def.points;
   const shares = (Object.entries(surfaceShares(def)) as [SurfaceId, number][]).sort((a, b) => b[1] - a[1]);
-  // Ovanifrån med z uppåt; lokalt x är vänster, så x speglas.
-  const px = (i: number) => -st.xs[i]!;
-  const pz = (i: number) => -st.zs[i]!;
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (let i = START_S; i <= end; i++) {
-    minX = Math.min(minX, px(i)); maxX = Math.max(maxX, px(i));
-    minZ = Math.min(minZ, pz(i)); maxZ = Math.max(maxZ, pz(i));
-  }
+  const at = [0];
+  for (let i = 1; i < pts.length; i++) at.push(at[i - 1]! + Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.z - pts[i - 1]!.z));
+  const length = STAGE_LENGTHS[def.name] ?? at[at.length - 1]! - START_S;
+  const end = START_S + length;
+  // Ovanifrån med z uppåt; lokalt x är vänster, så x speglas. Punkten på sträckan s mellan två punkter.
+  const point = (s: number) => {
+    let i = 0;
+    while (i < pts.length - 2 && at[i + 1]! < s) i++;
+    const u = Math.min(1, Math.max(0, (s - at[i]!) / (at[i + 1]! - at[i]! || 1)));
+    return { x: -(pts[i]!.x + (pts[i + 1]!.x - pts[i]!.x) * u), z: -(pts[i]!.z + (pts[i + 1]!.z - pts[i]!.z) * u), surface: pts[i]!.surface };
+  };
+  const path = [point(START_S), ...pts.flatMap((p, i) => (at[i]! > START_S && at[i]! < end ? [{ x: -p.x, z: -p.z, surface: p.surface }] : [])), point(end)];
+  const xs = path.map((p) => p.x);
+  const zs = path.map((p) => p.z);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  const xy = (p: { x: number; z: number }) => `${p.x.toFixed(0)},${p.z.toFixed(0)}`;
+  // En linje per sträcka med samma underlag; varje punkts underlag gäller fram till nästa punkt.
   const lines: string[] = [];
-  let run: string[] = [];
-  for (let i = START_S; ; ) {
-    run.push(`${px(i).toFixed(0)},${pz(i).toFixed(0)}`);
-    if (i === end) break;
-    const next = Math.min(i + 4, end);
-    if (st.surfaces[next] !== st.surfaces[i]) {
-      run.push(`${px(next).toFixed(0)},${pz(next).toFixed(0)}`);
-      lines.push(`<polyline points="${run.join(' ')}" stroke="${MAP_COLORS[st.surfaces[i]!]}"/>`);
-      run = [];
+  let run = [xy(path[0]!)];
+  for (let i = 1; i < path.length; i++) {
+    run.push(xy(path[i]!));
+    if (i === path.length - 1 || path[i]!.surface !== path[i - 1]!.surface) {
+      lines.push(`<polyline points="${run.join(' ')}" stroke="${MAP_COLORS[path[i - 1]!.surface]}"/>`);
+      run = [xy(path[i]!)];
     }
-    i = next;
   }
-  if (run.length > 1) lines.push(`<polyline points="${run.join(' ')}" stroke="${MAP_COLORS[st.surfaces[end]!]}"/>`);
   const sw = Math.max(maxX - minX, maxZ - minZ) / 60;
   const pad = sw * 1.5; // rymmer start-/målpunkten (r = 1,3 sw)
-  const dot = (i: number, c: string) => `<circle cx="${px(i).toFixed(0)}" cy="${pz(i).toFixed(0)}" r="${(sw * 1.3).toFixed(1)}" fill="${c}"/>`;
+  const dot = (p: { x: number; z: number }, c: string) => `<circle cx="${p.x.toFixed(0)}" cy="${p.z.toFixed(0)}" r="${(sw * 1.3).toFixed(1)}" fill="${c}"/>`;
   return `<table class="specs">
     <tr><th>Tid på dygnet</th><td>${LIGHT_NAMES[def.light ?? 'day'] || 'dag'}</td></tr>
-    <tr><th>Längd</th><td>${((end - START_S) / 1000).toFixed(1).replace('.', ',')} km</td></tr>
+    <tr><th>Längd</th><td>${(length / 1000).toFixed(1).replace('.', ',')} km</td></tr>
     <tr><th>Underlag</th><td>${shares.map(([s, k]) => `${SURFACES[s].name.toLowerCase()} ${Math.round(k * 100)} %`).join(', ')}${def.winter ? ' · vinter' : ''}</td></tr>
     ${def.credit ? `<tr><th>Källa</th><td>${def.credit}</td></tr>` : ''}
   </table>
   <svg viewBox="${minX - pad} ${minZ - pad} ${maxX - minX + 2 * pad} ${maxZ - minZ + 2 * pad}" style="display:block;width:100%;max-height:40vh;margin-top:10px">
     <g fill="none" stroke-width="${sw.toFixed(1)}" stroke-linecap="round" stroke-linejoin="round">${lines.join('')}</g>
-    ${dot(START_S, '#4caf50')}${dot(end, '#e53935')}
+    ${dot(path[0]!, '#4caf50')}${dot(path[path.length - 1]!, '#e53935')}
   </svg>`;
 }
