@@ -1,6 +1,7 @@
 import { CatmullRomCurve3, Vector3 } from 'three';
 import { TYRE_GRIP, type SurfaceId, type TyreType } from './surfaces';
 import { ANDERSVATTNET } from './andersvattnet';
+import { BACK } from './back';
 import { BYGDSILJUM } from './bygdsiljum';
 import { rng } from './rng';
 import { World } from './world';
@@ -560,127 +561,6 @@ export const STAGE_LJUNGHEDEN: StageDef = {
   ],
 };
 
-/**
- * Fiktiv skogsetapp, ca 1,9 km grus med två vadställen där vägen dyker ner i en bäck. Vattnet
- * bromsar och greppar sämre, så det gäller att komma rakt in.
- */
-export const STAGE_FORSBACKEN: StageDef = {
-  name: 'Forsbäcken',
-  version: '1.0.1',
-  recordsSince: '1.0.0',
-  points: [
-    { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
-    { x: 0, z: 0, y: 0, width: 7, surface: 'gravel' },
-    { x: 0, z: 110, y: 1, width: 7, surface: 'gravel' },
-    { x: -50, z: 210, y: 3, width: 7, surface: 'gravel' },
-    { x: -60, z: 300, y: 4, width: 6.5, surface: 'gravel' },
-    // Första vadstället, efter en vänster ner mot bäcken
-    { x: -40, z: 370, y: 3, width: 6.5, surface: 'gravel' },
-    { x: -30, z: 392, y: 2.2, width: 6.5, surface: 'water' },
-    { x: -24, z: 408, y: 2.2, width: 6.5, surface: 'gravel' },
-    { x: -10, z: 440, y: 3, width: 6.5, surface: 'gravel' },
-    { x: 40, z: 520, y: 5, width: 6.5, surface: 'gravel' },
-    { x: 140, z: 560, y: 7, width: 6.5, surface: 'gravel' },
-    // Krön
-    { x: 250, z: 540, y: 8, width: 6.5, surface: 'gravel' },
-    { x: 340, z: 600, y: 7, width: 6.5, surface: 'gravel' },
-    { x: 370, z: 700, y: 5, width: 6.5, surface: 'gravel' },
-    // Andra vadstället, på en snabb raka
-    { x: 380, z: 790, y: 3, width: 6.5, surface: 'gravel' },
-    { x: 384, z: 810, y: 2.2, width: 6.5, surface: 'water' },
-    { x: 386, z: 828, y: 2.2, width: 6.5, surface: 'gravel' },
-    { x: 390, z: 860, y: 3, width: 6.5, surface: 'gravel' },
-    { x: 360, z: 960, y: 5, width: 7, surface: 'gravel' },
-    { x: 280, z: 1040, y: 6, width: 7, surface: 'gravel' },
-    { x: 240, z: 1150, y: 5, width: 7, surface: 'gravel' },
-    { x: 250, z: 1260, y: 4, width: 7, surface: 'gravel' },
-    { x: 250, z: 1300, y: 4, width: 7, surface: 'gravel' },
-    // Utrullning efter mål
-    { x: 250, z: 1360, y: 4, width: 7, surface: 'gravel' },
-  ],
-};
-
-/** Fiktiv kustetapp, ca 2 km: mest bred asfalt, med en grusbit runt udden på mitten. */
-export const STAGE_HAMNUDDEN: StageDef = {
-  name: 'Hamnudden',
-  version: '1.0.1',
-  recordsSince: '1.0.0',
-  points: [
-    { x: 0, z: -20, y: 0, width: 8, surface: 'asphalt' },
-    { x: 0, z: 0, y: 0, width: 8, surface: 'asphalt' },
-    { x: 0, z: 140, y: 1, width: 8, surface: 'asphalt' },
-    { x: 40, z: 260, y: 2, width: 8, surface: 'asphalt' },
-    { x: 140, z: 330, y: 3, width: 8, surface: 'asphalt' },
-    { x: 280, z: 340, y: 4, width: 8, surface: 'asphalt' },
-    { x: 380, z: 400, y: 5, width: 8, surface: 'asphalt' },
-    { x: 410, z: 520, y: 6, width: 8, surface: 'asphalt' },
-    // Korsning: asfaltsvägen fortsätter, etappen svänger vänster ut på gruset runt udden
-    { x: 380, z: 620, y: 6, width: 7, surface: 'gravel' },
-    { x: 300, z: 690, y: 7, width: 6.5, surface: 'gravel' },
-    { x: 260, z: 790, y: 8, width: 6.5, surface: 'gravel' },
-    // Korsning: grusvägen fortsätter, etappen svänger höger tillbaka ut på asfalten
-    { x: 280, z: 880, y: 7, width: 8, surface: 'asphalt' },
-    { x: 360, z: 950, y: 6, width: 8, surface: 'asphalt' },
-    { x: 470, z: 970, y: 5, width: 8, surface: 'asphalt' },
-    { x: 560, z: 1040, y: 4, width: 8, surface: 'asphalt' },
-    { x: 580, z: 1160, y: 3, width: 8, surface: 'asphalt' },
-    { x: 540, z: 1280, y: 2, width: 8, surface: 'asphalt' },
-    { x: 530, z: 1400, y: 2, width: 8, surface: 'asphalt' },
-    { x: 530, z: 1440, y: 2, width: 8, surface: 'asphalt' },
-    // Utrullning efter mål
-    { x: 530, z: 1500, y: 2, width: 8, surface: 'asphalt' },
-  ],
-  spurs: [
-    { points: [{ x: 380, z: 620 }, { x: 372, z: 705 }], width: 8, surface: 'asphalt' },
-    { points: [{ x: 280, z: 880 }, { x: 298, z: 965 }], width: 6.5, surface: 'gravel' },
-  ],
-};
-
-/** Gryningsetapp: fiktiv, ca 2 km grus och lera över myren, med ett långt vadställe i sänkan. */
-export const STAGE_VADMYRA: StageDef = {
-  name: 'Vadmyra',
-  version: '1.0.1',
-  recordsSince: '1.0.0',
-  light: 'dawn',
-  points: [
-    { x: 0, z: -20, y: 0, width: 7, surface: 'gravel' },
-    { x: 0, z: 0, y: 0, width: 7, surface: 'gravel' },
-    { x: 0, z: 100, y: 0, width: 7, surface: 'gravel' },
-    { x: 50, z: 190, y: 1, width: 7, surface: 'gravel' },
-    { x: 150, z: 230, y: 2, width: 6.5, surface: 'gravel' },
-    { x: 250, z: 210, y: 3, width: 6.5, surface: 'gravel' },
-    // Korsning: grusvägen fortsätter, etappen svänger vänster ut på myren
-    { x: 330, z: 260, y: 4, width: 6.5, surface: 'gravel' },
-    { x: 350, z: 340, y: 4, width: 6, surface: 'mud' },
-    { x: 330, z: 430, y: 3, width: 6, surface: 'mud' },
-    { x: 300, z: 520, y: 2.5, width: 6, surface: 'mud' },
-    // Långt vadställe genom sänkan
-    { x: 290, z: 560, y: 1.6, width: 6, surface: 'water' },
-    { x: 285, z: 600, y: 1.6, width: 6, surface: 'mud' },
-    { x: 290, z: 640, y: 2.5, width: 6, surface: 'mud' },
-    { x: 340, z: 720, y: 3, width: 6, surface: 'mud' },
-    // Myrvägen mynnar i en grusväg som kommer söderifrån och klättrar mot krönet
-    { x: 420, z: 770, y: 4, width: 6.5, surface: 'gravel' },
-    { x: 520, z: 780, y: 6, width: 6.5, surface: 'gravel' },
-    { x: 610, z: 840, y: 8, width: 6.5, surface: 'gravel' },
-    { x: 640, z: 940, y: 9, width: 6.5, surface: 'gravel' },
-    { x: 600, z: 1040, y: 8, width: 6.5, surface: 'gravel' },
-    // Kort vadställe i backen ner från krönet
-    { x: 590, z: 1090, y: 6.2, width: 6.5, surface: 'water' },
-    { x: 588, z: 1106, y: 6.2, width: 6.5, surface: 'gravel' },
-    { x: 590, z: 1140, y: 7, width: 6.5, surface: 'gravel' },
-    { x: 640, z: 1220, y: 7, width: 7, surface: 'gravel' },
-    { x: 660, z: 1320, y: 6, width: 7, surface: 'gravel' },
-    { x: 660, z: 1360, y: 6, width: 7, surface: 'gravel' },
-    // Utrullning efter mål
-    { x: 660, z: 1420, y: 6, width: 7, surface: 'gravel' },
-  ],
-  spurs: [
-    { points: [{ x: 330, z: 260 }, { x: 410, z: 300 }], width: 6.5, surface: 'gravel' },
-    { points: [{ x: 420, z: 770 }, { x: 440, z: 690 }], width: 6.5, surface: 'gravel' },
-  ],
-};
-
 /** Extra raksträcka efter den verkliga vägens slut (m): på snö behövs mer än 80 m för att stanna. */
 const RUNOUT_EXTRA = 160;
 
@@ -738,6 +618,13 @@ export const [STAGE_ASJON, STAGE_ALTARLIDEN, STAGE_BERGTJARNEN, STAGE_TORPET, ST
   [undefined, undefined, undefined, undefined, 'night'],
 ) as [StageDef, StageDef, StageDef, StageDef, StageDef];
 
+/** Bäck ur Rally Sweden i tre delar (se back.ts). Sista delen körs i skymning, som eftermiddagens omgång. */
+export const [STAGE_NAS, STAGE_RICKLEAN, STAGE_VALSFABODA] = realWinterStages('Bäck i Rally Sweden', BACK, [undefined, undefined, 'dusk']) as [
+  StageDef,
+  StageDef,
+  StageDef,
+];
+
 /**
  * Samma väg körd åt andra hållet. Underlaget gäller från en punkt fram till nästa, så varje
  * vänd punkt får underlaget från segmentet som nu ligger framför den. Den gamla utrullningen
@@ -769,9 +656,9 @@ export const STAGES: StageDef[] = [
   STAGE_BERGTJARNEN,
   STAGE_TORPET,
   STAGE_TROLLBERGET,
-  STAGE_FORSBACKEN,
-  STAGE_HAMNUDDEN,
-  STAGE_VADMYRA,
+  STAGE_NAS,
+  STAGE_RICKLEAN,
+  STAGE_VALSFABODA,
   STAGE_STORBERGET,
   STAGE_HOSJOALVEN,
   STAGE_ROJMYRBERGET,

@@ -55,10 +55,8 @@ natten (snö, se Vinterrallyt nedan). Då lyser bilens strålkastare. En hård s
 sidan, och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
 inbromsning. I Fri körning väljer man först mästerskap och sedan etapp.
 
-Forsrallyt har tre egna etapper: *Forsbäcken* (grus med två vadställen), *Hamnudden* (mest bred
-asfalt, där asfaltsdäck rekommenderas) och *Vadmyra* i gryning (grus och lera med ett långt
-vadställe). I vadställena dyker vägen ner i en bäck (underlaget `water`): vattnet bromsar bilen,
-greppar sämre och sprutar åt sidorna.
+Underlaget `water` (vadställen där vägen dyker ner i en bäck: vattnet bromsar bilen, greppar
+sämre och sprutar åt sidorna) finns kvar, men ingen etapp har vadställen just nu.
 
 Vädret slumpas per etapp (`src/physics/weather.ts`): oftast uppehåll, men ibland regn eller dimma,
 och på vinteretapper snöfall eller dimma. Regn gör asfalt, grus och lera halare och snöfall gör
@@ -141,7 +139,7 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
 - **Enstaka lopp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
   gratis efteråt, så bilarna i garaget tar aldrig skada.
-- **Mästerskap** (Skogsrallyt, Myrkullarallyt, Vinterrallyt och Forsrallyt, tre etapper vardera varav en i skymning, gryning respektive natt; prispengarna växer med antalet etapper): man kör mot sju
+- **Mästerskap** (Skogsrallyt, Myrkullarallyt, Vinterrallyt och Forsrallyt, tre till fem etapper vardera, några i skymning, gryning eller natt; prispengarna växer med antalet etapper): man kör mot sju
   slumpade fiktiva förare, och efter varje etapp visas ställningen. Placeringen avgör
   prispengarna, som är större än för enstaka lopp. Fältets bästa kör på guldtid; har man
   egna rekord på etapperna läggs de två snabbaste nära ens takt, och är man snabbare än hela
@@ -155,6 +153,9 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
   (Tallmoklassikern och Ljunghedsrallyt på klass 1-etapperna, Israllyt på en verklig väg). Medaljgränserna och fältet är
   8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
   Varje klass kör bara sina egna mästerskap.
+- **Forsrallyt** (klass 1) körs på en verklig väg: Bäck ur Rally Sweden, ca 10 km delad i tre
+  etapper (Näs, Rickleån och Valsfäboda i skymning, `src/physics/back.ts`). Skogsvägarna från Bäck
+  via Näs mot Rickleån saknas i OpenStreetMap och är avritade från rallyts sträckkarta.
 - **Vinterrallyt** (klass 1) körs på en verklig väg: Bygdsiljum ur Rally Sweden, ca 26 km delad i
   fem etapper (Åsjön, Altarliden, Bergtjärnen, Torpet med en T-korsning och Trollberget på natten,
   `src/physics/bygdsiljum.ts`). Sista biten före mål saknas i OpenStreetMap och är avritad från

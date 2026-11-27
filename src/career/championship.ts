@@ -34,7 +34,7 @@ export const CHAMPIONSHIPS: ChampionshipDef[] = [
   { id: 'ljunghedsrallyt', name: 'Ljunghedsrallyt', legs: ['Ljungheden', 'Myrkulla baklänges', 'Skogsberg baklänges'], pace: 0.965, tier: 2 },
   { id: 'israllyt', name: 'Israllyt', legs: ['Storberget', 'Hösjöälven', 'Röjmyrberget', 'Flarkån'], pace: 0.945, tier: 2 },
   // Ligger sist så att klass 2 fortfarande öppnas av de tre första klass 1-mästerskapen.
-  { id: 'forsrallyt', name: 'Forsrallyt', legs: ['Forsbäcken', 'Hamnudden', 'Vadmyra'], pace: 0.945, tier: 1 },
+  { id: 'forsrallyt', name: 'Forsrallyt', legs: ['Näs', 'Rickleån', 'Valsfäboda'], pace: 0.945, tier: 1 },
 ];
 
 /** Fältets takt i klass 1-guldtider: klass 2 kör fortare. */

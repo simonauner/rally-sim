@@ -450,10 +450,11 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   Bergtjärnen: [296, 327, 375],
   Torpet: [305, 337, 387],
   Trollberget: [304, 336, 385],
-  // Testföraren: Forsbäcken 80 s, Hamnudden 87 s (asfaltsdäck) och Vadmyra 97 s.
-  Forsbäcken: [81, 90, 104],
-  Hamnudden: [88, 98, 112],
-  Vadmyra: [98, 109, 125],
+  // Bäck i tre delar på cirka 3,4 km. Testföraren med vinterdäck: Näs 190 s, Rickleån 195 s och
+  // Valsfäboda 195 s i skymning.
+  Näs: [191, 211, 242],
+  Rickleån: [196, 217, 249],
+  Valsfäboda: [199, 220, 252],
   // Andersvattnet i fyra delar på drygt 5 km. Testföraren med vinterdäck: Storberget 291 s,
   // Hösjöälven 304 s (hårnålen i krypfart), Röjmyrberget 323 s och Flarkån 314 s i skymning.
   Storberget: [293, 324, 371],
