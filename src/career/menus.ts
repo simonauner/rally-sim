@@ -233,7 +233,7 @@ export async function careerMenu(
     }
     if (c === "champ") {
       const launch = ongoing
-        ? await ongoingMenu()
+        ? await ongoingMenu(showCar)
         : await championshipMenu(career, pick, showCar, scenery);
       if (launch) return launch;
     }
@@ -613,26 +613,26 @@ export function awardPrize(
   return `<div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ""}</div><div>Bilen lagas gratis efter enstaka lopp.</div>`;
 }
 
-async function ongoingMenu(): Promise<Launch | null> {
+/** Pågående mästerskap: förhandsvisning och service före nästa etapp, som mellan etapperna. */
+async function ongoingMenu(showCar: ShowCar): Promise<Launch | null> {
   const launch = resumeChampionship();
   if (!launch) {
     saveChampionship(null);
     return null;
   }
-  const c = await showMenu<"go" | "abort" | "back">({
-    title: championshipById(launch.championship!.id)!.name,
-    solid: true,
-    body: `Nästa etapp: ${launch.stage.name} med ${nameOf(launch.model)}.`,
-    items: [
-      { label: "Kör nästa etapp", value: "go" },
-      { label: "Avbryt mästerskapet", value: "abort" },
-      { label: "← Tillbaka", value: "back" },
-    ],
-    cancel: "back",
-  });
-  if (c === "go") return launch;
-  if (c === "abort") await confirmAbort();
-  return null;
+  const p = launch.championship!;
+  const left = await beforeLeg(
+    championshipById(p.id)!,
+    p.leg,
+    p.damage ?? WHOLE,
+    (d) => showCar(launch.model, d),
+    legWeather(p),
+    true,
+  );
+  if (!left) return null;
+  const championship = { ...p, damage: repairCost(left.damage) === 0 ? null : left.damage };
+  saveChampionship(championship);
+  return left.later ? null : { ...launch, championship };
 }
 
 /** Bläddrar genom mästerskapets etapper med samma förhandsvisning som före varje etapp, men utan väder (det slumpas vid start). */
@@ -719,12 +719,6 @@ async function startChampionship(
   const stage = STAGES.find((s) => s.name === def.legs[0]);
   if (!model || !stage) return null;
   // Samma förhandsvisning och service som mellan etapperna, med hel bil.
-  const whole: CarDamage = {
-    body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 },
-    wheels: [0, 0, 0, 0],
-    powerFactor: 1,
-    lamps: [0, 0],
-  };
   // Framsteget skapas före förhandsvisningen, så första etappens väder går att visa; det sparas först vid start.
   const progress = newProgress(
     def,
@@ -735,7 +729,7 @@ async function startChampionship(
     !(await beforeLeg(
       def,
       0,
-      whole,
+      WHOLE,
       (d) => showCar(model, d),
       legWeather(progress, 0),
     ))
@@ -744,6 +738,13 @@ async function startChampionship(
   saveChampionship(progress);
   return { model, stage, championship: progress };
 }
+
+const WHOLE: CarDamage = {
+  body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 },
+  wheels: [0, 0, 0, 0],
+  powerFactor: 1,
+  lamps: [0, 0],
+};
 
 const PART_NAMES: Record<RepairPart, string> = {
   body: "karossen",
@@ -871,6 +872,8 @@ export async function championshipLegDone(
     return { prize };
   }
 
+  // Sparas direkt, så etappen räknas även om fliken stängs före servicen.
+  saveChampionship(afterLeg(p, time, damage, false));
   await showMenu({
     title: `Etapp ${times.length} av ${def.legs.length}`,
     side: true,
@@ -889,13 +892,14 @@ export async function championshipLegDone(
     legWeather(p, times.length),
   );
   if (!left) return { prize: 0 };
-  saveChampionship(afterLeg(p, time, left, repairCost(left) === 0));
-  return "next";
+  saveChampionship(afterLeg(p, time, left.damage, repairCost(left.damage) === 0));
+  return left.later ? { prize: 0 } : "next";
 }
 
 /**
  * Före etapp `leg` (0-baserad): förhandsvisning av etappen och service där spelaren lagar för egna pengar,
- * kör vidare skadad eller avbryter. Returnerar skadan bilen startar med, eller null om mästerskapet avbröts.
+ * kör vidare skadad, sparar till senare (`pausable`) eller avbryter. Returnerar skadan bilen har och om
+ * spelaren valde att fortsätta senare, eller null om mästerskapet avbröts.
  */
 async function beforeLeg(
   def: ChampionshipDef,
@@ -903,7 +907,8 @@ async function beforeLeg(
   damage: CarDamage,
   showCar: (d: CarDamage) => Showroom,
   weather: Weather,
-): Promise<CarDamage | null> {
+  pausable = leg > 0,
+): Promise<{ damage: CarDamage; later: boolean } | null> {
   const nextName = def.legs[leg]!;
   const nextStage = STAGES.find((s) => s.name === nextName);
   // Vridbordet öppnas vid första besöket på servicen och står kvar bakom förhandsvisningen.
@@ -914,7 +919,7 @@ async function beforeLeg(
   for (;;) {
     const cost = repairCost(damage);
     if (!atService) {
-      const c = await showMenu<"service" | "go" | "abort">({
+      const c = await showMenu<"service" | "go" | "later" | "abort">({
         title: leg === 0 ? nextName : `Nästa: ${nextName}`,
         subtitle: `Etapp ${leg + 1} av ${def.legs.length}`,
         side: true,
@@ -929,11 +934,18 @@ async function beforeLeg(
             detail: cost > 0 ? "utan att laga" : undefined,
             value: "go",
           },
+          ...(pausable
+            ? [{ label: "Spara och fortsätt senare", value: "later" as const }]
+            : []),
           { label: "Avbryt mästerskapet", value: "abort" },
         ],
-        cancel: leg > 0 ? "service" : "abort",
+        cancel: leg > 0 ? "service" : pausable ? "later" : "abort",
       });
       if (c === "go") break;
+      if (c === "later") {
+        room?.close();
+        return { damage, later: true };
+      }
       if (c === "abort") {
         if (await confirmAbort()) {
           room?.close();
@@ -1006,5 +1018,5 @@ async function beforeLeg(
     break;
   }
   room?.close();
-  return damage;
+  return { damage, later: false };
 }
