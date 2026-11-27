@@ -170,11 +170,6 @@ export async function careerMenu(
             { label: "← Tillbaka", value: "back" },
           ]
         : [
-            {
-              label: "Enstaka lopp",
-              detail: `upp till ${formatMoney(MEDALS[0].prize * Math.max(...Object.keys(career.garage).map((car) => TIER_PRIZE[tierOf(car)])))}`,
-              value: "stage",
-            },
             ongoing
               ? {
                   label: "Mästerskap",
@@ -186,6 +181,11 @@ export async function careerMenu(
                   detail: `upp till ${formatMoney(Math.max(...CHAMPIONSHIPS.map((ch) => championshipMedals(ch)[0]!.prize)))}`,
                   value: "champ",
                 },
+            {
+              label: "Enstaka lopp",
+              detail: `upp till ${formatMoney(MEDALS[0].prize * Math.max(...Object.keys(career.garage).map((car) => TIER_PRIZE[tierOf(car)])))}`,
+              value: "stage",
+            },
             {
               label: "Historik",
               detail: career.history?.length
