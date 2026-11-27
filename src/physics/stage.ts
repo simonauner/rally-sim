@@ -1,8 +1,8 @@
 import { CatmullRomCurve3, Vector3 } from 'three';
 import { TYRE_GRIP, type SurfaceId, type TyreType } from './surfaces';
-import { ANDERSVATTNET } from './andersvattnet';
-import { BACK } from './back';
-import { BYGDSILJUM } from './bygdsiljum';
+import { ANDERSVATTNET } from './real/andersvattnet';
+import { BACK } from './real/back';
+import { BYGDSILJUM } from './real/bygdsiljum';
 import { rng } from './rng';
 import { World } from './world';
 

@@ -10,7 +10,7 @@
  * Datan i den här filen är härledd från OpenStreetMap och delas under ODbL 1.0.
  */
 
-import type { RealStagePart } from './stage';
+import type { RealStagePart } from '../stage';
 
 export const BYGDSILJUM: RealStagePart[] = [
   {
