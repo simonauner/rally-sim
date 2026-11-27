@@ -49,7 +49,7 @@ export interface BodyShape {
   hoodVents?: boolean;
   paintedBumpers?: boolean;
   spoiler?: 'roof' | 'trunk';
-  /** Luftintag för laddluftkylaren mitt på huvens främre del, framför startnumret. */
+  /** Luftintag för laddluftkylaren på huven, mellan vindrutan och startnumret. */
   hoodScoop?: boolean;
   /** Smala lyktor i ett svart band tvärs över fronten, i stället för grill med kromram. */
   lampBand?: boolean;
@@ -57,6 +57,19 @@ export interface BodyShape {
   round?: number;
   /** Extraljusens x (mitt) på klass 2-rampen, om de inte ska spridas brett över fronten. */
   podX?: number[];
+  /** Stötfångarnas höjd (standard 0,2 m). */
+  bumperH?: number;
+  /** Blinkers ute i hörnen på den främre stötfångaren i stället för i strålkastarna. */
+  bumperBlinkers?: boolean;
+  /** Lackade stötfångare: luftintaget bara fram, inte även bak. */
+  frontIntakeOnly?: boolean;
+  /** Hur mycket gördellinjen stiger från vindrutans fot till bakkanten (kilform). */
+  beltRise?: number;
+  /** Hur mycket smalare nosen och bakpartiet blir sett ovanifrån, som andel av bredden. */
+  taper?: Range;
+  /** Lackade backspeglar och ett luftintag framtill på taket. */
+  paintedMirrors?: boolean;
+  roofVent?: boolean;
   /** Vita fälgar med en tät ring av hål, som rallyfälgar, i stället för navkapslar. */
   rallyRims?: boolean;
 }
