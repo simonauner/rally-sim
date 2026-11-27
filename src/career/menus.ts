@@ -162,7 +162,7 @@ export async function careerMenu(
       body: `${trophyShelf(career)}${message ? `<div>${message}</div>` : ""}${
         firstCar
           ? "<div>Du har ingen bil än. Köp din första hos bilhandlaren; det som blir över räcker till delar.</div>"
-          : `<div>Enstaka lopp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`
+          : `<div>Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större. Enstaka lopp: prispengar efter tid, och bilen lagas gratis efteråt.</div>`
       }`,
       items: firstCar
         ? [
