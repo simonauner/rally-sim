@@ -1,6 +1,6 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
-import { afterLeg, bestPlace, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { afterLeg, bestPlace, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, startOrder, aheadOnRoad, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { CARS, kvarn240, kvarnTurbo4x4 } from '../src/physics/params';
@@ -135,6 +135,15 @@ const CAR = 'Kvarn 240 GL';
   const old = { id: def.id, car: 'Kvarn 240 GL', leg: 1, times: [91], damage: null };
   const caught = raceRivals(old, 94);
   check('motståndare: gammalt framsteg', caught.rivals!.length === RIVAL_COUNT && caught.rivals!.every((v) => v.times.length === 2), `${caught.rivals![0]!.times.join(', ')}`);
+  // Startordning: nykomlingen sist på första etappen, sedan omvänd ställning; tiderna före dig stämmer med målgången.
+  const leg0 = aheadOnRoad(fresh);
+  const lead = afterLeg(raceRivals(fresh, 60), 60, { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 }, true);
+  const trail = afterLeg(raceRivals(fresh, 999), 999, { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 }, true);
+  const ahead = aheadOnRoad(lead);
+  const after = raceRivals(lead, 60).rivals!;
+  const same0 = leg0.every((a) => raceRivals(fresh, 60).rivals!.find((v) => v.name === a.name)!.times[0] === a.time);
+  const same1 = ahead.every((a) => after.find((v) => v.name === a.name)!.times[1] === a.time);
+  check('startordning', leg0.length === RIVAL_COUNT && same0 && startOrder(lead).at(-1) === 'Du' && ahead.length === RIVAL_COUNT && same1 && startOrder(trail)[0] === 'Du' && aheadOnRoad(trail).length === 0, startOrder(lead).join(', '));
   const fastest = (d: 'easy' | 'medium' | 'hard') => Math.min(...newProgress(def, kvarn240.name, 7, d).rivals!.map((v) => v.pace));
   const hard = newProgress(def, kvarn240.name, 7, 'hard');
   check('motståndare: svårighetsgrad', fastest('hard') < fastest('medium') && fastest('medium') < fastest('easy') && isProgress(hard) && raceRivals(hard, 90).rivals![0]!.times.length === 1 && !isProgress({ ...hard, difficulty: 0.5 }), `${fastest('easy').toFixed(3)} / ${fastest('medium').toFixed(3)} / ${fastest('hard').toFixed(3)}`);

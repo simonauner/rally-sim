@@ -7,7 +7,7 @@
 import type { CareerState } from '../account/protocol';
 import type { DamageState } from '../physics/car';
 import { STAGE_TARGETS, TIER_PACE, TIER_PRIZE, tierOf, type Tier } from './career';
-import { isRival, newRivals, raceLeg, type Rival } from './rivals';
+import { isRival, newRivals, raceLeg, standings, type Rival } from './rivals';
 import { rng } from '../physics/rng';
 import { STAGE_LENGTHS } from '../physics/real/lengths';
 import { STAGES } from '../physics/stage';
@@ -180,9 +180,35 @@ export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipP
   const pace = fieldPace(def) * (p.difficulty ?? 1);
   let rivals = p.rivals ?? newRivals(seed, pace);
   const times = [...p.times, time];
-  const slowdown = def.legs.map((_, i) => WEATHER_SLOWDOWN[legWeather({ ...p, seed }, i)]);
+  const slowdown = legSlowdown({ ...p, seed });
   for (let leg = p.rivals ? p.leg : 0; leg <= p.leg; leg++) rivals = raceLeg(rivals, def.legs, leg, times.slice(0, leg + 1), seed, slowdown, pace - 0.015);
   return { ...p, seed, rivals };
+}
+
+/** Hur mycket vädret saktar ner fältet på varje etapp. */
+const legSlowdown = (p: ChampionshipProgress) => championshipById(p.id)!.legs.map((_, i) => WEATHER_SLOWDOWN[legWeather(p, i)]);
+
+/**
+ * Startordningen på nästa etapp, namn för namn ('Du' är spelaren). Första etappen seedas snabbast
+ * först med spelaren sist, som oseedad nykomling; sedan startar fältet i omvänd ordning mot
+ * ställningen, så ledaren går sist och får vägen sopad av de andra, som i VM.
+ */
+export function startOrder(p: ChampionshipProgress): string[] {
+  if (!p.rivals) return ['Du'];
+  if (p.leg === 0) return [...[...p.rivals].sort((a, b) => a.pace - b.pace).map((v) => v.name), 'Du'];
+  return standings(p.rivals, p.times).map((s) => s.name).reverse();
+}
+
+/**
+ * Förarna som startar före spelaren på nästa etapp, med sina tider där. Tiderna beror bara på fröet,
+ * takten och vädret, inte på spelarens åk, så de blir samma som raceRivals ger efter målgång.
+ */
+export function aheadOnRoad(p: ChampionshipProgress): { name: string; time: number }[] {
+  if (!p.rivals || p.seed === undefined) return [];
+  const def = championshipById(p.id)!;
+  const raced = raceLeg(p.rivals, def.legs, p.leg, p.times, p.seed, legSlowdown(p));
+  const order = startOrder(p);
+  return order.slice(0, order.indexOf('Du')).map((name) => ({ name, time: raced.find((v) => v.name === name)!.times[p.leg]! }));
 }
 
 export type RepairPart = 'body' | 'wheels' | 'engine' | 'lamps';
