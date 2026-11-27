@@ -6,7 +6,7 @@
 
 import type { CareerState } from '../account/protocol';
 import type { DamageState } from '../physics/car';
-import { STAGE_TARGETS, TIER_PACE, TIER_PRIZE, type Tier } from './career';
+import { STAGE_TARGETS, TIER_PACE, TIER_PRIZE, tierOf, type Tier } from './career';
 import { isRival, newRivals, raceLeg, type Rival } from './rivals';
 import { rng } from '../physics/rng';
 import { Stage, STAGES, START_S } from '../physics/stage';
@@ -59,6 +59,16 @@ const earlierInTier = (def: ChampionshipDef) => CHAMPIONSHIPS.slice(0, CHAMPIONS
 /** Klassen är öppen när mästerskapen före klassens första i listan är vunna. */
 export const tierUnlocked = (career: CareerState, tier: Tier) =>
   CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.findIndex((c) => c.tier === tier)).every((c) => hasWon(career, c));
+
+/** Klass 2-bilar som säljs först när alla mästerskap i klass 2 är vunna. */
+const LATE_CARS = ['Sora 2.0 Turbo', 'Hoshi 2.0 4WD', 'Volpe 2.0 Turbo 16V', 'Brenner 5T Coupé'];
+
+/** Om bilhandlaren säljer bilen: klassen ska vara öppen, och de sena bilarna kräver hela klass 2 vunnen. */
+export const carUnlocked = (career: CareerState, car: string) =>
+  tierUnlocked(career, tierOf(car)) && (!LATE_CARS.includes(car) || CHAMPIONSHIPS.filter((c) => c.tier === 2).every((c) => hasWon(career, c)));
+
+/** Vad som låser upp bilen, för bilhandlarens knapp. */
+export const carUnlockHint = (car: string) => (LATE_CARS.includes(car) ? 'Vinn alla mästerskap i klass 2' : 'Vinn alla mästerskap i klass 1');
 
 /** Skogsrallyt är alltid öppet; därefter krävs öppen klass och att klassens tidigare mästerskap är vunna. */
 export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>

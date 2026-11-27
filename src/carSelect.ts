@@ -60,7 +60,7 @@ export interface PickOptions {
   /** Låsta bilar går att bläddra till men inte köra; Kör blir då en hänvisning till karriären. */
   locked?: (m: CarModel) => boolean;
   /** Knapptexten för en låst bil. */
-  lockedLabel?: string;
+  lockedLabel?: string | ((m: CarModel) => string);
   /** Bilar att jämföra med (t.ex. de man äger); ger knappen Jämför som visar dem sida vid sida. */
   compare?: CarModel[];
 }
@@ -256,7 +256,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     const to = panel.offsetHeight;
     if (from !== to) panel.animate({ height: [`${from}px`, `${to}px`] }, { duration: 200, easing: 'ease-out' });
   };
-  const pickLabel = (m: CarModel) => (locked(m) ? (opts.lockedLabel ?? 'Lås upp i Karriär-läget') : (opts.action?.label ?? 'Kör'));
+  const pickLabel = (m: CarModel) => (locked(m) ? ((typeof opts.lockedLabel === 'function' ? opts.lockedLabel(m) : opts.lockedLabel) ?? 'Lås upp i Karriär-läget') : (opts.action?.label ?? 'Kör'));
   let shown: CarModel | null = null;
   const show = (m: CarModel) => {
     if (m === shown) return;

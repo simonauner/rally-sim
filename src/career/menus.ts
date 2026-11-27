@@ -41,6 +41,8 @@ import {
   CHAMPIONSHIPS,
   championshipById,
   championshipPrize,
+  carUnlocked,
+  carUnlockHint,
   championshipUnlocked,
   bestPlace,
   hasWon,
@@ -563,9 +565,8 @@ async function dealer(pick: Pick) {
       detail: (m) =>
         `klass ${tierOf(nameOf(m))} · ${formatMoney(CAR_PRICES[nameOf(m)] ?? 0)}`,
       compare: ownedModels(career),
-      // Klass 2 säljs först när alla mästerskap i klass 1 är vunna.
-      locked: (m) => !tierUnlocked(career, tierOf(nameOf(m))),
-      lockedLabel: "Vinn alla mästerskap i klass 1",
+      locked: (m) => !carUnlocked(career, nameOf(m)),
+      lockedLabel: (m) => carUnlockHint(nameOf(m)),
       action: {
         label: "Köp",
         denied: (m) => buyCar(loadCareer().career, nameOf(m)) === "poor",

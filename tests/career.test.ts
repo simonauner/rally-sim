@@ -1,6 +1,6 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
-import { afterLeg, bestPlace, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, tierUnlocked, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { afterLeg, bestPlace, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, tierUnlocked, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { CARS, kvarn240, kvarnTurbo4x4 } from '../src/physics/params';
@@ -177,6 +177,8 @@ const CAR = 'Kvarn 240 GL';
   const fors = CHAMPIONSHIPS.find((c) => c.id === 'forsrallyt')!;
   check('forsrallyt: öppnas av vinterrallyt', !championshipUnlocked(almost, fors) && championshipUnlocked(firstThree, fors) && tierUnlocked(firstThree, 2), `${tier1.length} mästerskap i klass 1`);
   check('klass 2: upplåsning', !tierUnlocked(almost, 2) && tierUnlocked(allOne, 2) && tierUnlocked(newCareer(), 1) && openTwo(almost) === '000' && openTwo(allOne) === '100' && openTwo(withWin(allOne, tier2[0]!)) === '110', `${openTwo(almost)} → ${openTwo(allOne)}`);
+  const allTwo = tier2.reduce(withWin, allOne);
+  check('sena bilar: kräver klass 2 vunnen', carUnlocked(allOne, 'Kvarn Turbo 4x4') && !carUnlocked(allOne, 'Sora 2.0 Turbo') && !carUnlocked(withWin(allOne, tier2[0]!), 'Hoshi 2.0 4WD') && carUnlocked(allTwo, 'Sora 2.0 Turbo') && carUnlocked(allTwo, 'Brenner 5T Coupé') && !carUnlocked(almost, 'Volpe 2.0 Turbo 16V'), `${tier2.length} mästerskap i klass 2`);
   const names = CARS.map((m) => m.make().name);
   check('klass 2: sju bilar', names.filter((n) => tierOf(n) === 2).length === 7 && names.every((n) => tierOf(n) === 1 || tierOf(n) === 2), names.map((n) => `${n} ${tierOf(n)}`).join(', '));
   const T2 = 'Kvarn Turbo 4x4';
