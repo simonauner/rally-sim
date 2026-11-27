@@ -75,7 +75,6 @@ export function stagePreviewHtml(def: StageDef): string {
     minX = Math.min(minX, px(i)); maxX = Math.max(maxX, px(i));
     minZ = Math.min(minZ, pz(i)); maxZ = Math.max(maxZ, pz(i));
   }
-  const pad = 30;
   const lines: string[] = [];
   let run: string[] = [];
   for (let i = START_S; ; ) {
@@ -91,6 +90,7 @@ export function stagePreviewHtml(def: StageDef): string {
   }
   if (run.length > 1) lines.push(`<polyline points="${run.join(' ')}" stroke="${MAP_COLORS[st.surfaces[end]!]}"/>`);
   const sw = Math.max(maxX - minX, maxZ - minZ) / 60;
+  const pad = sw * 1.5; // rymmer start-/målpunkten (r = 1,3 sw)
   const dot = (i: number, c: string) => `<circle cx="${px(i).toFixed(0)}" cy="${pz(i).toFixed(0)}" r="${(sw * 1.3).toFixed(1)}" fill="${c}"/>`;
   return `<table class="specs">
     <tr><th>Tid på dygnet</th><td>${LIGHT_NAMES[def.light ?? 'day'] || 'dag'}</td></tr>
