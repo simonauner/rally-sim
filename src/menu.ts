@@ -275,16 +275,25 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   });
 }
 
-/** Laddningsskärm som täcker spelet. Returnerar en funktion som tar bort den. */
-export async function showLoading(title: string): Promise<() => void> {
+/**
+ * Laddningsskärm som täcker spelet, med `body` (t.ex. etappkortet) under snurren, så att den syns ovanför kartan. `status` byter raden
+ * vid snurren och väntar tills den syns; `hide` tar bort skärmen.
+ */
+export function showLoading(title: string, body = ''): { status: (text: string) => Promise<void>; hide: () => void } {
   const el = root();
   el.className = 'solid';
-  el.innerHTML = `<div class="panel"><h1>${title}</h1><div class="loading"><span class="spinner"></span>Laddar…</div></div>`;
+  el.innerHTML = `<div class="panel"><h1>${title}</h1><div class="loading"><span class="spinner"></span><span>Laddar…</span></div>${body ? `<div class="body">${body}</div>` : ''}</div>`;
   el.style.display = 'flex';
-  // Vänta tills skärmen faktiskt har ritats, annars syns den inte förrän det tunga jobbet är klart.
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  return () => {
-    el.style.display = 'none';
-    el.innerHTML = '';
+  const text = el.querySelector('.loading > span:last-child')!;
+  return {
+    async status(t) {
+      text.textContent = t;
+      // Vänta tills skärmen faktiskt har ritats, annars syns texten inte förrän det tunga jobbet är klart.
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    },
+    hide() {
+      el.style.display = 'none';
+      el.innerHTML = '';
+    },
   };
 }

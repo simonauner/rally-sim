@@ -15,7 +15,7 @@ import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
 import { CARS, type CarModel } from './physics/params';
 import { START_S, Stage, STAGE_ASJON, STAGE_GRINSBOL, STAGES, type StageDef } from './physics/stage';
-import { pickStage } from './stageMenu';
+import { pickStage, stagePreviewHtml } from './stageMenu';
 import { forcedWeather, isTyre, pickTyre } from './tyreMenu';
 import type { TyreType } from './physics/surfaces';
 import { CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
@@ -38,7 +38,7 @@ import { buildStage } from './render/stage';
 import { buildTerrain } from './render/terrain';
 import { applyLight, Headlights, LIGHTS } from './render/lighting';
 import { applyWeather, Precipitation } from './render/weather';
-import { rollWeather, type Weather } from './physics/weather';
+import { rollWeather, WEATHER_NAMES, type Weather } from './physics/weather';
 
 const DT = 1 / 240;
 const CAMERAS = ['bakifrån nära', 'bakifrån långt', 'motorhuv', 'förarvy', 'uppifrån', 'sidovy (skador)'] as const;
@@ -308,10 +308,16 @@ async function main() {
   }
   backdrops.forEach((b) => b.dispose());
   // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
-  let hideLoading: (() => void) | null = await showLoading(choice === 'test' ? 'Testbana' : stageDef.name);
+  // Etappkortet står kvar under laddningen, med vad som görs just nu vid snurren.
+  const loading = choice === 'test'
+    ? showLoading('Laddar: Testbana')
+    : showLoading(`Laddar: ${stageDef.name}`, `<div>Väder: ${WEATHER_NAMES[weather]}.</div>${stagePreviewHtml(stageDef)}`);
+  let hideLoading: (() => void) | null = loading.hide;
+  await loading.status('Bygger vägen…');
   const stage = choice === 'test' ? null : new Stage(stageDef);
   const world = stage ?? new World();
   world.weather = weather;
+  await loading.status('Bygger landskapet…');
   scene.add(stage ? buildStage(stage) : buildTerrain(world));
   const light = LIGHTS[stage?.def.light ?? 'day'];
   applyLight(scene, hemi, sun, light);
@@ -323,6 +329,7 @@ async function main() {
   const barrierMeshes = barriers ? buildBarriers(barriers) : null;
   if (barrierMeshes) scene.add(barrierMeshes.group);
 
+  await loading.status('Hämtar bilen…');
   await loadCarModel(model);
   const car = new Car(model.make(), world);
   if (tyre) car.params.tyre = tyre;
@@ -617,6 +624,8 @@ async function main() {
     paused = false;
   };
 
+  // Första bildrutan kompilerar shaders, vilket kan ta en stund.
+  await loading.status('Förbereder grafiken…');
   let acc = 0;
   let last = performance.now();
   renderer.setAnimationLoop((now: number) => {
