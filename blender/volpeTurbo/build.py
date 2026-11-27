@@ -18,10 +18,15 @@ lyktor, grill, stötfångare, takspoiler, huvventiler, extraljus och fälgar är
 
 import math
 import os
+import sys
 
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from simplify import simplify  # noqa: E402
 
 GROUND = -0.52
 WHEELS = [(1.066, -0.205), (-1.414, -0.215)]  # (z, y) fram och bak
@@ -899,7 +904,7 @@ def rim():
     def v(a, y, z):
         return bm.verts.new(to_blender(a, y, z))
 
-    def tube(r_in, r_out, a0, a1, mat, segs=48):
+    def tube(r_in, r_out, a0, a1, mat, segs=32):
         sec = [(r_out, a0), (r_out, a1), (r_in, a1), (r_in, a0)]
         loops = [[v(a, r * math.cos(2 * math.pi * i / segs), r * math.sin(2 * math.pi * i / segs)) for r, a in sec] for i in range(segs)]
         for i in range(segs):
@@ -907,7 +912,7 @@ def rim():
             for k in range(4):
                 bm.faces.new((p[k], p[(k + 1) % 4], q[(k + 1) % 4], q[k])).material_index = mat
 
-    def disc(r, a0, a1, mat, segs=32):
+    def disc(r, a0, a1, mat, segs=24):
         ring = lambda a: [v(a, r * math.cos(2 * math.pi * i / segs), r * math.sin(2 * math.pi * i / segs)) for i in range(segs)]  # noqa: E731
         f, b = ring(a1), ring(a0)
         bm.faces.new(f).material_index = mat
@@ -975,6 +980,9 @@ def main():
     body = build_body()
     cut_planes(body)
     assign_materials(body, face_material)
+    # Rutorna behåller sitt nät: förenklade får de svaga strimmor av långa smala trianglar. Baklyktorna
+    # förenklas inte alls, deras välvda glas blir kantigt.
+    simplify(body, 0.5, keep={'glass'})
     wheel_rim = rim()
     for obj in [body, *details(body), wheel_rim]:
         bpy.context.scene.collection.objects.unlink(obj)
