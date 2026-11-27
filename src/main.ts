@@ -105,6 +105,8 @@ async function main() {
   sc.near = 1;
   sc.far = 160;
   sun.shadow.bias = -0.0004;
+  // Skuggtestet flyttas ut längs ytans normal, så täta oregelbundna nät (Blenderbilarna) inte skuggar sig själva i fläckar.
+  sun.shadow.normalBias = 0.04;
   scene.add(sun, sun.target);
 
   // Kontot skapas vid första besöket; rekord synkas om en synkserver är inställd.

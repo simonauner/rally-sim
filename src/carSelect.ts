@@ -83,6 +83,7 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.normalBias = 0.02; // annars skuggar Blenderbilarnas täta nät sig själva i fläckar
   scene.add(sun, sun.target);
   const turntable = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.1, 64), new THREE.MeshToonMaterial({ color: 0x8f9396 }));
   turntable.receiveShadow = true;
