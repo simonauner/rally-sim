@@ -150,6 +150,9 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   const frame = (now: number) => {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
+    // Första bilens modell hämtas fortfarande; visa banan tom så länge.
+    if (!car) nextCar();
+    if (!car) return void pipeline.render();
     for (acc += dt; acc >= DT; acc -= DT) {
       const input = driveAlongRoad(stage, car);
       throttle = input.throttle;
