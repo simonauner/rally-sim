@@ -645,8 +645,8 @@ async function main() {
       sound.impact(car.damageEvents);
       car.damageEvents.length = 0;
     }
-    // Hamnar bilen i ett omöjligt läge (ner genom världen) startar vi om.
-    if (!Number.isFinite(car.pos.y) || car.pos.y < -20) place(spawn, true);
+    // Hamnar bilen i ett omöjligt läge (ner genom världen) startar vi om. Mot marken, eftersom verkliga etapper ligger under y = 0.
+    if (!Number.isFinite(car.pos.y) || car.pos.y < world.heightAt(car.pos.x, car.pos.z) - 20) place(spawn, true);
 
     sound.update(car, input.throttle);
     carMesh.update();
