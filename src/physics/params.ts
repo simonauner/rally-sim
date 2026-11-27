@@ -433,8 +433,10 @@ const wheelsAt = (y: number, xF: number, xR: number, zF: number, zR: number): Wh
 ];
 
 /**
- * Klass 2: en fiktiv rundad japansk coupé med fyrhjulsdrift och tvåliters turbo. Lång och stabil,
- * den mest lättkörda fyrhjulsdrivna bilen: jämn kraftfördelning, snäll mittdiff och jämn momentkurva.
+ * Klass 2: en fiktiv rundad japansk coupé med fyrhjulsdrift och tvåliters turbo, modellerad på en
+ * Grupp A-bil från början av 90-talet: 299 hk vid ~5 700 rpm men 459 Nm redan vid 4 000, så den drar
+ * starkt ur kurvorna men orkar inte upp mot begränsaren. Lång hjulbas och tung nos: stabil i fart
+ * men trög att vrida in; jämn kraftfördelning med viskös mittdiff.
  */
 export function hoshi4wd(): CarParams {
   const p = kvarnTurbo4x4();
@@ -446,24 +448,29 @@ export function hoshi4wd(): CarParams {
     ...p,
     name: 'Hoshi 2.0 4WD',
     mass,
-    inertia: boxInertia(mass, 4.42, 1.75, 1.3, 0.8),
+    // Lång kaross med tunga delar långt fram och bak: trög kring höjdaxeln.
+    inertia: boxInertia(mass, 4.41, 1.745, 1.3, 0.86),
     cgHeight: cg,
     wheelRadius: R,
     wheelbase,
-    trackFront: 1.48,
-    wheels: wheelsAt(R - cg + 0.125, 0.74, 0.73, wheelbase * 0.42, -wheelbase * 0.58),
-    body: { halfX: 0.87, halfZ: 2.21, bottomY: -0.3, topY: 0.78 },
+    trackFront: 1.51,
+    wheels: wheelsAt(R - cg + 0.125, 0.755, 0.755, wheelbase * 0.42, -wheelbase * 0.58),
+    body: { halfX: 0.873, halfZ: 2.2, bottomY: -0.3, topY: 0.78 },
     susp: { ...p.susp, kFront: 32000, kRear: 29000, arbFront: 13000, arbRear: 12000 },
     // Jämn fördelning 50/50 med viskös mittdiff, som i förebilden.
     frontShare: 0.5,
     centerDiff: { lock: 0.4, preload: 80 },
+    steer: { ...p.steer, rate: 1.9, centerRate: 3.3 },
     engine: {
       ...p.engine,
       limiterRpm: 7000,
-      curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 7400],
-      curveNm: [110, 140, 200, 280, 330, 345, 350, 330, 270, 210],
-      launchRpm: 4800,
+      curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 5700, 6500, 7000, 7400],
+      curveNm: [120, 150, 260, 360, 430, 459, 410, 365, 290, 230, 180],
+      launchRpm: 4500,
     },
+    // Sexväxlad klolåda; utväxlingarna är inte publicerade, så Kvarnens behålls. Växla upp strax efter
+    // effekttoppen, eftersom momentet faller brant över 5 700 rpm.
+    gearbox: { ...p.gearbox, upshiftRpm: 6300, downshiftRpm: 3600, shiftTime: 0.16 },
     gauges: { rpmMax: 8000, rpmRed: 7000, speedMin: 20, speedMax: 220 },
   };
 }
@@ -675,7 +682,7 @@ export const CARS: CarModel[] = [
     make: hoshi4wd,
     body: 'liftback',
     paint: 0xf2f2ee,
-    blurb: 'Rundad japansk coupé med fyrhjulsdrift och turbo. Lång, stabil och neutral; den snällaste fyrhjulsdrivna bilen.',
+    blurb: 'Rundad japansk turbocoupé med fyrhjulsdrift. Enormt mellanregister, stabil i fart men trög att vrida in.',
   },
   {
     make: volpeTurbo,
