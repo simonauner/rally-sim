@@ -63,6 +63,8 @@ export interface GaugeStyle {
   speedoArc: [number, number];
   /** Varvräknarens siffror räknas i hundratals eller tusentals varv. */
   rpmUnit: 100 | 1000;
+  /** Det röda fältet som röda streck och siffror i stället för en båge. */
+  redInk?: boolean;
 }
 
 function boxInertia(m: number, l: number, w: number, h: number, k: number): [number, number, number] {
@@ -587,6 +589,14 @@ export function soraTurbo(): CarParams {
       ...p.engine,
       curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
       curveNm: [115, 150, 230, 310, 345, 355, 355, 330, 275, 215],
+    },
+    // Vit urtavla med svarta siffror och orange nål; rött fält från 8000 som på förlagan.
+    gauges: {
+      rpmMax: 10000,
+      rpmRed: 8000,
+      speedMin: 0,
+      speedMax: 280,
+      style: { face: '#f2f2ee', ink: '#151515', needle: '#ff5a1f', red: '#e0201b', tachoArc: [125, 415], speedoArc: [120, 390], rpmUnit: 1000, redInk: true },
     },
   };
 }

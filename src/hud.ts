@@ -102,7 +102,8 @@ export class Hud {
       canvas.height = this.gauges.height;
       const c = canvas.getContext('2d')!;
       drawFace(c, s, tacho, 500, 1000, (v) => String(v / s.rpmUnit), g.rpmRed, `1/min x${s.rpmUnit}`);
-      drawFace(c, s, speedo, 10, 20, String, null, 'km/h');
+      // Långa skalor får en siffra var 40 km/h, annars blir siffrorna för små att läsa.
+      drawFace(c, s, speedo, 10, g.speedMax - g.speedMin > 240 ? 40 : 20, String, null, 'km/h');
       drawKnob(c, s, shift, null);
       this.faces = { params, canvas };
     }
@@ -221,7 +222,7 @@ function drawFace(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, minor: 
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  if (red !== null) {
+  if (red !== null && !s.redInk) {
     ctx.strokeStyle = s.red;
     ctx.lineWidth = r * 0.07;
     ctx.beginPath();
@@ -238,6 +239,7 @@ function drawFace(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, minor: 
   for (let v = d.min; v <= d.max; v += minor) {
     const a = dialAngle(d, v);
     const isMajor = (v - d.min) % major === 0;
+    ctx.strokeStyle = ctx.fillStyle = s.redInk && red !== null && v >= red ? s.red : s.ink;
     const r0 = r * (isMajor ? 0.76 : 0.8);
     ctx.lineWidth = r * (isMajor ? 0.035 : 0.022);
     ctx.beginPath();
@@ -248,6 +250,7 @@ function drawFace(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, minor: 
   }
   // Bildtexten står mitt i luckan där skalan inte går.
   const gap = ((d.a0 + d.a1 + 360) / 2) * (Math.PI / 180);
+  ctx.fillStyle = s.ink;
   ctx.font = `${Math.round(r * 0.1)}px Helvetica, Arial, sans-serif`;
   ctx.fillText(caption, x + Math.cos(gap) * r * 0.62, y + Math.sin(gap) * r * 0.62);
 }
