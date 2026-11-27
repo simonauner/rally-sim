@@ -72,6 +72,8 @@ export interface BodyShape {
   roofVent?: boolean;
   /** Vita fälgar med en tät ring av hål, som rallyfälgar, i stället för navkapslar. */
   rallyRims?: boolean;
+  /** Ett upphöjt luftintag på huven täcker z från, till; startnumret och sponsorerna ritas utanför. */
+  hoodScoopZ?: Range;
   /** Guldfärgade fälgar med fem breda ekrar. */
   goldRims?: boolean;
 }

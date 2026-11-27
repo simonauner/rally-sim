@@ -95,7 +95,9 @@ export function decalTexture(b: BodyShape, wheelZ: Range, paint: THREE.Color, nu
   // Startnummer på framdörrarna, huven och taket.
   const door = { z: (screen[0] + b.doorSeams[0]!) / 2, y0: belt - 0.38, y1: belt - 0.04, w: 0.52 };
   center(sideArea(door.z - door.w / 2, door.z + door.w / 2, door.y0, door.y1), (cx, cy) => plate(cx, cy, door.w, door.y1 - door.y0));
-  const hoodPlate = screen[0] + (nose - screen[0]) / 2 + 0.05;
+  // Med ett upphöjt luftintag på huven hamnar numret mellan vindrutan och intaget.
+  const scoop = b.hoodScoopZ;
+  const hoodPlate = scoop ? (screen[0] + scoop[0]) / 2 : screen[0] + (nose - screen[0]) / 2 + 0.05;
   center(hoodArea(hoodPlate - 0.18, hoodPlate + 0.18), (cx, cy) => plate(cx, cy, 0.62, 0.36));
   const roofZ: Range = [(backlight[1] + screen[1]) / 2 - 0.42 * (screen[1] - backlight[1]), (backlight[1] + screen[1]) / 2 + 0.42 * (screen[1] - backlight[1])];
   const roofPlate = Math.min(0.62, 2 * roofHalf);
@@ -110,7 +112,7 @@ export function decalTexture(b: BodyShape, wheelZ: Range, paint: THREE.Color, nu
     sideArea(rearArch, door.z - door.w / 2 - 0.05, bottom + 0.2, belt - 0.03), // mellan bakre hjulhuset och dörrens nummer
     trunkArea(tail + 0.12, backlight[0] - 0.06), // bagageluckan
     roofArea(roofZ[0] + 0.48, roofZ[1]), // taket framför numret
-    hoodArea(hoodPlate + 0.21, nose - 0.14), // huven framför plåten
+    hoodArea(scoop ? scoop[1] + 0.03 : hoodPlate + 0.21, nose - 0.14), // huven framför plåten (och intaget)
     sideArea(tail + 0.22, rearArch, archY + archR[1] + 0.04, belt - 0.03), // bakskärmen
     sideArea(door.z - door.w / 2, door.z + door.w / 2, bottom + 0.2, door.y0 - 0.02), // under dörrens nummer
   ];

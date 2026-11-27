@@ -33,5 +33,6 @@ export const soraTurbo: BodyShape = {
   tailX: 0.38,
   bumperY: [-0.13, -0.12],
   rearBumperDepth: 0.36,
+  hoodScoopZ: [0.93, 1.31], // objektet 'scoop' i Blendermodellen
   goldRims: true,
 };
