@@ -4,7 +4,7 @@
  */
 
 import { MAX_HISTORY, type CareerState, type HistoryEntry } from '../account/protocol';
-import type { CarParams } from '../physics/params';
+import type { CarParams, Sponsor } from '../physics/params';
 
 /**
  * Pengar man börjar med, utan bil. Räcker till en av de billiga bilarna hos bilhandlaren:
@@ -47,6 +47,8 @@ export interface Upgrade {
   tier: Tier;
   group: UpgradeGroup;
   name: string;
+  /** Fiktiv sponsor vars dekal klistras på bilen när delen är monterad. */
+  sponsor: Sponsor;
   price: number;
   /** Vad delen gör, för menyn. */
   effect: string;
@@ -67,6 +69,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'airfilter',
+    sponsor: { name: 'Andas Filter', fg: '#ffffff', bg: '#1d5fa8' },
     group: 'Motor',
     name: 'Sportluftfilter',
     price: 800,
@@ -76,6 +79,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'exhaust',
+    sponsor: { name: 'BRUMM', fg: '#e8202a' },
     group: 'Motor',
     name: 'Sportavgassystem',
     price: 2000,
@@ -85,6 +89,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'racecat',
+    sponsor: { name: 'Kattvik', fg: '#1b1b1b', bg: '#f2d22e' },
     group: 'Motor',
     name: 'Racekatalysator',
     price: 1500,
@@ -94,6 +99,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'cams',
+    sponsor: { name: 'KAMKUNGEN', fg: '#ffffff', bg: '#1b1b1b' },
     group: 'Motor',
     name: 'Vassare kamaxlar',
     price: 3500,
@@ -103,6 +109,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'pistons',
+    sponsor: { name: 'Kolvex', fg: '#1d5fa8' },
     group: 'Motor',
     name: 'Smidda kolvar',
     price: 4500,
@@ -115,6 +122,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'gearbox',
+    sponsor: { name: 'VäxelVerket', fg: '#ffffff', bg: '#2f7d4f' },
     group: 'Drivlina',
     name: 'Racelåda',
     price: 5000,
@@ -126,6 +134,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'lsd',
+    sponsor: { name: 'Spärrbolaget', fg: '#1b1b1b' },
     group: 'Drivlina',
     name: 'Spärrdiff',
     price: 4000,
@@ -137,6 +146,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'pads',
+    sponsor: { name: 'STOPPA', fg: '#ffffff', bg: '#e8202a' },
     group: 'Bromsar',
     name: 'Racebelägg',
     price: 1000,
@@ -148,6 +158,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'drilled',
+    sponsor: { name: 'Hålsta Broms', fg: '#1b1b1b', bg: '#ffffff' },
     group: 'Bromsar',
     name: 'Borrade bromsskivor',
     price: 1500,
@@ -159,6 +170,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'bigdiscs',
+    sponsor: { name: 'Skivgården', fg: '#f2d22e', bg: '#1b1b1b' },
     group: 'Bromsar',
     name: 'Större bromsskivor',
     price: 3000,
@@ -170,6 +182,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'dampers',
+    sponsor: { name: 'DÄMPA', fg: '#1d5fa8', bg: '#ffffff' },
     group: 'Fjädring',
     name: 'Gasstötdämpare',
     price: 2500,
@@ -181,6 +194,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'springs',
+    sponsor: { name: 'Fjädra', fg: '#ffffff', bg: '#e8902a' },
     group: 'Fjädring',
     name: 'Sportfjädrar',
     price: 2000,
@@ -192,6 +206,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'arb',
+    sponsor: { name: 'Stagab', fg: '#1b1b1b' },
     group: 'Fjädring',
     name: 'Kraftigare krängningshämmare',
     price: 1500,
@@ -203,6 +218,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 1,
     id: 'rallytyres',
+    sponsor: { name: 'NORDGREPP', fg: '#f2d22e', bg: '#1b1b1b' },
     group: 'Däck',
     name: 'Rallydäck',
     price: 3500,
@@ -215,6 +231,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'ecu',
+    sponsor: { name: 'Chipkungen', fg: '#ffffff', bg: '#6a2fa0' },
     group: 'Motor',
     name: 'Programmerbar motorstyrning',
     price: 6000,
@@ -224,6 +241,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'intake',
+    sponsor: { name: 'INSUGEN', fg: '#e8202a', bg: '#ffffff' },
     group: 'Motor',
     name: 'Tävlingsinsug',
     price: 4000,
@@ -233,6 +251,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'flywheel',
+    sponsor: { name: 'Svänga', fg: '#1b1b1b', bg: '#f2d22e' },
     group: 'Motor',
     name: 'Lätt svänghjul',
     price: 3500,
@@ -244,6 +263,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'dogbox',
+    sponsor: { name: 'KLOTEK', fg: '#ffffff', bg: '#1b1b1b' },
     group: 'Drivlina',
     name: 'Klolåda',
     price: 9000,
@@ -255,6 +275,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'platelsd',
+    sponsor: { name: 'Lamellab', fg: '#1d5fa8' },
     group: 'Drivlina',
     name: 'Lamellspärr',
     price: 7000,
@@ -266,6 +287,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'calipers',
+    sponsor: { name: 'FYROK', fg: '#ffffff', bg: '#e8202a' },
     group: 'Bromsar',
     name: 'Fyrkolvsok',
     price: 5000,
@@ -277,6 +299,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'hydrohandbrake',
+    sponsor: { name: 'Hydrex', fg: '#ffffff', bg: '#1d5fa8' },
     group: 'Bromsar',
     name: 'Hydraulisk handbroms',
     price: 2500,
@@ -288,6 +311,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'coilovers',
+    sponsor: { name: 'SPIRALEN', fg: '#1b1b1b', bg: '#ffffff' },
     group: 'Fjädring',
     name: 'Justerbara coilovers',
     price: 8000,
@@ -299,6 +323,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'lightweight',
+    sponsor: { name: 'Lättkaross', fg: '#e8202a' },
     group: 'Kaross',
     name: 'Lättviktskaross',
     price: 7000,
@@ -312,6 +337,7 @@ export const UPGRADES: Upgrade[] = [
   {
     tier: 2,
     id: 'gravelslicks',
+    sponsor: { name: 'STENGREPP', fg: '#ffffff', bg: '#2f7d4f' },
     group: 'Däck',
     name: 'Tävlingsdäck',
     price: 6000,
@@ -354,6 +380,9 @@ export const levelOf = (career: CareerState, car: string, upgrade: string) => ca
 
 /** Delarna som passar bilen. */
 export const upgradesFor = (car: string) => UPGRADES.filter((u) => u.tier === tierOf(car));
+
+/** Dekalerna för bilens monterade delar, i delarnas ordning. */
+export const sponsorsOf = (upgrades: Record<string, number>) => UPGRADES.filter((u) => upgrades[u.id]).map((u) => u.sponsor);
 
 /** Bilens parametrar med karriärens uppgraderingar. */
 export function applyUpgrades(params: CarParams, upgrades: Record<string, number>): CarParams {

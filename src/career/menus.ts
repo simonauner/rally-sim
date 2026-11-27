@@ -13,6 +13,7 @@ import { pickStage, stagePreviewHtml } from "../stageMenu";
 import { WEATHER_NAMES, type Weather } from "../physics/weather";
 import {
   applyUpgrades,
+  sponsorsOf,
   buyCar,
   buyUpgrade,
   CAR_PRICES,
@@ -78,6 +79,7 @@ function ownedModels(career: CareerState): CarModel[] {
     ...m,
     make: () =>
       applyUpgrades(m.make(), loadCareer().career.garage[nameOf(m)]!.upgrades),
+    sponsors: () => sponsorsOf(loadCareer().career.garage[nameOf(m)]!.upgrades),
   }));
 }
 

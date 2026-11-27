@@ -410,6 +410,13 @@ export function kvarnTurbo4x4(): CarParams {
   };
 }
 
+/** En dekal på karossen: fiktivt namn, textfärg och eventuell bakgrund (CSS-färger). */
+export interface Sponsor {
+  name: string;
+  fg: string;
+  bg?: string;
+}
+
 export interface CarModel {
   make: () => CarParams;
   /** Karossform för renderingen. */
@@ -418,6 +425,8 @@ export interface CarModel {
   blurb: string;
   /** Lackfärg. */
   paint: number;
+  /** Dekaler från monterade delar, läses när bilen byggs. Saknas utanför karriären. */
+  sponsors?: () => Sponsor[];
 }
 
 /** Bilarna man kan välja före en etapp. */
