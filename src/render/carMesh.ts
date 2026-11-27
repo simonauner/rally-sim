@@ -165,10 +165,16 @@ export interface BodyShape {
   flare?: number;
   /** Fyra runda strålkastare i en svart panel i stället för rektangulära lyktor: [x, radie] per lykta och sida. */
   roundLamps?: [number, number][];
-  /** Ventiler i motorhuven, lackade stötfångare och takspoiler. */
+  /** Ventiler i motorhuven, lackade stötfångare och spoiler på taket eller bakluckan. */
   hoodVents?: boolean;
   paintedBumpers?: boolean;
-  roofSpoiler?: boolean;
+  spoiler?: 'roof' | 'trunk';
+  /** Luftintag för laddluftkylaren mitt på huvens främre del, framför startnumret. */
+  hoodScoop?: boolean;
+  /** Smala lyktor i ett svart band tvärs över fronten, i stället för grill med kromram. */
+  lampBand?: boolean;
+  /** Karossens hörnradie; större ger en rundare bil. */
+  round?: number;
   /** Vita fälgar med en tät ring av hål, som rallyfälgar, i stället för navkapslar. */
   rallyRims?: boolean;
 }
@@ -272,7 +278,45 @@ const SHAPES: Record<CarModel['body'], BodyShape> = {
     ],
     hoodVents: true,
     paintedBumpers: true,
-    roofSpoiler: true,
+    spoiler: 'roof',
+    rallyRims: true,
+  },
+  // Rundad tredörrars liftback-coupé: lång låg nos med smala lyktor, luftintag på huven, lång sluttande
+  // bakruta som slutar i en vinge på bakluckan.
+  liftback: {
+    halfX: 0.83,
+    bottom: -0.3,
+    nose: 1.98,
+    tail: -2.25,
+    belt: 0.36,
+    roof: 0.78,
+    crease: 0.08,
+    screen: [0.5, -0.2],
+    backlight: [-1.95, -0.95],
+    hoodDrop: 0.14,
+    trunkDrop: 0.04,
+    cabinHalfX: 0.69,
+    archY: -0.22,
+    archR: [0.37, 0.37],
+    doorSeams: [-0.72],
+    sideGlass: [
+      [-0.66, Infinity],
+      [-Infinity, -0.76],
+    ],
+    doorHandles: [-0.6],
+    lampY: [0.12, 0.2],
+    grilleX: 0.4,
+    lampX: [0.4, 0.78],
+    tailY: [0.04, 0.16],
+    tailX: 0.16,
+    bumperY: [-0.11, -0.12],
+    rearBumperDepth: 0.34,
+    flare: 0.04,
+    paintedBumpers: true,
+    spoiler: 'trunk',
+    hoodScoop: true,
+    lampBand: true,
+    round: 0.12,
     rallyRims: true,
   },
   // Låg tvådörrars coupé: lång huv, kraftigt lutad vindruta, kort tak och kort bagagelucka.
@@ -331,7 +375,7 @@ function buildBody(
   decals: THREE.Texture,
 ): DeformablePart {
   const { bottom, nose, tail, belt, crease, screen, backlight, archY, archR } = b;
-  const g = roundedBox(2 * b.halfX, belt - bottom, nose - tail, [14, 14, Math.round((nose - tail) * 21)], 0.05, [
+  const g = roundedBox(2 * b.halfX, belt - bottom, nose - tail, [14, 14, Math.round((nose - tail) * 21)], b.round ?? 0.05, [
     0,
     (belt + bottom) / 2,
     (nose + tail) / 2,
@@ -410,6 +454,7 @@ function buildBody(
   const vents = b.hoodVents
     ? top.and(p.z.greaterThan(nose - 0.8)).and(p.z.lessThan(nose - 0.5)).and(ax.greaterThan(0.46)).and(ax.lessThan(0.66)).and(fract(p.z.mul(28)).lessThan(0.45))
     : null;
+  const scoop = b.hoodScoop ? top.and(p.z.greaterThan(nose - 0.46)).and(p.z.lessThan(nose - 0.24)).and(ax.lessThan(0.2)) : null;
 
   // Bak: höga lyktor som går runt hörnen, röd med blinkersband överst och backljus inåt.
   const tailZone = band(...tailY).and(rear.and(ax.greaterThan(b.tailX)).or(side.and(p.z.lessThan(tail + 0.14))));
@@ -436,21 +481,22 @@ function buildBody(
   );
 
   const shaded = select(seam.or(lidSeam), color(paint.clone().multiplyScalar(0.72)), select(archLip, color(paint.clone().multiplyScalar(0.86)), color(paint)));
-  const painted = vents ? select(vents, color(BLACK), shaded) : shaded;
+  const vented = vents ? select(vents, color(BLACK), shaded) : shaded;
+  const painted = scoop ? select(scoop, select(fract(p.x.mul(30)).lessThan(0.3), color(DARK), color(BLACK)), vented) : vented;
   const trimmed = bodyDecals(select(stripChrome, color(CHROME), select(strip, color(DARK), painted)), p, side, b, decals, paint);
   const body = select(archs, color(BLACK), select(p.y.lessThan(bottom + 0.17), color(SILL), trimmed));
   const tailColor = select(tailReverse, color(REVERSE), select(tailAmber, color(AMBER), color(TAIL)));
   const mat = new THREE.MeshToonNodeMaterial();
   mat.colorNode = select(
     grilleBox,
-    select(grilleFrame, color(CHROME), select(crate, color(DARK), color(BLACK))),
+    b.lampBand ? color(BLACK) : select(grilleFrame, color(CHROME), select(crate, color(DARK), color(BLACK))),
     select(
       lamp,
       color(LAMP),
       select(
         indicator,
         color(AMBER),
-        select(lampFrame, b.roundLamps ? select(lampUnit.and(lamp.not()), color(BLACK), color(CHROME)) : color(CHROME), select(tailZone, tailColor, select(plate, color(PLATE), body))),
+        select(lampFrame, b.roundLamps ? select(lampUnit.and(lamp.not()), color(BLACK), color(CHROME)) : color(b.lampBand ? BLACK : CHROME), select(tailZone, tailColor, select(plate, color(PLATE), body))),
       ),
     ),
   );
@@ -587,7 +633,7 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
     g.add(mesh);
   };
   add(0.5, 0.11, 0.02, 0, b.bumperY[0], b.nose + 0.11, new THREE.MeshToonMaterial({ color: PLATE }));
-  if (b.roofSpoiler) {
+  if (b.spoiler === 'roof') {
     // Takspoiler över bakrutans överkant, lutad bakåt, på två fästen.
     const lip = new THREE.Mesh(new THREE.BoxGeometry(2 * b.cabinHalfX * 0.8, 0.025, 0.2), new THREE.MeshToonMaterial({ color: paint }));
     lip.position.set(0, b.roof + 0.035, b.backlight[1] - 0.1);
@@ -595,6 +641,14 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
     lip.castShadow = true;
     g.add(lip);
     for (const s of [1, -1]) add(0.03, 0.04, 0.1, s * 0.45, b.roof + 0.01, b.backlight[1] - 0.06, black);
+  } else if (b.spoiler === 'trunk') {
+    // Vinge över bakluckans bakkant, på två fästen, nästan hela bilens bredd.
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(2 * b.halfX - 0.16, 0.03, 0.18), new THREE.MeshToonMaterial({ color: paint }));
+    wing.position.set(0, b.belt + 0.08, b.tail + 0.14);
+    wing.rotation.x = -0.1;
+    wing.castShadow = true;
+    g.add(wing);
+    for (const s of [1, -1]) add(0.04, 0.07, 0.08, s * (b.halfX - 0.22), b.belt + 0.03, b.tail + 0.16, new THREE.MeshToonMaterial({ color: paint }));
   }
   const mirrorZ = b.screen[0] - 0.12;
   for (const s of [1, -1]) {

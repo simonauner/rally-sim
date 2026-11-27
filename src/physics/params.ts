@@ -419,28 +419,29 @@ const wheelsAt = (y: number, xF: number, xR: number, zF: number, zR: number): Wh
 ];
 
 /**
- * Klass 2: en fiktiv japansk halvkombi med fyrhjulsdrift och tvåliters turbo. Lätt och neutral,
- * den mest lättkörda fyrhjulsdrivna bilen: snäll mittdiff och jämn momentkurva.
+ * Klass 2: en fiktiv rundad japansk coupé med fyrhjulsdrift och tvåliters turbo. Lång och stabil,
+ * den mest lättkörda fyrhjulsdrivna bilen: jämn kraftfördelning, snäll mittdiff och jämn momentkurva.
  */
 export function hoshi4wd(): CarParams {
   const p = kvarnTurbo4x4();
   const mass = 1200;
   const R = 0.31;
-  const cg = 0.5;
-  const wheelbase = 2.5;
+  const cg = 0.48;
+  const wheelbase = 2.525;
   return {
     ...p,
     name: 'Hoshi 2.0 4WD',
     mass,
-    inertia: boxInertia(mass, 4.1, 1.77, 1.38, 0.78),
+    inertia: boxInertia(mass, 4.42, 1.75, 1.3, 0.8),
     cgHeight: cg,
     wheelRadius: R,
     wheelbase,
-    trackFront: 1.5,
-    wheels: wheelsAt(R - cg + 0.125, 0.75, 0.75, wheelbase * 0.42, -wheelbase * 0.58),
-    body: { halfX: 0.88, halfZ: 2.02, bottomY: -0.3, topY: 0.88 },
+    trackFront: 1.48,
+    wheels: wheelsAt(R - cg + 0.125, 0.74, 0.73, wheelbase * 0.42, -wheelbase * 0.58),
+    body: { halfX: 0.87, halfZ: 2.21, bottomY: -0.3, topY: 0.78 },
     susp: { ...p.susp, kFront: 32000, kRear: 29000, arbFront: 13000, arbRear: 12000 },
-    frontShare: 0.45,
+    // Jämn fördelning 50/50 med viskös mittdiff, som i förebilden.
+    frontShare: 0.5,
     centerDiff: { lock: 0.4, preload: 80 },
     engine: {
       ...p.engine,
@@ -605,7 +606,7 @@ export interface Sponsor {
 export interface CarModel {
   make: () => CarParams;
   /** Karossform för renderingen. */
-  body: 'sedan' | 'hatch' | 'hatch5' | 'coupe';
+  body: 'sedan' | 'hatch' | 'hatch5' | 'liftback' | 'coupe';
   /** En rad om bilen i bilväljaren. */
   blurb: string;
   /** Lackfärg. */
@@ -650,9 +651,9 @@ export const CARS: CarModel[] = [
   },
   {
     make: hoshi4wd,
-    body: 'hatch',
-    paint: 0xd23a1e,
-    blurb: 'Fyrhjulsdriven japansk halvkombi med turbo. Lätt, neutral och den snällaste fyrhjulsdrivna bilen.',
+    body: 'liftback',
+    paint: 0xf2f2ee,
+    blurb: 'Rundad japansk coupé med fyrhjulsdrift och turbo. Lång, stabil och neutral; den snällaste fyrhjulsdrivna bilen.',
   },
   {
     make: volpeTurbo,
