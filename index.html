@@ -106,6 +106,8 @@
       #menu button .note { display: block; margin-top: 2px; font-size: 12px; opacity: 0.7; }
       /* Felsökningsverktygen visas bara med F1. */
       body:not(.debug) :is(#hud, #gg, .lil-gui.lil-root) { display: none; }
+      /* Slutresultatet i mästerskapet: bara bilen och resultatpanelen. */
+      body.final-results :is(#hud, #help, #gg, #gauges, #damage, #timer, #notes) { display: none; }
       #damage { position: fixed; left: 12px; top: 112px; color: #1b1b1b; font-size: 12px; background: #fffb; padding: 8px 10px; border-radius: 8px; pointer-events: none; }
     </style>
   </head>

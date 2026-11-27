@@ -4,6 +4,7 @@ import type { CareerState, HistoryEntry } from "../account/protocol";
 import { localChanged } from "../account/sync";
 import type { PickOptions, Showroom } from "../carSelect";
 import { applause, coins, showMenu } from "../menu";
+import { confetti } from "../confetti";
 import skogsrallytImg from "../assets/champ-skogsrallyt.webp";
 import myrkullarallytImg from "../assets/champ-myrkullarallyt.webp";
 import vinterrallytImg from "../assets/champ-vinterrallyt.webp";
@@ -875,17 +876,25 @@ export async function championshipLegDone(
       ),
     );
     saveChampionship(null);
-    applause();
     await showMenu({
-      // Etappen till vänster och mästerskapet till höger, som mellan etapperna.
       title: def.legs[times.length - 1]!,
       subtitle: "Sista etappen",
       side: true,
       body: `${resultBody}${legResultHtml(table)}`,
-      aside: `<h1>${def.name}: klart</h1><div class="body"><div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span></div><div>Bilen lagas och står hel i garaget.</div></div>`,
-      items: [{ label: "Avsluta mästerskapet", value: 0 }],
-      itemsInAside: true,
+      items: [{ label: "Se slutresultat", value: 0 }],
     });
+    // Egen skärm: bara bilen och slutresultatet, inget annat gränssnitt.
+    document.body.classList.add("final-results");
+    applause();
+    if (place === 1) confetti();
+    await showMenu({
+      title: def.name,
+      subtitle: "Slutresultat",
+      side: true,
+      body: `<div>${place === 1 ? '<b class="ahead">Du vann mästerskapet!</b>' : `Du kom <b>${place}:a</b> av ${table.length}.`}</div>${standingsHtml(table)}<table class="specs">${legRows}<tr><th>Totalt</th><td><b>${formatTime(total)}</b></td></tr></table><div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span></div><div>Bilen lagas och står hel i garaget.</div>`,
+      items: [{ label: "Avsluta mästerskapet", value: 0 }],
+    });
+    document.body.classList.remove("final-results");
     return { prize };
   }
 
