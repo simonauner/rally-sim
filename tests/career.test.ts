@@ -81,7 +81,7 @@ const CAR = 'Kvarn 240 GL';
   const targets = championshipTargets(def);
   check('mästerskap: etapper och gränser', legsExist && !!targets && targets[0] === 279 && def.legs.length === 3 && STAGES.every((s) => CHAMPIONSHIPS.some((c) => c.legs.includes(s.name))), `${CHAMPIONSHIPS.length} mästerskap, ${def.legs.join(' + ')}: guld under ${targets?.[0]} s`);
   const prizes = [1, 2, 3, 4].map((place) => championshipPrize(def, place));
-  check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize === 9000, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
+  check('mästerskap: prispengar', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize === 8000, prizes.map((p) => `${p.medal ?? 'mål'} ${p.prize}`).join(', '));
   const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };
   const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
   const noLamp: CarDamage = { ...crashed, lamps: [0.6, 0] };
@@ -187,7 +187,7 @@ const CAR = 'Kvarn 240 GL';
   const gold1 = prizeFor('Skogsberg', 88, 1);
   const slow2 = prizeFor('Skogsberg', 88, 2);
   const gold2 = prizeFor('Skogsberg', 80, 2);
-  check('klass 2: gränser och priser', gold1.medal === 'guld' && slow2.medal === 'silver' && gold2.medal === 'guld' && gold2.prize === MEDALS[0].prize * 2 && championshipPrize(tier2[0]!, 1).prize === championshipPrize(tier1[0]!, 1).prize * 2, `88 s: klass 1 ${gold1.medal}, klass 2 ${slow2.medal}; 80 s klass 2 ${gold2.medal} ${gold2.prize} kr`);
+  check('klass 2: gränser och priser', gold1.medal === 'guld' && slow2.medal === 'silver' && gold2.medal === 'guld' && gold2.prize === MEDALS[0].prize * 2 && championshipPrize(tier2[0]!, 1).prize === championshipPrize({ ...tier2[0]!, tier: 1 }, 1).prize * 2, `88 s: klass 1 ${gold1.medal}, klass 2 ${slow2.medal}; 80 s klass 2 ${gold2.medal} ${gold2.prize} kr`);
   // Samma etapper i klass 1-gränser: summan av guldtiderna.
   const t1 = tier2[0]!.legs.reduce((sum, leg) => sum + STAGE_TARGETS[leg]![0], 0);
   const t2 = championshipTargets(tier2[0]!)![0];

@@ -8,7 +8,7 @@ import skogsrallytImg from "../assets/champ-skogsrallyt.webp";
 import myrkullarallytImg from "../assets/champ-myrkullarallyt.webp";
 import vinterrallytImg from "../assets/champ-vinterrallyt.webp";
 import { CARS, type CarModel } from "../physics/params";
-import { FINISH_MARGIN, Stage, STAGES, START_S, type StageDef } from "../physics/stage";
+import { STAGES, type StageDef } from "../physics/stage";
 import { pickStage, stagePreviewHtml } from "../stageMenu";
 import { WEATHER_NAMES, type Weather } from "../physics/weather";
 import {
@@ -45,6 +45,7 @@ import {
   legWeather,
   newProgress,
   raceRivals,
+  championshipKm,
   championshipMedals,
   partCosts,
   repairCost,
@@ -332,19 +333,6 @@ async function tierMenu(
     const launch = await startChampionship(def, career, pick, showCar, scenery);
     if (launch) return launch;
   }
-}
-
-const legKm = new Map<string, number>();
-
-/** Mästerskapets etapper sammanlagt (km); varje etapp byggs bara en gång. */
-function championshipKm(def: ChampionshipDef) {
-  return def.legs.reduce((sum, leg) => {
-    if (!legKm.has(leg)) {
-      const s = STAGES.find((x) => x.name === leg);
-      legKm.set(leg, s ? (new Stage(s).length - FINISH_MARGIN - START_S) / 1000 : 0);
-    }
-    return sum + legKm.get(leg)!;
-  }, 0);
 }
 
 /** Fakta bredvid mästerskapets bild: etapper, längd, prispengar och bästa placering (eller vad som låser upp det). */

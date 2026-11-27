@@ -9,7 +9,7 @@ import type { DamageState } from '../physics/car';
 import { STAGE_TARGETS, TIER_PACE, TIER_PRIZE, type Tier } from './career';
 import { isRival, newRivals, raceLeg, type Rival } from './rivals';
 import { rng } from '../physics/rng';
-import { STAGES } from '../physics/stage';
+import { FINISH_MARGIN, Stage, STAGES, START_S } from '../physics/stage';
 import { rollWeather, WEATHER_SLOWDOWN, type Weather } from '../physics/weather';
 
 export interface ChampionshipDef {
@@ -97,17 +97,30 @@ export interface ChampionshipProgress {
   rivals?: Rival[];
 }
 
-/** Prispengar per placering för ett mästerskap med två etapper: betydligt mer än för enstaka etapper. */
+/** Prispengar per kilometer och placering: betydligt mer än för enstaka etapper. */
 const CHAMPIONSHIP_MEDALS = [
-  { name: 'guld', prize: 6000 },
-  { name: 'silver', prize: 4000 },
-  { name: 'brons', prize: 2500 },
+  { name: 'guld', prize: 1500 },
+  { name: 'silver', prize: 1000 },
+  { name: 'brons', prize: 625 },
 ] as const;
 export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
 
-/** Medaljerna med prispengar som växer med antalet etapper. */
+const legKm = new Map<string, number>();
+
+/** Mästerskapets etapper sammanlagt (km); varje etapp byggs bara en gång. */
+export function championshipKm(def: ChampionshipDef) {
+  return def.legs.reduce((sum, leg) => {
+    if (!legKm.has(leg)) {
+      const s = STAGES.find((x) => x.name === leg);
+      legKm.set(leg, s ? (new Stage(s).length - FINISH_MARGIN - START_S) / 1000 : 0);
+    }
+    return sum + legKm.get(leg)!;
+  }, 0);
+}
+
+/** Medaljerna med prispengar som växer med sträckan, så att långa mästerskap bär sina reparationer. */
 export const championshipMedals = (def: ChampionshipDef) =>
-  CHAMPIONSHIP_MEDALS.map((m) => ({ name: m.name, prize: (m.prize * def.legs.length * TIER_PRIZE[def.tier]) / 2 }));
+  CHAMPIONSHIP_MEDALS.map((m) => ({ name: m.name, prize: Math.round((m.prize * championshipKm(def)) / 500) * 500 * TIER_PRIZE[def.tier] }));
 
 export const championshipById = (id: string) => CHAMPIONSHIPS.find((c) => c.id === id) ?? null;
 
