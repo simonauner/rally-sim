@@ -5,7 +5,7 @@ import { splitDiff } from '../src/physics/drivetrain';
 import { tierOf } from '../src/career/career';
 import { Barriers } from '../src/physics/barriers';
 import { rollWeather, type Weather } from '../src/physics/weather';
-import { bestTyre, FINISH_MARGIN, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
+import { bestTyre, FINISH_MARGIN, lightAt, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad, driveAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
@@ -554,6 +554,13 @@ for (const def of STAGES) {
   const share = (list: Weather[], w: Weather) => list.filter((x) => x === w).length / list.length;
   const ok = share(summer, 'clear') > 0.7 && share(summer, 'clear') < 0.85 && share(summer, 'snowfall') === 0 && share(winter, 'rain') === 0 && share(winter, 'snowfall') > 0.05;
   check('väder: oftast uppehåll', ok, `sommar: uppehåll ${(share(summer, 'clear') * 100).toFixed(0)} %, regn ${(share(summer, 'rain') * 100).toFixed(0)} %, dimma ${(share(summer, 'fog') * 100).toFixed(0)} % · vinter: snöfall ${(share(winter, 'snowfall') * 100).toFixed(0)} %`);
+}
+
+{
+  // Ska stämma i både UTC och svensk tid.
+  const at = (iso: string) => lightAt(new Date(iso));
+  const got = [at('2026-11-27T01:27Z'), at('2026-06-21T11:00Z'), at('2026-11-27T14:30Z'), at('2026-11-27T07:50Z')];
+  check('ljus: följer klockan och årstiden', got.join() === 'night,day,dusk,dawn', got.join());
 }
 
 if (failures) {

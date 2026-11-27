@@ -46,6 +46,27 @@ export interface StageDef {
 
 export type Light = 'day' | 'dawn' | 'dusk' | 'night';
 
+/**
+ * Ljuset vid en viss tidpunkt, från solens höjd över horisonten: skymning/gryning när solen är
+ * mellan 6° under och 6° över horisonten.
+ * shortcut: platsen gissas (59° N, längdgrad från tidszonens normaltid), byt mot riktig position om det behövs.
+ */
+export function lightAt(date: Date): Light {
+  const rad = Math.PI / 180;
+  const lat = 59 * rad;
+  const jan = new Date(date.getFullYear(), 0, 1);
+  const jul = new Date(date.getFullYear(), 6, 1);
+  const lon = -Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset()) / 4;
+  const day = (date.getTime() - Date.UTC(date.getUTCFullYear(), 0, 1)) / 86_400_000;
+  const decl = -23.44 * rad * Math.cos(((2 * Math.PI) / 365) * (day + 10));
+  const solarHour = ((day % 1) * 24 + lon / 15 + 24) % 24;
+  const hourAngle = 15 * rad * (solarHour - 12);
+  const elevation = Math.asin(Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(hourAngle)) / rad;
+  if (elevation > 6) return 'day';
+  if (elevation < -6) return 'night';
+  return solarHour < 12 ? 'dawn' : 'dusk';
+}
+
 /** Resultat av att projicera en punkt på vägens mittlinje. */
 export interface StageHit {
   /** Sträcka längs etappen från start (m). */

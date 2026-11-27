@@ -1,14 +1,14 @@
 import * as THREE from 'three/webgpu';
-import { toonOutlinePass } from 'three/tsl';
+import { toonOutlinePass, uniform } from 'three/tsl';
 import { Sound } from './audio';
 import { driveAlongRoad, turnAt } from './physics/autopilot';
 import { Car } from './physics/car';
 import { CARS } from './physics/params';
-import { START_S, Stage, STAGE_MYRKULLA } from './physics/stage';
+import { lightAt, START_S, Stage, STAGE_MYRKULLA } from './physics/stage';
 import { CarMesh } from './render/carMesh';
 import { Dust } from './render/dust';
 import { buildStage } from './render/stage';
-import { applyLight, LIGHTS } from './render/lighting';
+import { applyLight, Headlights, LIGHTS } from './render/lighting';
 import { settings } from './settings';
 
 const DT = 1 / 240;
@@ -42,7 +42,10 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   const stage = new Stage(STAGE_MYRKULLA);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 1500);
-  const pipeline = new THREE.RenderPipeline(renderer, toonOutlinePass(scene, camera, new THREE.Color(0x1c1c24), 0.003));
+  const outlinePass = toonOutlinePass(scene, camera, undefined, 0.003);
+  const outlineColor = uniform(new THREE.Color(0x1c1c24));
+  outlinePass.colorNode = outlineColor;
+  const pipeline = new THREE.RenderPipeline(renderer, outlinePass);
   const hemi = new THREE.HemisphereLight();
   const sun = new THREE.DirectionalLight();
   sun.castShadow = true;
@@ -50,8 +53,8 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 200 });
   sun.shadow.bias = -0.0004;
   scene.add(hemi, sun, sun.target, buildStage(stage));
-  const light = LIGHTS.day;
-  applyLight(scene, hemi, sun, light);
+  const headlights = new Headlights();
+  scene.add(headlights.group);
 
   // Skarpaste kurvan på grus (surfaces har en post per meter), och kameran högt upp på utsidan av den så bilen kommer mot kameran.
   let corner = 0;
@@ -67,8 +70,15 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
   const look = new THREE.Vector3(apex.x, apexY + 1, apex.z);
   camera.position.set(apex.x + out.x * 42, 0, apex.z + out.y * 42);
   camera.position.y = Math.max(apexY, stage.heightAt(camera.position.x, camera.position.z)) + 22;
-  sun.position.set(apex.x + light.sunOffset[0], apexY + light.sunOffset[1], apex.z + light.sunOffset[2]);
   sun.target.position.copy(look);
+  // Ljuset följer spelarens klocka; läses om varje gång menyn visas.
+  const setLight = () => {
+    const light = LIGHTS[lightAt(new Date())];
+    applyLight(scene, hemi, sun, light);
+    outlineColor.value.setHex(light.outline);
+    sun.position.set(apex.x + light.sunOffset[0], apexY + light.sunOffset[1], apex.z + light.sunOffset[2]);
+    headlights.group.visible = light.headlights;
+  };
   camera.lookAt(look);
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
   const toCar = new THREE.Vector3();
@@ -129,6 +139,7 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
     if (stage.project(car.pos.x, car.pos.z).s > corner + RUN_OUT || lapTime > 40) nextCar();
     car.damageEvents.length = 0;
     mesh.update();
+    headlights.update(car);
     dust.update(car, stage, dt);
     // Motorljudet tonar in när bilen närmar sig kameran och följer den från sida till sida.
     toCar.subVectors(car.pos, camera.position);
@@ -141,6 +152,7 @@ export function menuScene(renderer: THREE.WebGPURenderer): MenuScene {
 
   return {
     play() {
+      setLight();
       resize();
       addEventListener('resize', resize);
       document.body.classList.add('menu-scene');
