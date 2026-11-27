@@ -43,6 +43,16 @@ const fieldPace = (def: ChampionshipDef) => def.pace * TIER_PACE[def.tier];
 export const hasWon = (career: CareerState, def: ChampionshipDef) =>
   !!career.won?.includes(def.id) || !!career.history?.some((e) => e.kind === 'championship' && e.place === 1 && e.name === def.name);
 
+/**
+ * Bästa placeringen i mästerskapet, eller null om det aldrig körts.
+ * shortcut: läses ur historiken, som bara sparar de senaste raderna; vinster finns kvar i `won`.
+ */
+export function bestPlace(career: CareerState, def: ChampionshipDef): number | null {
+  const places = (career.history ?? []).filter((e) => e.kind === 'championship' && e.name === def.name && e.place).map((e) => e.place!);
+  if (hasWon(career, def)) places.push(1);
+  return places.length ? Math.min(...places) : null;
+}
+
 /** Mästerskapen i samma klass som står före det i listan. */
 const earlierInTier = (def: ChampionshipDef) => CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).filter((c) => c.tier === def.tier);
 

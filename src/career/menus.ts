@@ -37,6 +37,7 @@ import {
   championshipById,
   championshipPrize,
   championshipUnlocked,
+  bestPlace,
   hasWon,
   tierUnlocked,
   unlockHint,
@@ -317,6 +318,7 @@ async function tierMenu(
           championshipUnlocked(career, ch)
             ? {
                 label: ch.name,
+                note: bestNote(career, ch),
                 image: CHAMPIONSHIP_IMAGES[ch.id],
                 detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`,
                 value: ch.id,
@@ -339,6 +341,12 @@ async function tierMenu(
     const launch = await startChampionship(def, career, pick, showCar);
     if (launch) return launch;
   }
+}
+
+/** Bästa placeringen hittills, under mästerskapets namn. */
+function bestNote(career: CareerState, def: ChampionshipDef) {
+  const place = bestPlace(career, def);
+  return place ? `${trophy(place)}bäst ${place}:a` : undefined;
 }
 
 /** En historikrad som [vad, detaljer]. */

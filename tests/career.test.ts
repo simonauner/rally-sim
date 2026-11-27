@@ -1,6 +1,6 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
-import { afterLeg, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, tierUnlocked, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { afterLeg, bestPlace, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, tierUnlocked, withWin, championshipTargets, isProgress, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { CARS, kvarn240, kvarnTurbo4x4 } from '../src/physics/params';
@@ -192,6 +192,14 @@ const CAR = 'Kvarn 240 GL';
   const t1 = tier2[0]!.legs.reduce((sum, leg) => sum + STAGE_TARGETS[leg]![0], 0);
   const t2 = championshipTargets(tier2[0]!)![0];
   check('klass 2: snabbare fält', tier2.every((c) => !!championshipTargets(c)) && t2 < t1 && Math.min(...newProgress(tier2[0]!, T2, 1).rivals!.map((v) => v.pace)) < 0.95, `guld ${t1} s mot ${t2} s`);
+}
+
+{
+  const ch = CHAMPIONSHIPS[0]!;
+  const entry = (place: number) => ({ kind: 'championship' as const, at: 0, name: ch.name, place, of: RIVAL_COUNT + 1, amount: 0 });
+  const raced = { ...newCareer(), history: [entry(4), entry(2), entry(5)] };
+  const won = withWin(newCareer(), ch);
+  check('bästa placering', bestPlace(newCareer(), ch) === null && bestPlace(raced, ch) === 2 && bestPlace(won, ch) === 1, `${bestPlace(raced, ch)}, ${bestPlace(won, ch)}`);
 }
 
 if (failures) {
