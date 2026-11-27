@@ -29,8 +29,8 @@ export const soraTurbo: BodyShape = {
   lampY: [0.11, 0.2],
   grilleX: 0.21,
   lampX: [0.24, 0.76],
-  tailY: [0.19, 0.35],
-  tailX: 0.38,
+  tailY: [0.175, 0.34],
+  tailX: 0.4,
   bumperY: [-0.13, -0.12],
   rearBumperDepth: 0.36,
   hoodScoopZ: [0.93, 1.31], // objektet 'scoop' i Blendermodellen

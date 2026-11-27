@@ -74,7 +74,8 @@ def piecewise(points, x):
 # Främre och bakre konturen sett från sidan: hur långt fram/bak plåten går på höjden y.
 # Fram: stötfångaren sticker ut med en avsats i överkanten, strålkastarna och grillen sitter indragna under huven.
 FRONT = [(-0.30, 1.93), (-0.26, 1.975), (-0.10, 1.995), (0.02, 1.99), (0.04, 1.955), (0.15, 1.94), (0.21, 1.9)]
-REAR = [(-0.27, -2.30), (-0.15, -2.36), (0.0, -2.355), (0.2, -2.335), (0.45, -2.30), (0.53, -2.24)]
+# Bak: stötfångaren sticker ut under lyktorna, som slutar i en avsats; ovanför lutar bakluckan in.
+REAR = [(-0.27, -2.30), (-0.2, -2.355), (0.0, -2.365), (0.13, -2.36), (0.16, -2.325), (0.3, -2.315), (0.46, -2.3), (0.51, -2.285), (0.53, -2.255)]
 
 
 def body_top(z):
@@ -305,8 +306,13 @@ FOG_Y, FOG_X = (-0.2, -0.045), (0.4, 0.66)
 INTAKE_Y, INTAKE_X, INTAKE_BAR = (-0.24, 0.0), 0.35, 0.025
 LIP_Y = -0.265
 # Bak: lyktor (klara nertill) och nummerplåt.
-TAIL_Y, TAIL_X, TAIL_CLEAR = (0.19, 0.35), (0.38, 0.75), 0.235
-PLATE_Y, PLATE_X = (-0.13, 0.0), 0.26
+# Bak: breda lyktor direkt ovanpå stötfångaren, röda upptill och orange nertill med backljuset innerst,
+# nummerplåten uppe på stötfångaren och en mörk nederkant.
+TAIL_Y, TAIL_X, TAIL_AMBER, TAIL_REVERSE = (0.175, 0.34), (0.4, 0.76), 0.225, 0.52
+PLATE_Y, PLATE_X = (-0.04, 0.08), 0.26
+REAR_LIP_Y = -0.2
+# Lyktornas överkant sluttar ner inåt, från 0,34 i hörnet till 0,30 vid innerkanten.
+TAIL_TOP = plane(-0.111, 1, 0, 0.2556)  # för |x|
 # Kupén: rutornas nederkant, dörrutans framkant (A-stolpen), B-stolpen, kvartsrutans överkant
 # (C-stolpen), takkanten, vindrutans och bakrutans sidor.
 BELT = plane(0, 1, 0.015, 0.47265)
@@ -320,8 +326,11 @@ BACKLIGHT_X, BACKLIGHT_Y = 0.52, 0.6
 # Skarvar: dörrarnas fram- och bakkant och stötfångarnas överkant fram och bak.
 SEAM_W = 0.012
 DOOR_SEAMS = (0.78, -0.68)
-BUMPER_SEAM = {'front': 0.03, 'rear': 0.06}
+BUMPER_SEAM = {'front': 0.03, 'rear': 0.155}
 SIDE_ZONE = lambda c: abs(c[0]) > 0.7 and -0.3 < c[1] < 0.47  # noqa: E731
+# Bakluckans skarvar: längs ovansidan och ner mellan lyktorna och luckan till stötfångaren.
+LID_X = (0.62, 0.39)
+DECK_ZONE = lambda c: c[2] < -1.5 and c[1] > 0.15  # noqa: E731
 
 FRONT_ZONE = lambda c: c[2] > 1.55  # noqa: E731
 REAR_ZONE = lambda c: c[2] < -2.0  # noqa: E731
@@ -330,12 +339,14 @@ CABIN_ZONE = lambda c: -1.6 < c[2] < 0.6 and c[1] > 0.38  # noqa: E731
 CUTS = [
     (FRONT_ZONE, [Y(v) for v in (*LAMP_Y, *BLINK_Y, *FOG_Y, *INTAKE_Y, LIP_Y)]
      + [p for v in (*LAMP_X, *LAMP_DIV, GRILLE_X, *BLINK_X, *FOG_X, INTAKE_X, INTAKE_BAR) for p in mirrored(v)]),
-    (REAR_ZONE, [Y(v) for v in (*TAIL_Y, TAIL_CLEAR, *PLATE_Y)] + [p for v in (*TAIL_X, PLATE_X) for p in mirrored(v)]),
+    (REAR_ZONE, [Y(v) for v in (*TAIL_Y, TAIL_AMBER, *PLATE_Y, REAR_LIP_Y)] + [p for v in (*TAIL_X, TAIL_REVERSE, PLATE_X) for p in mirrored(v)]
+     + [TAIL_TOP, plane(0.111, 1, 0, 0.2556)]),
     (CABIN_ZONE, [BELT, A_LINE, C_LINE, Y(ROOF_EDGE), Y(BACKLIGHT_Y), Z(DOOR_FRONT), Z(QUARTER_REAR), *(Z(v) for v in B_PILLAR),
                   SCREEN_SIDE, plane(-0.45, 0.09, 0, 0.3105), *mirrored(BACKLIGHT_X)]),
     (SIDE_ZONE, [Z(v + d) for v in DOOR_SEAMS for d in (-SEAM_W / 2, SEAM_W / 2)]),
     (FRONT_ZONE, [Y(BUMPER_SEAM['front'] + d) for d in (0, SEAM_W)]),
     (REAR_ZONE, [Y(BUMPER_SEAM['rear'] + d) for d in (0, SEAM_W)]),
+    (DECK_ZONE, [p for v in LID_X for d in (0, SEAM_W) for p in mirrored(v + d)]),
 ]
 
 
@@ -408,12 +419,20 @@ def face_material(p, n):
         if inside(FOG_X, ax) and inside(FOG_Y, y):
             return M['shade']
     if REAR_ZONE(p) and (n.z < -0.25 or abs(n.x) > 0.5):
-        if inside(TAIL_Y, y) and ax > TAIL_X[0] and (n.z < -0.25 or z < -2.18):
-            return M['reverse'] if y < TAIL_CLEAR and ax < TAIL_X[1] else M['tail']
+        if inside(TAIL_Y, y) and not above((ax, y, z), TAIL_TOP) and ax > TAIL_X[0] and (n.z < -0.25 or z < -2.15):
+            if y < TAIL_AMBER and ax < TAIL_X[1]:
+                return M['reverse'] if ax < TAIL_REVERSE else M['amber']
+            return M['tail']
         if ax < PLATE_X and inside(PLATE_Y, y) and n.z < -0.5:
             return M['plate']
+        if y < REAR_LIP_Y and n.z < -0.25:
+            return M['black']
     if SIDE_ZONE(p) and y > -0.22 and any(abs(z - v) < SEAM_W / 2 for v in DOOR_SEAMS):
         return M['shade']
+    if DECK_ZONE(p) and y > BUMPER_SEAM['rear']:
+        lid = LID_X[0] if n.y > 0.5 else LID_X[1] if n.z < -0.5 else None
+        if lid and 0 < ax - lid < SEAM_W:
+            return M['shade']
     for zone, key in ((FRONT_ZONE, 'front'), (REAR_ZONE, 'rear')):
         if zone(p) and 0 < y - BUMPER_SEAM[key] < SEAM_W and abs(n.y) < 0.7:
             return M['shade']
@@ -436,8 +455,9 @@ def assign_materials(obj, rule):
 # --- Lösa detaljer: speglar, luftintag, vinge, extraljus, stänkskydd ------------------------
 
 
-def part(name, build, mat, at):
-    """Ett eget objekt med origo i `at` (bilens koordinater), byggt av build(bm)."""
+def part(name, build, mat, at, tilt=0.0):
+    """Ett eget objekt med origo i `at` (bilens koordinater), byggt av build(bm), lutat `tilt` radianer
+    kring x (positivt lyfter bakkanten)."""
     bm = bmesh.new()
     build(bm)
     mesh = bpy.data.meshes.new(name)
@@ -445,6 +465,7 @@ def part(name, build, mat, at):
     bm.free()
     obj = bpy.data.objects.new(name, mesh)
     obj.location = to_blender(*at)
+    obj.rotation_euler = (tilt, 0, 0)
     bpy.context.scene.collection.objects.link(obj)
     obj.data.materials.append(bpy.data.materials[mat])
     return obj
@@ -476,16 +497,16 @@ def details():
         for zw, nm in ((WHEELS[0][0], 'F'), (WHEELS[1][0], 'R')):
             objs.append(part(f'flap_{nm}{side}', box(0.2, 0.16, 0.015), 'black', (s * 0.715, -0.39, zw - 0.46)))
         objs.append(part(f'handle_{side}', box(0.02, 0.03, 0.13), 'black', (s * 0.85, 0.32, -0.47)))
-        # Vingens fästen står på bakluckan, en bit in från kanten.
-        objs.append(part(f'wingstay_{side}', box(0.05, 0.22, 0.16), 'paint', (s * 0.55, 0.64, -2.1)))
-    objs.append(part('wing', box(1.48, 0.035, 0.26), 'paint', (0, 0.765, -2.12)))
+        # Den höga vingen står på två fenor som lutar bakåt från bakluckans bakre del.
+        objs.append(part(f'wingstay_{side}', box(0.045, 0.32, 0.24), 'paint', (s * 0.5, 0.69, -2.1), tilt=-0.3))
+    objs.append(part('wing', box(1.5, 0.04, 0.32), 'paint', (0, 0.85, -2.17), tilt=0.12))
     for s, side in ((1, 'L'), (-1, 'R')):
-        objs.append(part(f'wingend_{side}', box(0.02, 0.12, 0.28), 'paint', (s * 0.74, 0.735, -2.12)))
+        objs.append(part(f'wingend_{side}', box(0.02, 0.14, 0.34), 'paint', (s * 0.75, 0.83, -2.17), tilt=0.05))
     # Upphöjt intag till laddluftkylaren på huven, med svart öppning framåt.
     objs.append(part('scoop', box(0.6, 0.08, 0.38), 'paint', (0, 0.375, 1.12)))
     objs.append(part('scoop_mouth', box(0.5, 0.05, 0.01), 'black', (0, 0.385, 1.315)))
     objs.append(part('plate_front', box(0.34, 0.06, 0.02), 'plate', (0, 0.0, 1.995)))
-    objs.append(part('exhaust', cylinder_z(0.05, 0.18), 'chrome', (-0.45, -0.3, -2.33)))
+    objs.append(part('exhaust', cylinder_z(0.06, 0.2), 'chrome', (-0.42, -0.25, -2.34)))
     # Extraljusrampen (klass 2): fyra lampor tätt i en lackad låda på huvens framkant.
     objs.append(part('pod_body', box(0.8, 0.1, 0.22), 'paint', (0, 0.22, 1.78)))
     for i, x in enumerate((0.3, 0.1, -0.1, -0.3)):
