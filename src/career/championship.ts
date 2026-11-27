@@ -74,9 +74,14 @@ export const carUnlockHint = (car: string) => (LATE_CARS.includes(car) ? 'Vinn a
 export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>
   tierUnlocked(career, def.tier) && earlierInTier(def).every((c) => hasWon(career, c));
 
-/** Vad som låser upp mästerskapet, för menyn: bara det sista ovunna före det, de tidigare följer av det. */
-export const unlockHint = (career: CareerState, def: ChampionshipDef) =>
-  `vinn ${earlierInTier(def).filter((c) => !hasWon(career, c)).at(-1)?.name}`;
+/**
+ * Vad som låser upp mästerskapet, för menyn: bara det sista ovunna före det, de tidigare följer av det.
+ * Klassens första mästerskap har inga före sig i klassen; där är det mästerskapen som öppnar klassen.
+ */
+export const unlockHint = (career: CareerState, def: ChampionshipDef) => {
+  const opensTier = CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.findIndex((c) => c.tier === def.tier));
+  return `vinn ${[...opensTier, ...earlierInTier(def)].filter((c) => !hasWon(career, c)).at(-1)?.name}`;
+};
 
 /** Karriären med mästerskapet vunnet. */
 export const withWin = (career: CareerState, def: ChampionshipDef): CareerState =>
