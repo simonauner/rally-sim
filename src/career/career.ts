@@ -418,6 +418,10 @@ export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze
   Tallmon: [96, 107, 122],
   Ljungheden: [88, 98, 112],
   Isvallen: [112, 124, 142],
+  // Testföraren: Forsbäcken 80 s, Hamnudden 87 s (asfaltsdäck) och Vadmyra 97 s.
+  Forsbäcken: [81, 90, 104],
+  Hamnudden: [88, 98, 112],
+  Vadmyra: [98, 109, 125],
 };
 
 /** Medaljgränserna för en etapp i bilens klass, eller undefined för en okänd etapp. */

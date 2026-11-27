@@ -31,6 +31,8 @@ export const CHAMPIONSHIPS: ChampionshipDef[] = [
   { id: 'tallmoklassikern', name: 'Tallmoklassikern', legs: ['Tallmon', 'Skogsberg', 'Myrkulla'], pace: 0.985, tier: 2 },
   { id: 'ljunghedsrallyt', name: 'Ljunghedsrallyt', legs: ['Ljungheden', 'Myrkulla baklänges', 'Skogsberg baklänges'], pace: 0.965, tier: 2 },
   { id: 'israllyt', name: 'Israllyt', legs: ['Isvallen', 'Frostberga baklänges', 'Frostberga'], pace: 0.945, tier: 2 },
+  // Ligger sist så att klass 2 fortfarande öppnas av de tre första klass 1-mästerskapen.
+  { id: 'forsrallyt', name: 'Forsrallyt', legs: ['Forsbäcken', 'Hamnudden', 'Vadmyra'], pace: 0.945, tier: 1 },
 ];
 
 /** Fältets takt i klass 1-guldtider: klass 2 kör fortare. */
@@ -40,16 +42,20 @@ const fieldPace = (def: ChampionshipDef) => def.pace * TIER_PACE[def.tier];
 export const hasWon = (career: CareerState, def: ChampionshipDef) =>
   !!career.won?.includes(def.id) || !!career.history?.some((e) => e.kind === 'championship' && e.place === 1 && e.name === def.name);
 
-/** Skogsrallyt är alltid öppet; varje mästerskap därefter kräver att alla före det är vunna. */
-export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>
-  CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).every((c) => hasWon(career, c));
+/** Mästerskapen i samma klass som står före det i listan. */
+const earlierInTier = (def: ChampionshipDef) => CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).filter((c) => c.tier === def.tier);
 
-/** Klassen är öppen när alla mästerskap i klasserna under är vunna. */
-export const tierUnlocked = (career: CareerState, tier: Tier) => CHAMPIONSHIPS.filter((c) => c.tier < tier).every((c) => hasWon(career, c));
+/** Klassen är öppen när mästerskapen före klassens första i listan är vunna. */
+export const tierUnlocked = (career: CareerState, tier: Tier) =>
+  CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.findIndex((c) => c.tier === tier)).every((c) => hasWon(career, c));
+
+/** Skogsrallyt är alltid öppet; därefter krävs öppen klass och att klassens tidigare mästerskap är vunna. */
+export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>
+  tierUnlocked(career, def.tier) && earlierInTier(def).every((c) => hasWon(career, c));
 
 /** Vad som låser upp mästerskapet, för menyn. */
 export const unlockHint = (career: CareerState, def: ChampionshipDef) =>
-  `vinn ${CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).filter((c) => !hasWon(career, c)).map((c) => c.name).join(' och ')}`;
+  `vinn ${earlierInTier(def).filter((c) => !hasWon(career, c)).map((c) => c.name).join(' och ')}`;
 
 /** Karriären med mästerskapet vunnet. */
 export const withWin = (career: CareerState, def: ChampionshipDef): CareerState =>

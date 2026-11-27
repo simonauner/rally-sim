@@ -191,10 +191,11 @@ const CHAMPIONSHIP_IMAGES: Record<string, string> = {
   skogsrallyt: skogsrallytImg,
   myrkullarallyt: myrkullarallytImg,
   vinterrallyt: vinterrallytImg,
-  // shortcut: klass 2 lånar bilderna från klass 1-mästerskapet med samma etapper; ta egna om de behövs.
+  // shortcut: klass 2 och Forsrallyt lånar bilder från klass 1-mästerskapen; ta egna om de behövs.
   tallmoklassikern: skogsrallytImg,
   ljunghedsrallyt: myrkullarallytImg,
   israllyt: vinterrallytImg,
+  forsrallyt: myrkullarallytImg,
 };
 
 /** Mästerskapen: först klassen, sedan mästerskapet i den. */
@@ -212,7 +213,7 @@ async function championshipMenu(career: CareerState, pick: Pick, showCar: ShowCa
           const cars = CARS.map(nameOf).filter((n) => tierOf(n) === t).join(', ');
           return tierUnlocked(career, t)
             ? { label: `Klass ${t}`, note: cars, detail: `${list.filter((ch) => hasWon(career, ch)).length}/${list.length} vunna`, value: t }
-            : { label: `Klass ${t}`, note: cars, detail: `vinn alla mästerskap i klass ${t - 1}`, value: t, locked: true };
+            : { label: `Klass ${t}`, note: cars, detail: `vinn ${CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.findIndex((ch) => ch.tier === t)).filter((ch) => !hasWon(career, ch)).map((ch) => ch.name).join(' och ')}`, value: t, locked: true };
         }),
         { label: '← Tillbaka', value: 0 },
       ],

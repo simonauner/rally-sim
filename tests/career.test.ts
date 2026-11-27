@@ -157,7 +157,7 @@ const CAR = 'Kvarn 240 GL';
   const both = withWin(one, myr);
   const old = logged(fresh, { kind: 'championship', name: skog.name, car: CAR, place: 1, of: 8, time: 300, amount: 9000 });
   const second = logged(fresh, { kind: 'championship', name: skog.name, car: CAR, place: 2, of: 8, time: 300, amount: 6000 });
-  const ok = open(fresh) === '100000' && open(one) === '110000' && open(myrOnly) === '100000' && open(both) === '111000' && open(old) === '110000' && open(second) === '100000';
+  const ok = open(fresh) === '1000000' && open(one) === '1100000' && open(myrOnly) === '1000000' && open(both) === '1110000' && open(old) === '1100000' && open(second) === '1000000';
   check('mästerskap: upplåsning', ok && withWin(one, skog) === one && isCareerState(both) && !isCareerState({ ...fresh, won: [''] }), `${open(fresh)} ${open(one)} ${open(both)}`);
 }
 
@@ -168,6 +168,10 @@ const CAR = 'Kvarn 240 GL';
   const allOne = tier1.reduce(withWin, newCareer());
   const almost = tier1.slice(0, 2).reduce(withWin, newCareer());
   const openTwo = (c: ReturnType<typeof newCareer>) => tier2.map((ch) => (championshipUnlocked(c, ch) ? 1 : 0)).join('');
+  // Forsrallyt kom till efter klass 2 och behövs inte för att öppna den.
+  const firstThree = tier1.slice(0, 3).reduce(withWin, newCareer());
+  const fors = CHAMPIONSHIPS.find((c) => c.id === 'forsrallyt')!;
+  check('forsrallyt: öppnas av vinterrallyt', !championshipUnlocked(almost, fors) && championshipUnlocked(firstThree, fors) && tierUnlocked(firstThree, 2), `${tier1.length} mästerskap i klass 1`);
   check('klass 2: upplåsning', !tierUnlocked(almost, 2) && tierUnlocked(allOne, 2) && tierUnlocked(newCareer(), 1) && openTwo(almost) === '000' && openTwo(allOne) === '100' && openTwo(withWin(allOne, tier2[0]!)) === '110', `${openTwo(almost)} → ${openTwo(allOne)}`);
   const names = CARS.map((m) => m.make().name);
   check('klass 2: tre bilar', names.filter((n) => tierOf(n) === 2).length === 3 && names.every((n) => tierOf(n) === 1 || tierOf(n) === 2), names.map((n) => `${n} ${tierOf(n)}`).join(', '));

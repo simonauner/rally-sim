@@ -56,6 +56,11 @@ natten (snö). Då lyser bilens strålkastare. En hård smäll framifrån slår 
 sidan, och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
 inbromsning. I Fri körning väljer man först mästerskap och sedan etapp.
 
+Forsrallyt har tre egna etapper: *Forsbäcken* (grus med två vadställen), *Hamnudden* (mest bred
+asfalt, där asfaltsdäck rekommenderas) och *Vadmyra* i gryning (grus och lera med ett långt
+vadställe). I vadställena dyker vägen ner i en bäck (underlaget `water`): vattnet bromsar bilen,
+greppar sämre och sprutar åt sidorna.
+
 Vädret slumpas per etapp (`src/physics/weather.ts`): oftast uppehåll, men ibland regn eller dimma,
 och på vinteretapper snöfall eller dimma. Regn gör asfalt, grus och lera halare och snöfall gör
 snön halare; dimma kortar sikten. Däckmenyn visar vädret och greppet med vädret inräknat, och
@@ -137,7 +142,7 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
 - **Enstaka lopp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
   gratis efteråt, så bilarna i garaget tar aldrig skada.
-- **Mästerskap** (Skogsrallyt, Myrkullarallyt och Vinterrallyt, tre etapper vardera varav en i skymning, gryning respektive natt; prispengarna växer med antalet etapper): man kör mot sju
+- **Mästerskap** (Skogsrallyt, Myrkullarallyt, Vinterrallyt och Forsrallyt, tre etapper vardera varav en i skymning, gryning respektive natt; prispengarna växer med antalet etapper): man kör mot sju
   slumpade fiktiva förare, och efter varje etapp visas ställningen. Placeringen avgör
   prispengarna, som är större än för enstaka lopp. Fältets bästa kör på guldtid; har man
   egna rekord på etapperna läggs de två snabbaste nära ens takt, och är man snabbare än hela
