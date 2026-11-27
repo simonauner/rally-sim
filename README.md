@@ -133,15 +133,19 @@ Sora 2.0 Turbo och Hoshi 2.0 4WD är modellerade i Blender i stället för byggd
 
 ```sh
 blender -b blender/soraTurbo/soraTurbo.blend -P blender/export.py   # skriver src/render/models/soraTurbo.ts
-blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- /tmp/sora   # bilder från några vinklar
+blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- /tmp/sora   # hela bilen och närbilder av delarna
 ```
 
 Modellen ligger i bilens koordinater (origo i tyngdpunkten, marken på y = −0,486) med Blenders
 X = x, Y = −z, Z = y, så bilen pekar mot −Y. Objekten i samlingen *Export* blir bilens delar:
-`body` bucklas, övriga är lösa detaljer som ramlar av (`flap…` = stänkskydd, `pod…` = extraljus, bara
-klass 2). En del som heter `rim` är fälgen och sätts i alla fyra hjulen, i ett ihåligt däck. Färgen väljs
-per yta med materialets namn (`paint`, `shade`, `glass`, `black`, `dark`, `chrome`, `lamp`, `amber`, `tail`,
-`reverse`, `plate`, `white`); `paint` och `shade` följer bilens lack. Samlingen
+`body` och `body_…` (Soras dörrar, stötfångare och baklucka) är paneler som bucklas var för sig och har
+sitt origo i bilens; övriga är lösa detaljer som ramlar av (`flap…` = stänkskydd, `pod…` = extraljus, bara
+klass 2). En del som heter `wheel` är ett helt hjul med utsidan åt +x, speglat på höger sida; en del som
+heter `rim` är bara fälgen och sätts i ett ihåligt däck. Färgen väljs per yta med materialets namn
+(`paint`, `shade`, `glass`, `black`, `dark`, `chrome`, `lamp`, `amber`, `tail`, `reverse`, `plate`, `white`,
+`gold`, `rubber`); `paint` och `shade` följer bilens lack. Soras byggskript är uppdelat per del:
+`shell.py` (karossen, lyktorna och panelerna), `parts.py` (vinge, avgassystem, hjul och övriga detaljer)
+och `common.py` (mått, material och nätverktyg). Samlingen
 *Reference* (hjul och mark) exporteras inte. `blender/<bil>/build.py` bygger en ny .blend från
 början och skriver över den gamla. Hoshins strålkastare är uppfällda (`popup…`).
 

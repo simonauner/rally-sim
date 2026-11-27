@@ -190,7 +190,20 @@ const BODIES: Record<CarModel['body'], BodyShape> = {
 /** Bilar med en egen modell från Blender (blender/). Övriga byggs av formen i bodies/. */
 const MODELS: Partial<Record<CarModel['body'], ModelData>> = { soraTurbo: soraTurboModel, hoshi4wd: hoshi4wdModel };
 
-const PALETTE: Record<string, THREE.Color> = { glass: GLASS, black: BLACK, dark: DARK, chrome: CHROME, lamp: LAMP, amber: AMBER, tail: TAIL, reverse: REVERSE, plate: PLATE, white: new THREE.Color(0xf2f2ee) };
+const PALETTE: Record<string, THREE.Color> = {
+  glass: GLASS,
+  black: BLACK,
+  dark: DARK,
+  chrome: CHROME,
+  lamp: LAMP,
+  amber: AMBER,
+  tail: TAIL,
+  reverse: REVERSE,
+  plate: PLATE,
+  gold: new THREE.Color(0xc9a243),
+  rubber: new THREE.Color(0x242424),
+  white: new THREE.Color(0xf2f2ee),
+};
 
 /**
  * Material för en del av en Blendermodell: färgen efter hörnets material, lacken (med dekaler på karossen)
@@ -213,13 +226,22 @@ function modelMaterial(data: ModelData, paint: THREE.Color, lamp: THREE.Node<'fl
 }
 
 /**
- * Karossen och de lösa detaljerna ur en Blendermodell. Extraljusrampen ('pod…') bara om `pod`. Delen 'rim'
- * är fälgen, som sätts i alla fyra hjulen i stället för att bli en detalj.
+ * Delarna ur en Blendermodell. 'body' och 'body_…' (dörrar, stötfångare, baklucka) är paneler som bucklas
+ * var för sig och bär dekalerna, 'wheel' är hela hjulet (utsidan åt +x), 'rim'
+ * bara fälgen (sätts i ett däck byggt i koden) och resten är lösa detaljer som ramlar
+ * av. Extraljusrampen ('pod…') bara om `pod`.
  */
 function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow: LampGlow, tailGlow: FloatUniform, decals: THREE.Texture, pod: boolean) {
-  let body: DeformablePart | null = null;
+  // Dekaler på lacken: sidorna under gördellinjen, huven, bakluckan och taket.
+  const p = attribute('rest', 'vec3');
+  const side = abs(p.x).greaterThan(0.7).and(p.y.lessThan(b.belt));
+  const roof = p.y.greaterThan(b.roof - 0.04);
+  const painted = roofDecals(bodyDecals(color(paint), p, side, b, decals, paint), p.x, p.z, roof, b, decals, paint);
+  const panelMaterial = modelMaterial(data, paint, select(p.x.greaterThan(0), lampGlow[0], lampGlow[1]), tailGlow, painted);
+  const panels: DeformablePart[] = [];
   let rim: THREE.Mesh | undefined;
   const details = new THREE.Group();
+  let wheel: THREE.Mesh | null = null;
   for (const part of data.parts) {
     if (part.name.startsWith('pod') && !pod) continue;
     const g = partGeometry(part);
@@ -231,23 +253,33 @@ function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow:
       rim.castShadow = true;
       continue;
     }
-    if (part.name === 'body') {
-      // Dekaler på lacken: sidorna under gördellinjen, huven, bakluckan och taket.
-      const p = attribute('rest', 'vec3');
-      const side = abs(p.x).greaterThan(0.7).and(p.y.lessThan(b.belt));
-      const roof = p.y.greaterThan(b.roof - 0.04);
-      const painted = roofDecals(bodyDecals(color(paint), p, side, b, decals, paint), p.x, p.z, roof, b, decals, paint);
-      body = new DeformablePart(g, modelMaterial(data, paint, select(p.x.greaterThan(0), lampGlow[0], lampGlow[1]), tailGlow, painted), 0.12, 0.35);
+    if (part.name === 'body' || part.name.startsWith('body_')) {
+      // Dekalerna och bucklorna räknas i bilens koordinater, så panelerna har sitt origo i bilens.
+      if (part.at.some((c) => c !== 0)) throw new Error(`${part.name}: panelens origo ska ligga i bilens origo`);
+      panels.push(new DeformablePart(g, panelMaterial, 0.12, 0.35));
       continue;
     }
     const mesh = new THREE.Mesh(g, modelMaterial(data, paint, lampGlow[part.at[0] > 0 ? 0 : 1], tailGlow));
+    mesh.castShadow = true;
+    if (part.name === 'wheel') {
+      wheel = mesh;
+      continue;
+    }
     mesh.name = part.name;
     mesh.position.set(...part.at);
-    mesh.castShadow = true;
     details.add(mesh);
   }
-  if (!body) throw new Error('Bilmodellen saknar body');
-  return { body, details, rim };
+  if (!panels.length) throw new Error('Bilmodellen saknar body');
+  return { panels, details, wheel, rim };
+}
+
+/** Ett hjul av modellens hjul; på höger sida speglat, så fälgens utsida vänds utåt. */
+function modelWheel(wheel: THREE.Mesh, left: boolean): THREE.Group {
+  const g = new THREE.Group();
+  const m = wheel.clone();
+  m.scale.x = left ? 1 : -1;
+  g.add(m);
+  return g;
 }
 
 type Hit = [x: number, y: number, z: number, nx: number, ny: number, nz: number];
@@ -610,7 +642,7 @@ function buildModelWheel(radius: number, rim: THREE.Mesh): THREE.Group {
   return g;
 }
 
-function buildWheel(radius: number, rally = false, gold = false): THREE.Group {
+function buildWheel(radius: number, rally = false): THREE.Group {
   const g = new THREE.Group();
   const tyre = new THREE.Mesh(
     new THREE.CylinderGeometry(radius, radius, 0.22, 28).rotateZ(Math.PI / 2),
@@ -619,15 +651,13 @@ function buildWheel(radius: number, rally = false, gold = false): THREE.Group {
   // Släta navkapslar med en ring av korta slitsar, som visar rotationen.
   const cap = (r: number, w: number, c: number) =>
     new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 28).rotateZ(Math.PI / 2), new THREE.MeshToonMaterial({ color: c }));
-  const rim = gold ? 0xc9a243 : rally ? 0xf2f2ee : 0xd6d6d6;
-  g.add(tyre, cap(radius * (rally || gold ? 0.72 : 0.7), 0.232, rim), cap(radius * 0.2, 0.24, gold ? rim : 0xb4b4b4));
-  // Rallyfälgen: tät ring av smala hål nära kanten, så den liknar en ekrad fälg. Guldfälgen: fem stora
-  // hål mellan fem breda ekrar.
-  const slotMat = new THREE.MeshToonMaterial({ color: rally || gold ? 0x2a2a2a : 0x6a6a6a });
-  const [count, at, len] = gold ? [5, 0.43, 0.4] : rally ? [20, 0.52, 0.32] : [10, 0.47, 0.2];
+  g.add(tyre, cap(radius * (rally ? 0.72 : 0.7), 0.232, rally ? 0xf2f2ee : 0xd6d6d6), cap(radius * 0.2, 0.24, 0xb4b4b4));
+  // Rallyfälgen: tät ring av smala hål nära kanten, så den liknar en ekrad fälg.
+  const slotMat = new THREE.MeshToonMaterial({ color: rally ? 0x2a2a2a : 0x6a6a6a });
+  const [count, at, len] = rally ? [20, 0.52, 0.32] : [10, 0.47, 0.2];
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2;
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.236, radius * len, gold ? radius * 0.36 : rally ? 0.018 : 0.03), slotMat);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.236, radius * len, rally ? 0.018 : 0.03), slotMat);
     s.position.set(0, Math.cos(a) * radius * at, Math.sin(a) * radius * at);
     s.rotation.x = -a;
     g.add(s);
@@ -676,7 +706,7 @@ export class CarMesh {
     const decals = decalTexture(b, wheelZ, c, startNumber(car.params.name), model.sponsors?.() ?? []);
     const data = MODELS[model.body];
     const built = data && buildModel(data, b, c, this.lampGlow, this.tailGlow, decals, tierOf(car.params.name) === 2);
-    this.parts = built ? [built.body] : [
+    this.parts = built ? built.panels : [
       buildBody(b, wheelZ, c, this.lampGlow, this.tailGlow, decals),
       buildCabin(b, c, decals),
       // En avsmalnande nos får en smalare stötfångare med rundare hörn, så den följer formen.
@@ -720,7 +750,11 @@ export class CarMesh {
       this.group.add(spot, spot.target, bumper, bumper.target);
     });
     for (let i = 0; i < 4; i++) {
-      const w = built?.rim ? buildModelWheel(car.params.wheelRadius, built.rim) : buildWheel(car.params.wheelRadius, b.rallyRims, b.goldRims);
+      const w = built?.wheel
+        ? modelWheel(built.wheel, car.params.wheels[i]!.mount[0] > 0)
+        : built?.rim
+          ? buildModelWheel(car.params.wheelRadius, built.rim)
+          : buildWheel(car.params.wheelRadius, b.rallyRims);
       this.wheels.push(w);
     }
   }

@@ -74,7 +74,5 @@ export interface BodyShape {
   rallyRims?: boolean;
   /** Ett upphöjt luftintag på huven täcker z från, till; startnumret och sponsorerna ritas utanför. */
   hoodScoopZ?: Range;
-  /** Guldfärgade fälgar med fem breda ekrar. */
-  goldRims?: boolean;
 }
 
