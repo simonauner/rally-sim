@@ -128,7 +128,7 @@ tests/         fysiktester med förväntade intervall
 
 ### Bilar från Blender
 
-Sora 2.0 Turbo, Hoshi 2.0 4WD och Kvarn 240 (GL och Turbo, samma modell) är modellerade i Blender i stället för byggda av en form i
+Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V och Kvarn 240 (GL och Turbo, samma modell) är modellerade i Blender i stället för byggda av en form i
 `src/render/bodies/`. `blender/<bil>/<bil>.blend` är källan (t.ex. `blender/soraTurbo/soraTurbo.blend`): redigera den i Blender och för över den till spelet med
 
 ```sh
@@ -149,6 +149,7 @@ och `common.py` (mått, material och nätverktyg). Samlingen
 *Reference* (hjul och mark) exporteras inte. `blender/<bil>/build.py` bygger en ny .blend från
 början och skriver över den gamla. Hoshins strålkastare är uppfällda (`popup…`).
 Kvarnens lyktor, grill och stötfångare är egna delar (`headlamp…`, `grille`, `bumper…`, `taillamp…`).
+Volpen har dessutom takspoiler, huvventiler och extraljus som egna delar (`spoiler`, `vents…`, `pod`).
 
 ### Fysikens viktigaste val
 

@@ -190,6 +190,7 @@ const MODEL_LOADERS: Partial<Record<CarModel['body'], () => Promise<ModelData>>>
   hoshi4wd: () => import('./models/hoshi4wd').then((m) => m.hoshi4wd),
   kvarn240: () => import('./models/kvarn240').then((m) => m.kvarn240),
   kvarn240Turbo: () => import('./models/kvarn240').then((m) => m.kvarn240),
+  volpeTurbo: () => import('./models/volpeTurbo').then((m) => m.volpeTurbo),
 };
 const MODELS: Partial<Record<CarModel['body'], ModelData>> = {};
 const loading: Partial<Record<CarModel['body'], Promise<void>>> = {};
