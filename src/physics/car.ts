@@ -373,8 +373,10 @@ export class Car {
     const iRef = p.engine.inertia * dtn.ratio * dtn.ratio * dtn.engage * dtn.engage;
 
     const axleTorque = [0, 0, 0, 0];
-    const frontT = shaftTorque * p.frontShare;
-    const rearT = shaftTorque * (1 - p.frontShare);
+    // Fyrhjulsdrift: mittdiffen låser mot den axel som spinner, så ett hjul i luften inte tar allt.
+    const [frontT, rearT] = p.centerDiff
+      ? splitDiff(shaftTorque, (wheels[0]!.omega + wheels[1]!.omega) / 2, (wheels[2]!.omega + wheels[3]!.omega) / 2, p.centerDiff, p.frontShare)
+      : [shaftTorque * p.frontShare, shaftTorque * (1 - p.frontShare)];
     if (p.frontShare > 0) {
       const [l, r] = splitDiff(frontT, wheels[0]!.omega, wheels[1]!.omega, p.diff);
       axleTorque[0] = l;

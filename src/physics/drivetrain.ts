@@ -139,12 +139,16 @@ export interface DiffParams {
   preload: number;
 }
 
-/** Fördelar axelmoment på två hjul. Returnerar [vänster, höger]. */
-export function splitDiff(torque: number, wLeft: number, wRight: number, d: DiffParams): [number, number] {
-  const half = torque / 2;
-  const dw = wLeft - wRight;
+/**
+ * Fördelar moment på två utgångar: hjulen på en axel, eller (som mittdiff) fram- och bakaxeln.
+ * `share` är grundandelen till den första. Returnerar [första, andra].
+ */
+export function splitDiff(torque: number, wA: number, wB: number, d: DiffParams, share = 0.5): [number, number] {
+  const a = torque * share;
+  const b = torque - a;
+  const dw = wA - wB;
   const ramp = Math.min(1, Math.abs(dw) / 3);
-  const bias = (d.lock * Math.abs(half) + d.preload) * ramp * Math.sign(dw);
-  // Snabbare hjul får mindre moment, långsammare mer.
-  return [half - bias, half + bias];
+  const bias = (d.lock * Math.min(Math.abs(a), Math.abs(b)) + d.preload) * ramp * Math.sign(dw);
+  // Snabbare utgång får mindre moment, långsammare mer.
+  return [a - bias, b + bias];
 }
