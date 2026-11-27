@@ -31,6 +31,10 @@ interface EngineSound {
   raspHz: number;
   /** Raspets styrka: grund, per gas och per ansträngning över 4 500 rpm. */
   rasp: [number, number, number];
+  /** Turbons visslande: volym vid fullt laddtryck och tonhöjd i Hz utan respektive med fullt tryck. */
+  turbo?: { level: number; hz: [number, number] };
+  /** Rassel i avgassystemet (antilag) när man växlar eller lyfter med laddtryck: smällarnas styrka. */
+  crackle?: number;
 }
 
 /** Stor lågvarvig radfyra: mjukt mullrande avgaston med tändfrekvensen och dess andra överton, svaga halvordningar. */
@@ -58,8 +62,42 @@ const SMALL_FOUR: EngineSound = {
   rasp: [0.3, 0.4, 0.4],
 };
 
+/**
+ * Boxerfyra med olika långa grenrör: tändfrekvensen dominerar men halvordningarna 2,5 och 3,5 är starka
+ * och ger det ojämna mullret. Proportionerna är mätta på en inspelning av en boxer med turbo.
+ */
+const BOXER_ORDERS = [0, 0, 0.03, 0.05, 1, 0.4, 0.08, 0.2, 0.1, 0.1, 0.06, 0.04, 0.04];
+const BOXER: EngineSound = {
+  ...BIG_FOUR,
+  harmonic: (k) => BOXER_ORDERS[k] ?? (k % 2 === 0 ? 0.02 : 0.01),
+  drive: [0.35, 0.55],
+  rasp: [0.25, 0.15, 0.6],
+  // Inspelningen visslar runt 1,0–1,7 kHz och ligger kvar en stund efter gaspådraget.
+  turbo: { level: 0.035, hz: [900, 1700] },
+  crackle: 1,
+};
+
+/** Femcylindrig radmotor: tändfrekvensen på 2,5 gånger varvtalet och ett tydligt varv-mullrande under. */
+const FIVE: EngineSound = {
+  ...BIG_FOUR,
+  harmonic: (k) => (k === 5 ? 1 : k === 10 ? 0.35 : k % 5 === 0 ? 0.4 / k : k === 2 || k === 3 ? 0.08 : 0.02),
+  turbo: { level: 0.04, hz: [800, 1500] },
+  crackle: 1,
+};
+
+/** Grupp A-motor: stor radfyra med turbo och antilag. */
+const RALLY_FOUR: EngineSound = { ...BIG_FOUR, turbo: { level: 0.03, hz: [1000, 1900] }, crackle: 0.8 };
+
 const ENGINE_SOUND: Record<string, EngineSound> = {
   'Ljung 1600 S': SMALL_FOUR,
+  // Gatbil: turbo men ingen antilag.
+  'Kvarn 240 Turbo': { ...BIG_FOUR, turbo: { level: 0.02, hz: [800, 1500] } },
+  'Kvarn Turbo 4x4': RALLY_FOUR,
+  'Hoshi 2.0 4WD': RALLY_FOUR,
+  'Volpe 2.0 Turbo 16V': RALLY_FOUR,
+  'Arashi 2.0 RS': RALLY_FOUR,
+  'Brenner 5T Coupé': FIVE,
+  'Sora 2.0 Turbo': BOXER,
 };
 
 /** Syntetiserat ljud med Web Audio: motor, däck/underlag och krockar. */
@@ -81,6 +119,15 @@ export class Sound {
   private rollFilter!: BiquadFilterNode;
   private slipGain!: GainNode;
   private slipFilter!: BiquadFilterNode;
+  private turboOsc!: OscillatorNode;
+  private turboGain!: GainNode;
+  /** Laddtrycket 0–1, som byggs upp och sjunker med fördröjning. */
+  private boost = 0;
+  private lastT = 0;
+  private lastGear = 0;
+  private lastThr = 0;
+  /** När rasslet får börja igen, så att växling och gaslyft inte ger två skurar. */
+  private crackleUntil = 0;
   private noise!: AudioBuffer;
   get muted() {
     return !settings.sound;
@@ -167,6 +214,14 @@ export class Sound {
     shaper.connect(this.intakeFilter).connect(this.intakeGain).connect(this.master);
     this.engOsc.start();
 
+    // Turbo: en ren ton som följer laddtrycket.
+    this.turboOsc = ctx.createOscillator();
+    this.turboOsc.type = 'triangle';
+    this.turboGain = ctx.createGain();
+    this.turboGain.gain.value = 0;
+    this.turboOsc.connect(this.turboGain).connect(this.master);
+    this.turboOsc.start();
+
     src.loop = true;
     src.start();
     [this.rollFilter, this.rollGain] = this.noiseBranch(src, 'lowpass');
@@ -229,6 +284,7 @@ export class Sound {
     this.raspDepth.gain.setTargetAtTime(rasp, t, tau);
     this.intakeFilter.frequency.setTargetAtTime(es.intakeHz[0] + es.intakeHz[1] * rev + es.intakeHz[2] * half, t, tau);
     this.intakeGain.gain.setTargetAtTime(thr * (es.intake[0] + es.intake[1] * rev + es.intake[2] * strain), t, tau);
+    this.turbo(es, dtn.rpm, dtn.shiftTimer > 0 ? 0 : thr, dtn.gear, t);
 
     // Däck: rullbrus efter fart, slirljud efter hur mycket hjulen glider.
     let slip = 0;
@@ -255,6 +311,57 @@ export class Sound {
     this.slipFilter.frequency.setTargetAtTime(s.slip, t, tau);
     this.slipFilter.Q.setTargetAtTime(s.q, t, tau);
     this.slipGain.gain.setTargetAtTime(Math.min(1, slipAmt) * 0.5 * s.level, t, tau);
+  }
+
+  /** Laddtrycket och turbotonen, och rasslet när trycket släpps vid växling eller gaslyft. */
+  private turbo(es: EngineSound, rpm: number, thr: number, gear: number, t: number) {
+    const dt = Math.min(0.1, t - this.lastT);
+    this.lastT = t;
+    // Trycket kommer över ~3 000 rpm med full gas; byggs upp på ~0,4 s och släpps på ~0,15 s.
+    // thr är 0 medan växeln byts, så trycket släpps vid varje växling.
+    const target = thr * Math.min(1, Math.max(0, (rpm - 3000) / 2500));
+    this.boost += (target - this.boost) * (1 - Math.exp(-dt / (target > this.boost ? 0.4 : 0.15)));
+    const tb = es.turbo;
+    this.turboOsc.frequency.setTargetAtTime(tb ? tb.hz[0] + (tb.hz[1] - tb.hz[0]) * this.boost : 1000, t, 0.05);
+    this.turboGain.gain.setTargetAtTime(tb ? tb.level * this.boost ** 2 : 0, t, 0.05);
+
+    const shifted = gear !== this.lastGear && this.lastGear > 0;
+    const lifted = this.lastThr > 0.7 && thr < 0.2;
+    this.lastGear = gear;
+    this.lastThr = thr;
+    if (es.crackle && (shifted || lifted) && this.boost > 0.3 && t > this.crackleUntil) {
+      this.crackleUntil = t + 0.4;
+      this.crackle(es.crackle * this.boost, t);
+    }
+  }
+
+  /**
+   * En skur korta smällar som i en inspelning av en rallybil med antilag: 6–12 st över knappt en
+   * sekund med oregelbundna mellanrum, var och en några millisekunder lång och mest 100–500 Hz.
+   */
+  private crackle(amp: number, t0: number) {
+    const ctx = this.ctx!;
+    let t = t0 + 0.02;
+    const n = 6 + Math.floor(Math.random() * 7);
+    for (let i = 0; i < n; i++) {
+      const a = 0.5 * amp * (1 - i / n) * (0.4 + Math.random() * 0.6);
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 120 + Math.random() * 380;
+      f.Q.value = 0.8;
+      const g = ctx.createGain();
+      const len = 0.004 + Math.random() * 0.014;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(a, t + 0.001);
+      g.gain.exponentialRampToValueAtTime(0.001, t + len);
+      src.connect(f).connect(g).connect(this.master);
+      src.start(t, Math.random());
+      src.stop(t + len + 0.01);
+      // Exponentiella mellanrum med medel ~70 ms, som i inspelningen.
+      t += 0.015 - Math.log(1 - Math.random()) * 0.07;
+    }
   }
 
   /** Smäll vid krock, starkare ju större impuls. */
