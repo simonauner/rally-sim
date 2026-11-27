@@ -6,7 +6,7 @@ import { Car } from './physics/car';
 import type { CarModel, CarParams } from './physics/params';
 import { carSpecs, FlatWorld, type CarSpecs } from './physics/specs';
 import { TYRE_NAMES } from './physics/surfaces';
-import { CarMesh } from './render/carMesh';
+import { CarMesh, carModelReady, loadCarModel } from './render/carMesh';
 
 const num = (x: number, digits = 0) => x.toLocaleString('sv-SE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
@@ -111,7 +111,11 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   const settle = (c: Car) => {
     for (let i = 0; i < 480; i++) c.step(1 / 240, { throttle: 0, brake: 0, steer: 0, handbrake: 1 });
   };
+  let wanted: CarModel | null = null;
   const show = (m: CarModel, damage?: CarDamage | null) => {
+    wanted = m;
+    // Bläddrar man vidare under hämtningen visas bara den sista bilen.
+    if (!carModelReady(m)) return void loadCarModel(m).then(() => wanted === m && show(m, damage));
     car = new Car(m.make(), new FlatWorld('asphalt'));
     if (damage) {
       Object.assign(car.damage, damage.body);

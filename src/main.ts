@@ -24,7 +24,7 @@ import { StageTimer } from './physics/timing';
 import type { StageRecord } from './account/protocol';
 import { loadRecord, saveRecord } from './records';
 import { World } from './physics/world';
-import { CarMesh } from './render/carMesh';
+import { CarMesh, loadCarModel } from './render/carMesh';
 import { pickCar, type PickOptions, showroom } from './carSelect';
 import { formatMoney } from './career/career';
 import { awardPrize, careerMenu, championshipLegDone, confirmAbort, resumeChampionship } from './career/menus';
@@ -318,6 +318,7 @@ async function main() {
   const barrierMeshes = barriers ? buildBarriers(barriers) : null;
   if (barrierMeshes) scene.add(barrierMeshes.group);
 
+  await loadCarModel(model);
   const car = new Car(model.make(), world);
   if (tyre) car.params.tyre = tyre;
   const carMesh = new CarMesh(car, model);

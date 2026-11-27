@@ -5,7 +5,7 @@ import { driveAlongRoad, turnAt } from './physics/autopilot';
 import { Car } from './physics/car';
 import { CARS } from './physics/params';
 import { type Light, lightAt, START_S, Stage, type StageDef } from './physics/stage';
-import { CarMesh } from './render/carMesh';
+import { CarMesh, carModelReady, loadCarModel } from './render/carMesh';
 import { Dust } from './render/dust';
 import { buildStage } from './render/stage';
 import { applyLight, Headlights, LIGHTS } from './render/lighting';
@@ -122,7 +122,11 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   };
   showMute();
   const nextCar = () => {
-    const model = CARS[lap++ % CARS.length]!;
+    const model = CARS[lap % CARS.length]!;
+    // Bilen som kör nu fortsätter tills nästa modell är hämtad.
+    if (!carModelReady(model)) return void loadCarModel(model).catch(() => {});
+    lap++;
+    void loadCarModel(CARS[lap % CARS.length]!).catch(() => {});
     car = new Car(model.make(), stage);
     const p = stage.poseAt(corner - RUN_IN);
     car.reset(p.x, p.z, p.heading, 20);

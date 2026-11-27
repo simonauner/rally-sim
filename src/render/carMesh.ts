@@ -19,8 +19,6 @@ import { brenner5t } from './bodies/brenner5t';
 import { volpeTurbo } from './bodies/volpeTurbo';
 import { hoshi4wd } from './bodies/hoshi4wd';
 import { partGeometry, type ModelData } from './models/model';
-import { soraTurbo as soraTurboModel } from './models/soraTurbo';
-import { hoshi4wd as hoshi4wdModel } from './models/hoshi4wd';
 
 
 const GLASS = new THREE.Color(0x2b3a42);
@@ -188,7 +186,31 @@ const BODIES: Record<CarModel['body'], BodyShape> = {
 };
 
 /** Bilar med en egen modell från Blender (blender/). Övriga byggs av formen i bodies/. */
-const MODELS: Partial<Record<CarModel['body'], ModelData>> = { soraTurbo: soraTurboModel, hoshi4wd: hoshi4wdModel };
+// Egna chunks: en modell är flera hundra kB, så den hämtas först när bilen ska visas.
+const MODEL_LOADERS: Partial<Record<CarModel['body'], () => Promise<ModelData>>> = {
+  soraTurbo: () => import('./models/soraTurbo').then((m) => m.soraTurbo),
+  hoshi4wd: () => import('./models/hoshi4wd').then((m) => m.hoshi4wd),
+};
+const MODELS: Partial<Record<CarModel['body'], ModelData>> = {};
+const loading: Partial<Record<CarModel['body'], Promise<void>>> = {};
+
+/** Sant när bilens Blendermodell är hämtad, eller när den byggs av formen i bodies/. */
+export function carModelReady(model: CarModel): boolean {
+  return !MODEL_LOADERS[model.body] || !!MODELS[model.body];
+}
+
+/** Hämtar bilens Blendermodell; måste vara klar innan dess CarMesh byggs. */
+export function loadCarModel(model: CarModel): Promise<void> {
+  const load = MODEL_LOADERS[model.body];
+  if (!load || MODELS[model.body]) return Promise.resolve();
+  return (loading[model.body] ??= load().then(
+    (data) => void (MODELS[model.body] = data),
+    (e: unknown) => {
+      delete loading[model.body]; // Nästa försök hämtar igen, t.ex. efter ett nätverksfel.
+      throw e;
+    },
+  ));
+}
 
 const PALETTE: Record<string, THREE.Color> = {
   glass: GLASS,
@@ -704,6 +726,7 @@ export class CarMesh {
     // Främre stötfångaren går bak till hjulhuset, den bakre en bit runt hörnen.
     const front = b.nose + 0.1 - (wheelZ[0] + b.archR[0] + 0.04);
     const decals = decalTexture(b, wheelZ, c, startNumber(car.params.name), model.sponsors?.() ?? []);
+    if (!carModelReady(model)) throw new Error(`Bilmodellen ${model.body} är inte hämtad (loadCarModel)`);
     const data = MODELS[model.body];
     const built = data && buildModel(data, b, c, this.lampGlow, this.tailGlow, decals, tierOf(car.params.name) === 2);
     this.parts = built ? built.panels : [
