@@ -162,6 +162,26 @@ for (const [surface, tyre, lo, hi] of [
   check('handbroms: kan rotera', maxYawRate > 0.8 && maxYawRate < 6, `maxgirhastighet ${maxYawRate.toFixed(2)} rad/s`);
 }
 
+// 5a. Kort handbromsdragning i fart med gasen släppt på bakhjulsdriven bil: kopplingen går ur, så motorn
+// drar inte ner farten och lådan rasar inte ner till ettan när bakhjulen låser.
+{
+  const speedAfter = (handbrake: number) => {
+    const car = makeCar(new FlatWorld('gravel'), 'gravel');
+    car.reset(0, 0, 0, 25);
+    car.drivetrain.gear = 3;
+    let gear = 3;
+    run(car, 1.5, (t) => ({ ...idle, throttle: t < 0.5 ? 0 : 1, steer: t < 0.8 ? 0.35 : 0, handbrake: t < 0.5 ? handbrake : 0 }), () => {
+      gear = Math.min(gear, car.drivetrain.gear);
+    });
+    return { kmh: car.speed * 3.6, gear };
+  };
+  const free = speedAfter(0);
+  const hb = speedAfter(1);
+  const loss = free.kmh - hb.kmh;
+  check('handbroms: farttapp', loss < 13, `${loss.toFixed(1)} km/h mot utan handbroms (förväntat < 13)`);
+  check('handbroms: ingen nedväxling till ettan', hb.gear >= 2, `lägsta växel ${hb.gear}`);
+}
+
 // 5b. Fullgas i kurva på grus med hjälpmedel på (som på tangentbord): bilen ska inte snurra.
 for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const car = makeCar(new FlatWorld('gravel'), 'gravel');

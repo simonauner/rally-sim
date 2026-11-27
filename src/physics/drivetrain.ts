@@ -113,8 +113,9 @@ export class Drivetrain {
    * @param throttle gaspedalen 0..1 (efter hjälpmedel)
    * @param shaftOmega drivaxelns vinkelhastighet (rad/s), medel av drivhjulen
    * @param pedal förarens gaspedal 0..1 före hjälpmedel, för kickdown
+   * @param declutch kopplingen ur (handbromsen på bakhjulsdriven bil), växeln ligger kvar
    */
-  update(dt: number, throttle: number, shaftOmega: number, pedal: number): number {
+  update(dt: number, throttle: number, shaftOmega: number, pedal: number, declutch = false): number {
     const { engine, gearbox } = this;
 
     this.ratio = this.totalRatio(this.gear);
@@ -123,7 +124,7 @@ export class Drivetrain {
     if (this.shiftTimer > 0) this.shiftTimer -= dt;
     if (pedal < 0.5) this.kickdownArmed = true;
 
-    if (this.autoShift && this.gear >= 1 && this.shiftTimer <= 0) {
+    if (this.autoShift && !declutch && this.gear >= 1 && this.shiftTimer <= 0) {
       if (this.rpm > gearbox.upshiftRpm && throttle > 0.1 && this.gear < gearbox.ratios.length) this.shiftUp();
       // Nedväxling även när kopplingen slirar och håller motorvarvet uppe men hjulen nästan står,
       // t.ex. efter hjulspinn i en brant snöbacke; annars fastnar bilen på en hög växel.
@@ -142,15 +143,16 @@ export class Drivetrain {
 
     // Motorvarv: följer axeln, eller kopplingsslirning vid start.
     const launch = engine.idleRpm + (engine.launchRpm - engine.idleRpm) * throttle;
-    const target = this.gear === 0 ? engine.idleRpm + throttle * 3500 : Math.max(shaftRpmIn, launch, engine.idleRpm);
-    const follow = this.gear !== 0 && shaftRpmIn >= launch ? 1 : Math.min(1, dt * 18);
+    const free = this.gear === 0 || declutch;
+    const target = free ? engine.idleRpm + throttle * 3500 : Math.max(shaftRpmIn, launch, engine.idleRpm);
+    const follow = !free && shaftRpmIn >= launch ? 1 : Math.min(1, dt * 18);
     this.rpm += (target - this.rpm) * follow;
     this.rpm = Math.min(this.rpm, engine.limiterRpm * 1.02);
 
     // Kopplingen tar med fart. Vid start slirar den och för över ett begränsat moment.
     const speedEngage = clamp01((shaftRpmIn - engine.idleRpm * 0.7) / (engine.clutchLockRpm - engine.idleRpm * 0.7));
     const slipEngage = 0.75 * Math.min(1, throttle * 4);
-    this.engage = this.gear === 0 ? 0 : speedEngage + (1 - speedEngage) * slipEngage;
+    this.engage = free ? 0 : speedEngage + (1 - speedEngage) * slipEngage;
     if (this.shiftTimer > 0) this.engage *= 0.1;
 
     this.limiterCut = this.rpm >= engine.limiterRpm;

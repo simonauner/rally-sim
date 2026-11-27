@@ -369,7 +369,9 @@ export class Car {
       }
     }
 
-    const shaftTorque = dtn.update(dt, gas, shaftOmega, input.throttle);
+    // Handbromsen låser bakhjulen; med drivna bakhjul trampar föraren ur, annars drar motorn ner farten och lådan växlar ner till ettan.
+    const declutch = p.frontShare < 1 && input.handbrake > 0.1;
+    const shaftTorque = dtn.update(dt, gas, shaftOmega, input.throttle, declutch);
     const iRef = p.engine.inertia * dtn.ratio * dtn.ratio * dtn.engage * dtn.engage;
 
     const axleTorque = [0, 0, 0, 0];
