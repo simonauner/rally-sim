@@ -369,6 +369,8 @@ async function main() {
   /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
   let previousBest: StageRecord | null = null;
   let resultSaved = false;
+  /** Skadorna vid målgång; det som händer därefter räknas inte. */
+  let damageAtFinish: CarDamage | null = null;
   const caller = stage ? new NoteCaller(generateNotes(stage, START_S, stage.finish)) : null;
   const codriver = new CoDriver();
   const recorder = new GhostRecorder();
@@ -395,6 +397,7 @@ async function main() {
     codriver.stop();
     if (stage) caller?.seek(stage.project(s.x, s.z).s);
     resultSaved = false;
+    damageAtFinish = null;
   };
   // På etappen ställer R tillbaka bilen på vägen där den är, och klockan fortsätter.
   const recover = () => {
@@ -547,7 +550,7 @@ async function main() {
   const showFinish = async () => {
     if (!stage || !timer) return;
     if (champ) {
-      const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), readDamage(), (d) => showCar(model, d));
+      const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), damageAtFinish ?? readDamage(), (d) => showCar(model, d));
       return next === 'next' ? goToNextLeg() : goToCareer(next.prize);
     }
     const c = await showMenu<'again' | 'menu'>({
@@ -657,6 +660,7 @@ async function main() {
     }
     if (stage && timer?.state === 'finished' && !resultSaved) {
       resultSaved = true;
+      damageAtFinish = readDamage();
       previousBest = best;
       prizeHtml = careerMode ? awardPrize(stage.def.name, timer.time, car.params.name) : '';
       if (!best || timer.time < best.time) {
