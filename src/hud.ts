@@ -84,34 +84,40 @@ export class Hud {
     }
 
     this.drawGG(car);
-    this.drawGauges(car.params, dtn.rpm, kmh, dtn.gear);
+    this.drawGauges(car.params, dtn.rpm, kmh, dtn.gear, dtn.boost);
   }
 
-  private drawGauges(params: CarParams, rpm: number, kmh: number, gearNo: number) {
+  private drawGauges(params: CarParams, rpm: number, kmh: number, gearNo: number, boost: number) {
     const g = params.gauges;
     const s = g.style ?? DEFAULT_STYLE;
-    // Mätarna står under varandra: varvräknare, hastighetsmätare, växelspak.
-    const w = this.gauges.width;
+    const turbo = params.engine.turbo;
+    // Mätarna står under varandra: varvräknare, hastighetsmätare, växelspak. Kolumnen är 300 px bred;
+    // laddtrycksmätaren står till höger om varvräknaren.
+    const w = 300;
     const r = w * 0.47;
     const tacho = { x: w / 2, y: w / 2, r, min: 0, max: g.rpmMax, a0: s.tachoArc[0], a1: s.tachoArc[1] };
     const speedo = { x: w / 2, y: w * 1.5, r, min: g.speedMin, max: g.speedMax, a0: s.speedoArc[0], a1: s.speedoArc[1] };
+    // Skalan i tiondels bar, så att stegen blir heltal.
+    const gauge = { x: w + 90, y: w / 2, r: w * 0.28, min: 0, max: 20, a0: 135, a1: 405 };
     const shift = shiftPattern(params.gearbox.ratios.length, w / 2, w * 2.45, w * 0.36);
     if (this.faces?.params !== params) {
       const canvas = document.createElement('canvas');
-      canvas.width = w;
+      canvas.width = this.gauges.width;
       canvas.height = this.gauges.height;
       const c = canvas.getContext('2d')!;
       drawFace(c, s, tacho, 500, 1000, (v) => String(v / s.rpmUnit), g.rpmRed, `1/min x${s.rpmUnit}`);
       // Långa skalor får en siffra var 40 km/h, annars blir siffrorna för små att läsa.
       drawFace(c, s, speedo, 10, g.speedMax - g.speedMin > 240 ? 40 : 20, String, null, 'km/h');
       drawKnob(c, s, shift, null);
+      if (turbo) drawFace(c, s, gauge, 1, 5, (v) => String(v / 10).replace('.', ','), null, 'bar');
       this.faces = { params, canvas };
     }
     const ctx = this.gctx;
-    ctx.clearRect(0, 0, w, this.gauges.height);
+    ctx.clearRect(0, 0, this.gauges.width, this.gauges.height);
     ctx.drawImage(this.faces.canvas, 0, 0);
     drawNeedle(ctx, s, tacho, rpm);
     drawNeedle(ctx, s, speedo, kmh);
+    if (turbo) drawNeedle(ctx, s, gauge, boost * turbo.bar * 10);
 
     // Spakens kula glider till vald växel och växelns siffra lyser.
     const at = shift.slot(gearNo);

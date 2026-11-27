@@ -269,7 +269,10 @@ export const UPGRADES: Upgrade[] = [
     price: 3000,
     effect: '+8 % vridmoment över 3 500 rpm',
     fits: turbo,
-    apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.08 : 1)),
+    apply: (p) => {
+      torque(p, (rpm) => (rpm >= 3500 ? 1.08 : 1));
+      tuneTurbo(p, { bar: p.engine.turbo!.bar * 1.15 });
+    },
   },
   {
     tier: 1,
@@ -431,7 +434,10 @@ export const UPGRADES: Upgrade[] = [
     price: 8000,
     effect: '+10 % vridmoment över 3 500 rpm',
     fits: turbo,
-    apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.1 : 1)),
+    apply: (p) => {
+      torque(p, (rpm) => (rpm >= 3500 ? 1.1 : 1));
+      tuneTurbo(p, { bar: p.engine.turbo!.bar * 1.2 });
+    },
   },
   {
     tier: 2,
@@ -544,7 +550,7 @@ export const UPGRADES: Upgrade[] = [
     fits: brenner,
     apply: (p) => {
       torque(p, (rpm) => (rpm >= 4500 ? 1.2 : rpm < 3500 ? 0.9 : 1.05));
-      tuneTurbo(p, { spool: p.engine.turbo!.spool * 1.4 });
+      tuneTurbo(p, { spool: p.engine.turbo!.spool * 1.4, bar: p.engine.turbo!.bar + 0.3 });
     },
   },
   {

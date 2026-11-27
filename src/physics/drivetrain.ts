@@ -25,6 +25,8 @@ export interface TurboParams {
   offBoost: number;
   /** Laddtryck som antilag håller kvar utan gas (0..1); 0 utan antilag. */
   antilag: number;
+  /** Fullt laddtryck i bar, för mätaren; påverkar inte momentet. */
+  bar: number;
 }
 
 export interface GearboxParams {
