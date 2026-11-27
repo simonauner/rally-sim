@@ -90,7 +90,7 @@ type Pick = (
 /** Öppnar vridbordet med bilen och dess skador. */
 export type ShowCar = (model: CarModel, damage: CarDamage) => Showroom;
 /** Visar en bakgrund i etappens tema bakom menyn; null går tillbaka till huvudmenyns kurva. */
-export type Scenery = (stage: StageDef | null) => void;
+export type Scenery = (stage: StageDef | null, weather?: Weather) => void;
 
 const buyMessage = (
   result: BuyResult,
@@ -725,16 +725,13 @@ async function startChampionship(
     nameOf(model),
     Math.floor(Math.random() * 2 ** 31),
   );
-  if (
-    !(await beforeLeg(
-      def,
-      0,
-      WHOLE,
-      (d) => showCar(model, d),
-      legWeather(progress, 0),
-    ))
-  )
+  const weather = legWeather(progress, 0);
+  // Bilväljaren lämnar huvudmenyns kurva bakom sig; förhandsvisningen visar etappens ljus och väder.
+  scenery(stage, weather);
+  if (!(await beforeLeg(def, 0, WHOLE, (d) => showCar(model, d), weather))) {
+    scenery(null);
     return null;
+  }
   saveChampionship(progress);
   return { model, stage, championship: progress };
 }

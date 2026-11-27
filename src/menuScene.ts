@@ -9,6 +9,8 @@ import { CarMesh } from './render/carMesh';
 import { Dust } from './render/dust';
 import { buildStage } from './render/stage';
 import { applyLight, Headlights, LIGHTS } from './render/lighting';
+import { applyWeather, Precipitation } from './render/weather';
+import type { Weather } from './physics/weather';
 import { settings } from './settings';
 
 const DT = 1 / 240;
@@ -27,8 +29,8 @@ const VOLUME_OFF = icon(
 );
 
 export interface MenuScene {
-  /** Visar scenen bakom menyerna och kör loopen, i givet ljus eller spelarens klocka. */
-  play(light?: Light): void;
+  /** Visar scenen bakom menyerna och kör loopen, i givet ljus och väder eller spelarens klocka och klart väder. */
+  play(light?: Light, weather?: Weather): void;
   /** Stoppar loopen; scenen finns kvar till nästa play(). */
   stop(): void;
   dispose(): void;
@@ -73,7 +75,8 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   camera.position.y = Math.max(apexY, stage.heightAt(camera.position.x, camera.position.z)) + 22;
   sun.target.position.copy(look);
   // Ljuset följer spelarens klocka om inget annat ges; läses om varje gång menyn visas.
-  const setLight = (time = lightAt(new Date())) => {
+  let precipitation: Precipitation | null = null;
+  const setLight = (time = lightAt(new Date()), weather: Weather = 'clear') => {
     const light = LIGHTS[time];
     applyLight(scene, hemi, sun, light);
     // Svagt månljus på natten så att banan syns mellan bilarna; etappens natt förblir becksvart.
@@ -81,6 +84,14 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
       hemi.intensity = 0.08;
       sun.intensity = 0.12;
     }
+    applyWeather(scene, hemi, sun, weather);
+    if (precipitation) {
+      scene.remove(precipitation.mesh);
+      precipitation.mesh.geometry.dispose();
+      (precipitation.mesh.material as THREE.Material).dispose();
+    }
+    precipitation = weather === 'rain' || weather === 'snowfall' ? new Precipitation(weather) : null;
+    if (precipitation) scene.add(precipitation.mesh);
     outlineColor.value.setHex(light.outline);
     sun.position.set(apex.x + light.sunOffset[0], apexY + light.sunOffset[1], apex.z + light.sunOffset[2]);
     headlights.group.visible = light.headlights;
@@ -147,6 +158,7 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
     mesh.update();
     headlights.update(car);
     dust.update(car, stage, dt);
+    precipitation?.update(dt, camera.position, now / 1000);
     // Motorljudet tonar in när bilen närmar sig kameran och följer den från sida till sida.
     toCar.subVectors(car.pos, camera.position);
     const dist = toCar.length();
@@ -157,8 +169,8 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   };
 
   return {
-    play(light) {
-      setLight(light);
+    play(light, weather) {
+      setLight(light, weather);
       resize();
       addEventListener('resize', resize);
       document.body.classList.add('menu-scene');

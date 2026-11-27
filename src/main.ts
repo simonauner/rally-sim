@@ -216,11 +216,11 @@ async function main() {
     shown?.stop();
     shown = null;
   };
-  /** Bakgrund i etappens tema (årstid och ljus), eller huvudmenyns kurva i klockans ljus med null. */
-  const scenery = (s: StageDef | null) => {
+  /** Bakgrund i etappens tema (årstid, ljus och väder), eller huvudmenyns kurva i klockans ljus med null. */
+  const scenery = (s: StageDef | null, weather?: Weather) => {
     shown?.stop();
     shown = backdropFor(!!s?.winter);
-    shown.play(s ? (s.light ?? 'day') : undefined);
+    shown.play(s ? (s.light ?? 'day') : undefined, weather);
   };
   // I karriärens menyer går kurvan i bakgrunden; bilväljaren och vridbordet tar över renderaren medan de visas.
   const careerPick = async (models: CarModel[], opts?: PickOptions) => {
