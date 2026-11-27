@@ -159,10 +159,10 @@ export async function careerMenu(
       title: "Karriär",
       subtitle: `Kassa: ${formatMoney(countFrom)}`,
       solid: true,
-      body: `${message ? `<div>${message}</div>` : ""}${
+      body: `${trophyShelf(career)}${message ? `<div>${message}</div>` : ""}${
         firstCar
           ? "<div>Du har ingen bil än. Köp din första hos bilhandlaren; det som blir över räcker till delar.</div>"
-          : `${lastRace(career)}<div>Enstaka lopp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`
+          : `<div>Enstaka lopp: prispengar efter tid, och bilen lagas gratis efteråt. Mästerskap: flera etapper i följd där skadorna följer med och lagas för pengar, men prispengarna är större.</div>`
       }`,
       items: firstCar
         ? [
@@ -391,14 +391,13 @@ function describe(e: HistoryEntry): [string, string] {
   return [`Köpte ${e.name}`, money];
 }
 
-/** Senaste enstaka etappen eller mästerskapet, för karriärens översikt. */
-function lastRace(career: CareerState) {
-  const e = [...(career.history ?? [])]
-    .reverse()
-    .find((x) => x.kind === "stage" || x.kind === "championship");
-  if (!e) return "";
-  const [what, detail] = describe(e);
-  return `<div>Senast: <b>${what}</b> · ${detail}</div>`;
+/** En pokal per mästerskap där bästa placeringen är på pallen, för karriärens översikt. */
+function trophyShelf(career: CareerState) {
+  const won = CHAMPIONSHIPS.flatMap((ch) => {
+    const place = bestPlace(career, ch);
+    return place && place <= 3 ? [`<span title="${ch.name}: ${place}:a">${trophy(place)}</span>`] : [];
+  });
+  return won.length ? `<div class="trophies">${won.join("")}</div>` : "";
 }
 
 const dateOf = (at: number) =>
