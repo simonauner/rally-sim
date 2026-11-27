@@ -31,15 +31,18 @@ def export_object(obj, depsgraph, materials):
     mw = obj.matrix_world
     at = to_car(mw.translation)
     slots = [s.material.name if s.material else 'paint' for s in obj.material_slots] or ['paint']
-    # Ett hörn per (hörn, material), så färgkanterna blir skarpa.
+    # Ett hörn per (hörn, material), så färgkanterna blir skarpa. På mjukt skuggade ytor även per normal:
+    # kanter markerade som skarpa i Blender blir veck i spelet, som räknar normalerna per hörn.
+    normals = mesh.corner_normals
     keys, pos, mat, index = {}, [], [], []
     for tri in mesh.loop_triangles:
         name = slots[min(tri.material_index, len(slots) - 1)]
         if name not in materials:
             materials.append(name)
         m = materials.index(name)
-        for v in tri.vertices:
-            key = (v, m)
+        smooth = mesh.polygons[tri.polygon_index].use_smooth
+        for v, loop in zip(tri.vertices, tri.loops):
+            key = (v, m, tuple(round(c, 3) for c in normals[loop].vector) if smooth else None)
             if key not in keys:
                 keys[key] = len(keys)
                 p = to_car(mw @ mesh.vertices[v].co)

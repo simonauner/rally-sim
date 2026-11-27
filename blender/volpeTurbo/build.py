@@ -26,7 +26,7 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from simplify import simplify  # noqa: E402
+from simplify import SHARP  # noqa: E402
 
 GROUND = -0.52
 WHEELS = [(1.066, -0.205), (-1.414, -0.215)]  # (z, y) fram och bak
@@ -133,76 +133,56 @@ def corner(z):
     return k
 
 
-def clip_range(profile, z, front):
-    """Höjdintervallet där plåten når fram (bak) till z, ur sidokonturen."""
-    ys = [y / 200 for y in range(-70, 120)]
-    inside = [y for y in ys if (piecewise(profile, y) >= z if front else piecewise(profile, y) <= z)]
-    return (min(inside), max(inside)) if inside else None
+def section(hw, bottom, top, rt, rb, side_ys=(), squeeze=lambda y: 1.0, crown=0.0, n_top=3, n_rt=4, n_rb=3):
+    """Slutet tvärsnitt: rak ovansida, sida och undersida med rundade hörn (radie rt upptill, rb nertill).
 
-
-def rounded_rect_ring(hw, bottom, top, rt, rb, k, squeeze=lambda y: 1.0, crown=0.0):
-    """Sluten ring i ett tvärsnitt: rak ovansida och sida med rundade hörn (radie rt upptill, rb nertill).
-
-    squeeze(y) skalar x på höjden y (sidorna lutar inåt), crown välver ovansidan. Punkterna fördelas
-    jämnt längs omkretsen, k st, med start mitt på ovansidan.
+    Punkterna läggs bara där formen kräver dem: n_top på ovansidan, n_rt och n_rb per hörnbåge och på
+    sidan bara höjderna i side_ys, där sidan böjer sig. Lika många punkter i varje snitt, spegelvända
+    kring x = 0 och med start mitt på ovansidan. squeeze(y) skalar x på höjden y, crown välver ovansidan.
     """
     h = top - bottom
     rt, rb = min(rt, h / 2, hw), min(rb, h / 2, hw)
-    segs = [
-        ('line', (0, top), (hw - rt, top)),
-        ('arc', (hw - rt, top - rt), rt, math.pi / 2, 0),
-        ('line', (hw, top - rt), (hw, bottom + rb)),
-        ('arc', (hw - rb, bottom + rb), rb, 0, -math.pi / 2),
-        ('line', (hw - rb, bottom), (0, bottom)),
-    ]
-    lens = [math.dist(sg[1], sg[2]) if sg[0] == 'line' else sg[2] * math.pi / 2 for sg in segs]
-    total = sum(lens)
-    half = k // 2
-
-    def at(d):
-        for sg, ln in zip(segs, lens):
-            if d <= ln or sg is segs[-1]:
-                t = d / ln if ln > 0 else 0
-                if sg[0] == 'line':
-                    return lerp(sg[1][0], sg[2][0], t), lerp(sg[1][1], sg[2][1], t)
-                a = lerp(sg[3], sg[4], t)
-                return sg[1][0] + sg[2] * math.cos(a), sg[1][1] + sg[2] * math.sin(a)
-            d -= ln
-        return segs[-1][2]
-
-    right = [at(total * i / half) for i in range(half + 1)]
-    left = [(-x, y) for x, y in reversed(right[1:-1])]
+    lo, hi = bottom + rb, top - rt
+    right = [((hw - rt) * i / n_top, top) for i in range(n_top)]
+    right += [(hw - rt + rt * math.cos(a), hi + rt * math.sin(a)) for a in (math.pi / 2 * (1 - i / n_rt) for i in range(n_rt))]
+    right += [(hw, y) for y in sorted((min(hi, max(lo, y)) for y in (hi, *side_ys)), reverse=True)]
+    right += [(hw - rb + rb * math.cos(a), lo + rb * math.sin(a)) for a in (-math.pi / 2 * i / n_rb for i in range(n_rb))]
+    right += [(hw - rb, bottom), (0, bottom)]
     pts = []
-    for x, y in right + left:
-        if hw > 0:
-            y += crown * max(0.0, 1 - (x / hw) ** 2) * clamp01((y - (top - 0.05)) / 0.05)
+    for x, y in right:
+        y += crown * max(0.0, 1 - (x / hw) ** 2) * clamp01((y - (top - 0.05)) / 0.05)
         pts.append((x * squeeze(y), y))
-    return pts
+    return pts + [(-x, y) for x, y in reversed(pts[1:-1])]
 
 
-def stations(z0, z1, fine_ends):
-    """Snitt längs bilen, tätare nära ändarna där formen ändras snabbt."""
-    zs = []
-    z = z0
-    while z < z1:
-        zs.append(z)
-        near = min(z - z0, z1 - z)
-        z += 0.012 if near < fine_ends else 0.03
-    zs.append(z1)
-    return zs
+def fill(zs, step):
+    """Fyller ut snitten så inget mellanrum är större än step; plåten behöver hörn för bucklorna."""
+    zs = sorted(zs)
+    out = [zs[0]]
+    for z in zs[1:]:
+        n = math.ceil((z - out[-1]) / step - 1e-9)
+        out += [lerp(out[-1], z, i / n) for i in range(1, n + 1)]
+    return out
 
 
 def loft(name, rings):
-    """Ett slutet skal av ringar (lika många punkter), med lock i båda ändar."""
+    """Ett slutet skal av ringar [(x, y, z), ...] (lika många punkter, spegelvända som i section).
+
+    Locken i ändarna byggs av vågräta band mellan punkterna och deras spegelpunkter, så de följer en
+    välvd front i stället för att bli en platt n-hörning. Dubbla punkter (hopklämda snitt) slås ihop."""
     bm = bmesh.new()
-    loops = [[bm.verts.new(to_blender(x, y, z)) for x, y in ring] for z, ring in rings]
+    loops = [[bm.verts.new(to_blender(*p)) for p in ring] for ring in rings]
     k = len(loops[0])
     for a, b in zip(loops, loops[1:]):
         for i in range(k):
             j = (i + 1) % k
             bm.faces.new((a[i], a[j], b[j], b[i]))
-    bm.faces.new(loops[0])
-    bm.faces.new(list(reversed(loops[-1])))
+    for ring in (loops[0], loops[-1]):
+        for i in range(k // 2):
+            vs = [ring[i], ring[i + 1], ring[(k - i - 1) % k], ring[(k - i) % k]]
+            bm.faces.new([v for n, v in enumerate(vs) if v not in vs[:n]])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.001)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.001)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
@@ -212,26 +192,40 @@ def loft(name, rings):
     return obj
 
 
+# Fronten och bakpanelen: de sista snitten böjs bakåt (framåt) från FRONT_FROM (REAR_FROM) ut till
+# sidokonturen, så nosens lutande panel och huvens framkant blir en jämn yta i stället för trappsteg.
+FRONT_FROM, REAR_FROM = 1.45, -1.7
+END_STEPS = (0, 0.35, 0.6, 0.78, 0.9, 0.97, 1)
+
+
 def lower_body():
+    zs = {lerp(REAR_FROM, TAIL, s) for s in END_STEPS} | {lerp(FRONT_FROM, NOSE, s) for s in END_STEPS}
+    zs |= {DECK_FRONT, -1.85, -1.2, COWL}
+    # Skärmarnas utbyggnad tonas in över FLARE_RAMP; fem snitt per ramp följer smooth().
+    zs |= {z for z0, z1 in FLARE_Z for t in range(5) for z in (z0 + FLARE_RAMP * t / 4, z1 - FLARE_RAMP * t / 4)}
     rings = []
-    for z in stations(TAIL, NOSE, 0.14):
-        top, bottom = body_top(z), body_bottom(z)
-        r = clip_range(FRONT, z, True) if z > 1.59 else clip_range(REAR, z, False) if z < -1.87 else None
-        if r:
-            bottom, top = max(bottom, r[0]), min(top, r[1])
-        if top - bottom < 0.01:
-            mid = (top + bottom) / 2
-            top, bottom = mid + 0.005, mid - 0.005
-        f = flare_amount(z)
-        hw = lerp(BODY_HW, FLARE_HW, f) * corner(z)
-        inner = BODY_HW * corner(z) / hw
+    for zn in fill([z for z in zs if TAIL <= z <= NOSE], 0.25):
+        top, bottom = body_top(zn), body_bottom(zn)
+        f = flare_amount(zn)
+        hw = lerp(BODY_HW, FLARE_HW, f) * corner(zn)
+        inner = BODY_HW * corner(zn) / hw
 
         # Under hyllan är skärmen utbyggd; över den drar sidan in till karossens bredd och lutar lite inåt.
         def squeeze(y, t=top, inner=inner):
             k = lerp(1, inner, smooth((y - SHELF_Y[0]) / (SHELF_Y[1] - SHELF_Y[0])))
             return k * (1 - 0.03 * clamp01((y - (t - 0.12)) / 0.12))
 
-        rings.append((z, rounded_rect_ring(hw, bottom, top, 0.05, 0.06, 72, squeeze, crown=0.012)))
+        shelf = [lerp(*SHELF_Y, t / 4) for t in range(5)]
+        ring = section(hw, bottom, top, 0.05, 0.06, (top - 0.12, *shelf), squeeze, crown=0.012)
+
+        def z_at(y, zn=zn):
+            if zn > FRONT_FROM:
+                return lerp(FRONT_FROM, piecewise(FRONT, y), (zn - FRONT_FROM) / (NOSE - FRONT_FROM))
+            if zn < REAR_FROM:
+                return lerp(REAR_FROM, piecewise(REAR, y), (zn - REAR_FROM) / (TAIL - REAR_FROM))
+            return zn
+
+        rings.append([(x, y, z_at(y)) for x, y in ring])
     return loft('lower', rings)
 
 
@@ -245,18 +239,18 @@ CAB_BASE, CAB_TOP, CAB_TAPER = 0.78, 0.66, 0.04 / 0.56
 
 def greenhouse():
     rings = []
-    for z in stations(DECK_FRONT, COWL, 0.0):
+    # Taket, kupéns avsmalning och rutornas lutning är raka mellan brytpunkterna, så snitten läggs där.
+    # Ändarna sticker ner i karossen, så sammanfogningen får en ren skärning vid huven och bakluckan.
+    for z in fill([DECK_FRONT, *(z for z, _ in ROOF[1:-1]), -1.2, COWL, COWL + 0.04], 0.3):
         base = body_top(z) - 0.04
-        top = piecewise(ROOF, z)
-        if top - base < 0.02:
-            top = base + 0.02
+        top = piecewise(ROOF, z) if DECK_FRONT < z <= COWL else body_top(z) - 0.015
         # Sidorutorna lutar inåt; kupén smalnar mot vindrutan och lite mot bakrutan.
         front = clamp01(z / 0.56)
         rear = clamp01((-1.2 - z) / 0.68)
         wb = CAB_BASE - 0.03 * front - 0.03 * rear
         wt = CAB_TOP - 0.04 * front - 0.05 * rear
         squeeze = lambda y, b=base, t=top, wb=wb, wt=wt: lerp(1, wt / wb, clamp01((y - b) / (t - b)))  # noqa: E731
-        rings.append((z, rounded_rect_ring(wb, base, top, 0.06, 0.0, 48, squeeze, crown=0.012)))
+        rings.append([(x, y, z) for x, y in section(wb, base, top, 0.06, 0.0, (), squeeze, crown=0.012, n_rb=1)])
     return loft('greenhouse', rings)
 
 
@@ -281,31 +275,36 @@ def apply_all(obj):
         bpy.ops.object.modifier_apply(modifier=m.name)
 
 
+def boolean(obj, other, op):
+    mod = obj.modifiers.new(op.lower(), 'BOOLEAN')
+    mod.operation = op
+    mod.solver = 'EXACT'
+    mod.object = other
+    apply_all(obj)
+    bpy.data.objects.remove(other)
+
+
 def build_body():
-    lower = lower_body()
-    cabin = greenhouse()
-    bpy.ops.object.select_all(action='DESELECT')
-    lower.select_set(True)
-    cabin.select_set(True)
-    bpy.context.view_layer.objects.active = lower
-    bpy.ops.object.join()
-    lower.name = 'body'
-    rem = lower.modifiers.new('remesh', 'REMESH')
-    rem.mode = 'VOXEL'
-    rem.voxel_size = 0.02
-    dec = lower.modifiers.new('decimate', 'DECIMATE')
-    dec.ratio = 0.16
-    apply_all(lower)
-    # Hjulhusen fräses ut efter omformningen, så kanterna blir rena cirklar.
+    body = lower_body()
+    body.name = 'body'
+    boolean(body, greenhouse(), 'UNION')
+    # Hjulhusen fräses ut efteråt, så kanterna blir rena cirklar.
     for c in arch_cutters():
-        mod = lower.modifiers.new('arch', 'BOOLEAN')
-        mod.operation = 'DIFFERENCE'
-        mod.solver = 'EXACT'
-        mod.object = c
-        apply_all(lower)
-        bpy.data.objects.remove(c)
-    bpy.ops.object.shade_smooth()
-    return lower
+        boolean(body, c, 'DIFFERENCE')
+    return body
+
+
+def mark_sharp(obj):
+    """Mjuk skuggning, men vecken (kanter brantare än SHARP) skarpa, som pressad plåt. export.py ger
+    hörnen på ett veck egna punkter, så spelet inte rundar av dem."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    for f in bm.faces:
+        f.smooth = True
+    for e in bm.edges:
+        e.smooth = len(e.link_faces) == 2 and e.calc_face_angle() <= SHARP
+    bm.to_mesh(obj.data)
+    bm.free()
 
 
 # --- Färger: material per yta ----------------------------------------------------------------
@@ -364,6 +363,8 @@ HATCH_SEAM_Y = 0.04
 HATCH_SEAM = [line_plane((0.595 - 0.004 - d, 0.05), (0.63 - 0.004 - d, 0.42), x_axis=True) for d in (SEAM_W, 0)]
 # Svarta trösklar längs sidan.
 SILL_Y = -0.17
+# Den svarta panelen bakom lyktorna slutar strax utanför de yttre lyktorna; skärmarna viker runt hörnet.
+FRONT_PANEL_X = 0.75
 
 FRONT_ZONE = lambda c: c[2] > 1.6  # noqa: E731
 REAR_ZONE = lambda c: c[2] < -1.86  # noqa: E731
@@ -378,7 +379,7 @@ CUTS = [
     (SIDE_ZONE, [Z(v + d) for v in DOOR_SEAMS for d in (-SEAM_W / 2, SEAM_W / 2)] + [Y(SILL_Y), Y(REAR_SEAM_Y)]),
     (HOOD_ZONE, [p for d in (0, SEAM_W) for p in mirrored(HOOD_SEAM_X + d)]),
     (REAR_ZONE, [pl for sm in HATCH_SEAM for pl in (sm, plane(-sm[0].x, sm[0].y, sm[0].z, sm[1]))] + [Y(HATCH_SEAM_Y), Y(HATCH_SEAM_Y + SEAM_W)]),
-    (FRONT_ZONE, [Y(0.07), Y(0.27)]),
+    (FRONT_ZONE, [Y(0.07), Y(0.27), *mirrored(FRONT_PANEL_X)]),
 ]
 
 
@@ -434,7 +435,7 @@ def face_material(p, n):
         if pane is not None:
             return pane
     # Panelen bakom lyktorna och grillen, och plåten bakom stötfångaren.
-    if FRONT_ZONE(p) and z > 1.66 and y < 0.27 and n.z > 0.5:
+    if FRONT_ZONE(p) and z > 1.66 and y < 0.27 and ax < FRONT_PANEL_X and n.z > 0.7:
         return M['black']
     if SIDE_ZONE(p) and abs(n.x) > 0.4:
         if y < SILL_Y:
@@ -980,9 +981,7 @@ def main():
     body = build_body()
     cut_planes(body)
     assign_materials(body, face_material)
-    # Rutorna behåller sitt nät: förenklade får de svaga strimmor av långa smala trianglar. Baklyktorna
-    # förenklas inte alls, deras välvda glas blir kantigt.
-    simplify(body, 0.5, keep={'glass'})
+    mark_sharp(body)
     wheel_rim = rim()
     for obj in [body, *details(body), wheel_rim]:
         bpy.context.scene.collection.objects.unlink(obj)
