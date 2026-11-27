@@ -156,7 +156,8 @@ början och skriver över den gamla. Byggskripten glesar ut karossen efter färg
 Kvarnens lyktor, grill och stötfångare är egna delar (`headlamp…`, `grille`, `bumper…`, `taillamp…`).
 Volpen har dessutom takspoiler, huvventiler och extraljus som egna delar (`spoiler`, `vents…`, `pod`).
 Ljungen har runda dubbla strålkastare och svarta plastbreddare runt hjulhusen (`flare…`). Ljung 2000 16V byggs av
-samma skript (`blender/ljung1600/build.py -- ljung2000`): samma kaross och hjulbas, breddad över kitcarens bredare spårvidd.
+samma skript (`blender/ljung1600/build.py -- ljung2000`): samma kaross och hjulbas, breddad över kitcarens bredare spårvidd,
+lägre, med en stor lykta per sida, kitfront (`bumper_holes`, `spoiler_vents`) och luftintag på taket (`scoop`).
 
 ### Fysikens viktigaste val
 

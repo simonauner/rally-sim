@@ -4,8 +4,11 @@ Bygger Ljung 1600 S i Blender och sparar ljung1600.blend bredvid skriptet.
     blender -b --factory-startup -P blender/ljung1600/build.py
     blender -b --factory-startup -P blender/ljung1600/build.py -- ljung2000   # blender/ljung2000/ljung2000.blend
 
-Ljung 2000 16V är samma kaross och hjulbas, breddad så att hjulhusen hamnar över dess bredare spårvidd
-(1,48 m i stället för 1,40 m); fälgen flyttas men behåller sin form.
+Ljung 2000 16V är kitcaren på samma kaross och hjulbas: breddad så att hjulhusen hamnar över dess
+bredare spårvidd (1,48 m i stället för 1,40 m), 3 cm lägre, med större hjulhus och breddare, en stor gul
+lykta per sida i stället för två, grill över hela fronten, svart stötfångare med hål och lackad spoiler med
+luftintag, lackade backspeglar, mörka fälgar med fem hål och ett luftintag på taket. Det som skiljer styrs
+av KIT nedan.
 
 Skriptet ger en första version. Därefter är .blend-filen källan: redigera den i Blender och kör
 blender/export.py för att föra över den till spelet. Kör bara om det här skriptet om du vill börja om.
@@ -36,6 +39,11 @@ GROUND = -0.503
 WHEELS = [(0.912, -0.203), (-1.488, -0.229)]  # (z, y) fram och bak
 TRACK = [0.70, 0.69]
 TYRE_R = 0.29
+
+# Ljung 2000 16V (kitcaren). main() slår på KIT och byter hjulhusens och fälgens mått i KIT_OVERRIDES.
+KIT = False
+KIT_DROP = 0.03  # hur mycket lägre karossen sitter över hjulen
+KIT_LAMP = (0.6, 0.1)  # (x, radie) för den enda lyktan per sida
 
 # Materialen, i samma ordning som paletten i src/render/models/model.ts.
 MATERIALS = [
@@ -566,6 +574,12 @@ GRILLE_X, GRILLE_Y = 0.48, (0.05, 0.212)
 
 
 def headlamp(s, side):
+    if KIT:
+        # En stor lykta med gult skydd; glödlampan skymtar nertill innanför.
+        x, r = KIT_LAMP
+        discs = [('black', (s * x, LAMP_Y), r + 0.01, (1.52, LAMP_FACE - 0.004)), ('amber', (s * x, LAMP_Y), r, (1.52, LAMP_FACE)),
+                 ('lamp', (s * (x - 0.03), LAMP_Y - 0.02), 0.035, (1.52, LAMP_FACE + 0.003))]
+        return assembly(f'headlamp_{side}', (s * x, LAMP_Y, 1.55), [], discs=discs)
     discs = []
     for x, r in LAMPS:
         discs.append(('black', (s * x, LAMP_Y), r + 0.013, (1.52, LAMP_FACE - 0.004)))
@@ -576,14 +590,17 @@ def headlamp(s, side):
 def grille():
     y0, y1 = GRILLE_Y
     face = 1.562
-    boxes = [('black', (-GRILLE_X, GRILLE_X), (y0, y1), (1.52, face - 0.01))]
+    # Kitcaren har grill över hela fronten mellan lyktorna, med tätare lameller och inget märke.
+    gx = KIT_LAMP[0] - KIT_LAMP[1] - 0.012 if KIT else GRILLE_X
+    boxes = [('black', (-gx, gx), (y0, y1), (1.52, face - 0.01))]
     # Vågräta lameller.
-    n = 6
+    n = 9 if KIT else 6
     for i in range(n):
         y = lerp(y0 + 0.015, y1 - 0.015, i / (n - 1))
-        boxes.append(('dark', (-GRILLE_X + 0.01, GRILLE_X - 0.01), (y - 0.007, y + 0.007), (1.52, face - 0.004)))
+        t = 0.006 if KIT else 0.007
+        boxes.append(('dark', (-gx + 0.01, gx - 0.01), (y - t, y + t), (1.52, face - 0.004)))
     # Märket mitt i grillen: en enkel rund kromad bricka.
-    discs = [('chrome', (0, (y0 + y1) / 2), 0.04, (1.52, face + 0.004))]
+    discs = [] if KIT else [('chrome', (0, (y0 + y1) / 2), 0.04, (1.52, face + 0.004))]
     return assembly('grille', (0, (y0 + y1) / 2, 1.55), boxes, discs=discs)
 
 
@@ -594,7 +611,7 @@ FRONT_BUMPER_Y, REAR_BUMPER_Y = (-0.128, 0.017), (-0.032, 0.107)
 FRONT_SPOILER_Y, FRONT_LIP_Y = (-0.245, -0.125), (-0.33, -0.24)
 
 
-def bumper(name, z_face, z_end, ys, half=BUMPER_HALF):
+def bumper(name, z_face, z_end, ys, half=BUMPER_HALF, colours=('black', 'dark')):
     """En U-formad stötfångare: framsidan i z_face, sidorna bakåt till z_end."""
     d = 1 if z_face > z_end else -1
     h, r = half, BUMPER_R
@@ -630,7 +647,7 @@ def bumper(name, z_face, z_end, ys, half=BUMPER_HALF):
             bm.faces.new((a[i], a[j], b[j], b[i])).material_index = mats[i]
     bm.faces.new(rings[0])
     bm.faces.new(list(reversed(rings[-1])))
-    return new_object(name, bm, ['black', 'dark'], at)
+    return new_object(name, bm, list(colours), at)
 
 
 # Baklyktorna: trapetser i bakpartiets hörn under bakluckans knä, i en svart ram. Innerkanten lutar inåt
@@ -754,7 +771,7 @@ def mirror(body, s, side):
     faces([*rings], [0, 0, 0, 0])
     # Spegelglaset bakåt, en aning innanför husets kant.
     bm.faces.new(list(reversed(glass))).material_index = 1
-    return new_object(f'mirror_{side}', bm, ['black', 'dark'], at)
+    return new_object(f'mirror_{side}', bm, ['paint' if KIT else 'black', 'dark'], at)
 
 
 def flare(body, zw, yw, s, name):
@@ -768,7 +785,7 @@ def flare(body, zw, yw, s, name):
         c, sn = math.cos(a), math.sin(a)
         # Under tröskeln finns ingen sida att mäta mot; där följer bågen tröskelns sida.
         x0 = surface_x(body, max(yw + (FLARE_R - 0.012) * sn, -0.14), zw + (FLARE_R - 0.012) * c) - 0.006
-        x1 = x0 + 0.03
+        x1 = x0 + (0.045 if KIT else 0.03)
         ring = [(x0, ARCH_R - 0.004), (x1, ARCH_R + 0.006), (x1, FLARE_R - 0.012), (x0, FLARE_R)]
         rings.append([bm.verts.new(to_blender(s * x - at[0], r * sn, r * c)) for x, r in ring])
     for a, b in zip(rings, rings[1:]):
@@ -797,6 +814,23 @@ def floor_y(body, x, z):
     return loc.z
 
 
+def kit_front():
+    """Kitcarens front under lyktorna: en rad hål och två nätade intag i den svarta stötfångaren, en lackad
+    spoiler med fyra intag och runda hål ytterst, och en svart läpp längst ner."""
+    yb = sum(FRONT_BUMPER_Y) / 2
+    holes = [('dark', (x, yb), 0.028, (1.606, 1.616)) for x in (lerp(-0.34, 0.34, i / 8) for i in range(9))]
+    nets = [('dark', xs, (yb - 0.025, yb + 0.025), (1.606, 1.615)) for xs in ((-0.62, -0.42), (0.42, 0.62))]
+    ys = (-0.27, -0.125)
+    vents = [('black', xs, (-0.24, -0.185), (1.586, 1.596)) for xs in ((-0.5, -0.29), (-0.26, -0.03), (0.03, 0.26), (0.29, 0.5))]
+    fogs = [('black', (x, -0.21), 0.035, (1.586, 1.597)) for x in (-0.62, 0.62)]
+    return [
+        assembly('bumper_holes', (0, yb, 1.612), nets, discs=holes),
+        bumper('spoiler_front', 1.592, 1.27, ys, colours=('paint', 'paint')),
+        assembly('spoiler_vents', (0, -0.21, 1.59), vents, discs=fogs),
+        bumper('spoiler_lip', 1.585, 1.35, (-0.33, -0.265), half=0.74),
+    ]
+
+
 def details(body):
     objs = [grille()]
     for s, side in ((1, 'L'), (-1, 'R')):
@@ -809,20 +843,23 @@ def details(body):
         # Sidoblinkers på framskärmen bakom hjulhuset.
         x = surface_x(body, 0.169, 0.541)
         objs.append(assembly(f'sidemarker_{side}', (s * x, 0.169, 0.541), [('amber', mirror_x((x - 0.01, x + 0.006), s), (0.16, 0.178), (0.52, 0.56))]))
-        # Blinkers i den främre stötfångaren, ytterst.
-        objs.append(assembly(f'blinker_{side}', (s * 0.66, -0.02, 1.61), [('amber', mirror_x((0.58, 0.74), s), (-0.04, 0.0), (1.58, 1.616))]))
+        if not KIT:
+            # Blinkers i den främre stötfångaren, ytterst.
+            objs.append(assembly(f'blinker_{side}', (s * 0.66, -0.02, 1.61), [('amber', mirror_x((0.58, 0.74), s), (-0.04, 0.0), (1.58, 1.616))]))
         for (zw, yw), nm in zip(WHEELS, 'FR'):
             objs.append(flare(body, zw, yw, s, f'flare_{nm}{side}'))
             # Stänkskydd bakom hjulet, ungefär 12 cm över marken.
             objs.append(assembly(f'flap_{nm}{side}', (s * 0.7, -0.3, zw - 0.37), [('black', mirror_x((0.62, 0.78), s), (-0.38, -0.22), (zw - 0.38, zw - 0.366))]))
     objs.append(bumper('bumper_front', 1.612, 1.26, FRONT_BUMPER_Y))
     objs.append(bumper('bumper_rear', -2.132, -1.835, REAR_BUMPER_Y))
-    # Spoilerläppen under den främre stötfångaren.
-    # Frontspoilern under stötfångaren: svart plast i full bredd som viker runt hörnen bakåt till
-    # hjulhusen, och under den en smalare läpp som går ner till ungefär 17 cm över marken.
-    objs.append(bumper('spoiler_front', 1.592, 1.27, FRONT_SPOILER_Y))
-    objs.append(bumper('spoiler_lip', 1.585, 1.45, FRONT_LIP_Y, half=0.62))
-    objs.append(assembly('plate_front', (0, -0.1, 1.615), [('plate', (-0.24, 0.24), (-0.16, -0.04), (1.605, 1.617))]))
+    if KIT:
+        objs.extend(kit_front())
+    else:
+        # Frontspoilern under stötfångaren: svart plast i full bredd som viker runt hörnen bakåt till
+        # hjulhusen, och under den en smalare läpp som går ner till ungefär 17 cm över marken.
+        objs.append(bumper('spoiler_front', 1.592, 1.27, FRONT_SPOILER_Y))
+        objs.append(bumper('spoiler_lip', 1.585, 1.45, FRONT_LIP_Y, half=0.62))
+        objs.append(assembly('plate_front', (0, -0.1, 1.615), [('plate', (-0.24, 0.24), (-0.16, -0.04), (1.605, 1.617))]))
     # Bakre skylten sitter högt i bakluckan mellan baklyktorna, i en svart nedsänkning.
     objs.append(assembly('plate_rear', (0, 0.37, -2.072), [('black', (-0.285, 0.285), (0.3, 0.44), (-2.074, -2.06)),
                                                           ('plate', (-0.25, 0.25), (0.315, 0.425), (-2.078, -2.066))]))
@@ -831,6 +868,10 @@ def details(body):
     y = top - MUFFLER_R + 0.01
     objs.append(cylinder_z('muffler', 'dark', (MUFFLER_X, y, sum(MUFFLER_Z) / 2), MUFFLER_R, MUFFLER_Z[0] - MUFFLER_Z[1], 16))
     objs.append(cylinder_z('exhaust', 'chrome', (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.15) / 2), 0.027, MUFFLER_Z[1] + 2.15))
+    if KIT:
+        # Luftintag framtill på taket.
+        objs.append(assembly('scoop', (0, 0.9, -0.25), [('dark', (-0.14, 0.14), (0.84, 0.92), (-0.38, -0.12)),
+                                                         ('black', (-0.12, 0.12), (0.855, 0.912), (-0.118, -0.11))]))
     return objs
 
 
@@ -876,7 +917,7 @@ def rim():
         tube(RIM_R - LIP_W, RIM_R, a0, a1, C)
         # Skålen: en silverskiva en bit innanför kanten, med hålen som svarta brickor strax utanpå.
         d0, d1 = sorted((s * DISH[0], s * DISH[1]))
-        disc(RIM_R - 0.018, d0, d1, C, 32)
+        disc(RIM_R - 0.018, d0, d1, D if KIT else C, 32)
         h0, h1 = sorted((s * DISH[1], s * (DISH[1] + 0.002)))
         for k in range(HOLES):
             phi = 2 * math.pi * k / HOLES
@@ -919,10 +960,10 @@ VARIANTS = {
 }
 
 
-def warp(wheels, track):
+def warp(wheels, track, drop=0.0):
     """Avbildningen (bilens koordinater) som flyttar Ljung 1600:s hjul till `wheels`/`track`: längs bilen
     förskjuten (och skalad efter hjulbasen, om den skiljer), i sidled skalad efter spårvidden och i höjd så
-    att båda axlarna hamnar rätt."""
+    att båda axlarna hamnar rätt, `drop` lägre."""
     (zf, yf), (zr, yr) = WHEELS
     (zf2, yf2), (zr2, yr2) = wheels
     a = (zf2 - zr2) / (zf - zr)
@@ -931,7 +972,7 @@ def warp(wheels, track):
 
     def f(p):
         x, y, z = p
-        return Vector((b * x, y + lerp(dyr, dyf, (z - zr) / (zf - zr)), zf2 + (z - zf) * a))
+        return Vector((b * x, y - drop + lerp(dyr, dyf, (z - zr) / (zf - zr)), zf2 + (z - zf) * a))
     return f
 
 
@@ -951,6 +992,9 @@ def main():
     args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     name = args[0] if args else 'ljung1600'
     wheels, track, tyre_r, ground = VARIANTS[name]
+    if name == 'ljung2000':
+        # Större hjulhus och breddare, så att däcken får plats när karossen sitter lägre, och fälgar med fem hål.
+        globals().update(KIT=True, ARCH_R=0.36, FLARE_R=0.44, HOLES=5, HOLE_R=0.045, HOLE_AT=0.115)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     export = bpy.data.collections.new('Export')
     bpy.context.scene.collection.children.link(export)
@@ -961,7 +1005,7 @@ def main():
     wheel_rim = rim()
     parts = [body, *details(body)]
     if name != 'ljung1600':
-        apply_warp(parts, warp(wheels, track))
+        apply_warp(parts, warp(wheels, track, KIT_DROP if KIT else 0.0))
         wheel_rim.location = to_blender(track[0], wheels[0][1], wheels[0][0])
     for obj in [*parts, wheel_rim]:
         bpy.context.scene.collection.objects.unlink(obj)
