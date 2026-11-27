@@ -152,6 +152,7 @@ export function kvarn240Turbo(): CarParams {
       curveRpm: [900, 1500, 2500, 3000, 3500, 4500, 5500, 6200, 6800],
       curveNm: [100, 125, 160, 230, 275, 285, 255, 215, 160],
       launchRpm: 4200,
+      turbo: { spool: 0.7, offBoost: 0.6, antilag: 0 },
     },
     gearbox: { ...p.gearbox, final: 4.1 },
     brake: { ...p.brake, total: 5000 },
@@ -412,6 +413,7 @@ export function kvarnTurbo4x4(): CarParams {
       inertia: 0.2,
       clutchLockRpm: 2600,
       launchRpm: 4500,
+      turbo: { spool: 0.6, offBoost: 0.6, antilag: 0 },
     },
     gearbox: {
       ratios: [3.2, 2.2, 1.65, 1.3, 1.06, 0.88],
@@ -555,6 +557,7 @@ export function brenner5t(): CarParams {
       curveNm: [100, 115, 140, 200, 310, 360, 370, 330, 275, 210],
       inertia: 0.22,
       launchRpm: 5000,
+      turbo: { spool: 0.8, offBoost: 0.55, antilag: 0 },
     },
     gearbox: { ...p.gearbox, ratios: [3.0, 2.0, 1.5, 1.18, 0.95], final: 4.4, shiftTime: 0.2 },
     gauges: { rpmMax: 8000, rpmRed: 7000, speedMin: 20, speedMax: 240 },

@@ -111,7 +111,7 @@ src/physics/   ren TypeScript, ingen webbläsarkod (körs även i Node)
   car.ts         stel kropp (6 frihetsgrader), fjädring per hjul, hjulvarv, hjälpmedel
   tires.ts       "Pacejka-lite": normaliserad slipvektor ger friktionsellips
   surfaces.ts    underlag och däcktyper som ren data (grepp per kombination)
-  drivetrain.ts  motorkurva, koppling, växellåda (auto/manuell), differential
+  drivetrain.ts  motorkurva, turbons laddtryck, koppling, växellåda (auto/manuell), differential
   collision.ts   sekventiella impulser mot statiska boxar och mark
   params.ts      bilarna (fiktiva), i klass 1 och klass 2
   world.ts       testbanans höjd, underlag och hinder
@@ -196,8 +196,8 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
   bilar (Ljung 2000 16V med framhjulsdrift, Strand 2.0 GT med bakhjulsdrift och fem med
   fyrhjulsdrift och mittdiff: Kvarn Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé och
   Sora 2.0 Turbo). De har egna delar i garaget, efter drivlina och motor (mittdiff för
-  fyrhjulsdrift, laddtryck och antilag för turbo, gasspjäll för sugmotorer, och Brenner har egna
-  Grupp B-delar), och egna mästerskap
+  fyrhjulsdrift, laddtryck och antilag för turbo, gasspjäll för sugmotorer, några delar till en enda
+  bil, och Brenner har egna Grupp B-delar), och egna mästerskap
   (Tallmoklassikern, Ljunghedsrallyt och Israllyt). Medaljgränserna och fältet är
   8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
   Varje klass kör bara sina egna mästerskap.

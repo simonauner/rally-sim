@@ -1,7 +1,7 @@
 import { Quaternion, Vector3 } from 'three';
 import { Car, LAMP_BROKEN, type Input } from '../src/physics/car';
 import { CARS, kvarn240, kvarn240Turbo, kvarnTurbo4x4 } from '../src/physics/params';
-import { splitDiff } from '../src/physics/drivetrain';
+import { Drivetrain, splitDiff } from '../src/physics/drivetrain';
 import { tierOf } from '../src/career/career';
 import { Barriers } from '../src/physics/barriers';
 import { rollWeather, type Weather } from '../src/physics/weather';
@@ -516,6 +516,24 @@ for (const def of STAGES) {
   check('strålkastare går sönder', ok, `knuff ${light.map((l) => l.toFixed(2)).join('/')}, smäll ${car.lamps.map((l) => l.toFixed(2)).join('/')}`);
   car.reset(0, 0, 0, 0);
   check('strålkastare lagas vid omstart', car.lamps.every((l) => l === 0), car.lamps.join('/'));
+}
+
+// 16b. Turbo: laddtrycket byggs upp efter gaspådrag, släpps när gasen lyfts, och antilag håller det.
+{
+  const p = kvarnTurbo4x4();
+  const torqueAfter = (antilag: number, offFor: number) => {
+    const d = new Drivetrain({ ...p.engine, turbo: { ...p.engine.turbo!, antilag } }, p.gearbox);
+    d.gear = 3;
+    const omega = (4500 / d.totalRatio(3)) * (2 * Math.PI / 60);
+    for (let t = 0; t < 3; t += DT) d.update(DT, 1, omega);
+    for (let t = 0; t < offFor; t += DT) d.update(DT, 0, omega);
+    const first = d.update(DT, 1, omega);
+    for (let t = 0; t < 0.1; t += DT) d.update(DT, 1, omega);
+    return { first, full: (() => { for (let t = 0; t < 3; t += DT) d.update(DT, 1, omega); return d.update(DT, 1, omega); })() };
+  };
+  const plain = torqueAfter(0, 1);
+  const al = torqueAfter(0.8, 1);
+  check('turbo: turbohål efter lyft', plain.first < plain.full * 0.7 && al.first > plain.first * 1.25 && Math.abs(al.full - plain.full) < plain.full * 0.01, `${Math.round(plain.first)} → ${Math.round(plain.full)} Nm, antilag ${Math.round(al.first)} Nm`);
 }
 
 // 17. Huvudmenyns autopilot: alla bilar kör genom Myrkullas gruskurva (s ≈ 1750) utan att lämna vägen.

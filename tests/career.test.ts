@@ -197,13 +197,18 @@ const CAR = 'Kvarn 240 GL';
     !has(B, 'platelsd') && has('Strand 2.0 GT', 'platelsd') && has(B, 'centerdiff') && !has('Strand 2.0 GT', 'centerdiff') &&
     has('Hoshi 2.0 4WD', 'antilag') && !has('Ljung 2000 16V', 'antilag') && has('Ljung 2000 16V', 'throttles') && !has(B, 'throttles') &&
     has(B, 'bigturbo') && has(B, 'kevlar') && !has('Sora 2.0 Turbo', 'bigturbo');
+  const single = (id: string, car: string) => CARS.map((m) => m.make().name).filter((n) => has(n, id)).join() === car;
+  const fitMore =
+    has('Kvarn 240 Turbo', 'wastegate') && !has(CAR, 'wastegate') && !has('Kvarn Turbo 4x4', 'wastegate') &&
+    single('headers', 'Sora 2.0 Turbo') && single('shortfinal', 'Hoshi 2.0 4WD') && single('lightrear', 'Volpe 2.0 Turbo 16V') && single('sequential', 'Ljung 2000 16V');
+  check('delar till en bil och turbo i klass 1', fitMore, upgradesFor('Kvarn 240 Turbo').map((u) => u.id).join(', '));
   check('klass 2: delar efter bil', fit, upgradesFor(B).map((u) => u.id).join(', '));
   const stale = migrateCareer({ ...newCareer(), garage: { [B]: { upgrades: { platelsd: 1, dogbox: 1 } } } });
   check('delar som inte passar återbetalas', stale.money === START_MONEY + 7000 && JSON.stringify(stale.garage[B]!.upgrades) === '{"dogbox":1}' && migrateCareer(stale) === stale, `${stale.money} kr`);
   const bBase = CARS.find((m) => m.make().name === B)!.make();
   const quattro = applyUpgrades(bBase, Object.fromEntries(upgradesFor(B).map((u) => [u.id, 1])));
   const peak = (p: typeof bBase) => Math.max(...p.engine.curveNm);
-  check('brenner fullt byggd', quattro.mass === bBase.mass - 140 && peak(quattro) > peak(bBase) * 1.5 && quattro.frontShare < bBase.frontShare && applyUpgrades(bBase, { platelsd: 1 }).diff.lock === bBase.diff.lock, `${peak(bBase)} → ${Math.round(peak(quattro))} Nm, ${quattro.mass} kg`);
+  check('brenner fullt byggd', quattro.mass === bBase.mass - 140 && peak(quattro) > peak(bBase) * 1.5 && quattro.frontShare < bBase.frontShare && applyUpgrades(bBase, { platelsd: 1 }).diff.lock === bBase.diff.lock && quattro.engine.turbo!.antilag > 0 && quattro.engine.turbo!.spool > bBase.engine.turbo!.spool, `${peak(bBase)} → ${Math.round(peak(quattro))} Nm, ${quattro.mass} kg`);
   // Samma tid strax under klass 1-guld räcker till silver i klass 2; guld där kräver 8 % snabbare.
   const g1 = STAGE_TARGETS.Grinsbol![0];
   const gold1 = prizeFor('Grinsbol', g1 - 2, 1);

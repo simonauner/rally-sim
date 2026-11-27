@@ -14,6 +14,17 @@ export interface EngineParams {
   clutchLockRpm: number;
   /** Rpm vid gaspådrag från stillastående. */
   launchRpm: number;
+  /** Turbo: kurvan är momentet med fullt laddtryck, som byggs upp med fördröjning. Saknas för sugmotorer. */
+  turbo?: TurboParams;
+}
+
+export interface TurboParams {
+  /** Tidskonstant (s) för laddtrycket att byggas upp efter gaspådrag. */
+  spool: number;
+  /** Andel av kurvans moment utan laddtryck (0..1). */
+  offBoost: number;
+  /** Laddtryck som antilag håller kvar utan gas (0..1); 0 utan antilag. */
+  antilag: number;
 }
 
 export interface GearboxParams {
@@ -53,6 +64,8 @@ export class Drivetrain {
   engage = 0;
   /** Skadefaktor för effekt (1 = hel). */
   powerFactor = 1;
+  /** Laddtryck 0..1, för turbomotorer. */
+  boost = 0;
 
   constructor(
     public engine: EngineParams,
@@ -69,6 +82,7 @@ export class Drivetrain {
     this.gear = 1;
     this.rpm = this.engine.idleRpm;
     this.shiftTimer = 0;
+    this.boost = 0;
   }
 
   shiftUp() {
@@ -121,7 +135,14 @@ export class Drivetrain {
 
     this.limiterCut = this.rpm >= engine.limiterRpm;
     const thr = this.limiterCut ? 0 : throttle;
-    const full = interp(engine.curveRpm, engine.curveNm, this.rpm) * this.powerFactor;
+    let full = interp(engine.curveRpm, engine.curveNm, this.rpm) * this.powerFactor;
+    const turbo = engine.turbo;
+    if (turbo) {
+      // Trycket byggs upp långsamt och släpps snabbt när gasen lyfts, om inte antilag håller det.
+      const want = Math.max(thr, turbo.antilag);
+      this.boost += (want - this.boost) * Math.min(1, dt / (want > this.boost ? turbo.spool : 0.15));
+      full *= turbo.offBoost + (1 - turbo.offBoost) * this.boost;
+    }
     const drive = full * thr;
     const engineBrake = -engine.engineBrakeNm * (this.rpm / engine.limiterRpm) * (1 - throttle);
     const tEng = drive + engineBrake;

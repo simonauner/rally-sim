@@ -72,10 +72,13 @@ export interface Upgrade {
 /** Bilarnas fabriksparametrar efter namn. */
 const PARAMS = new Map(CARS.map((m) => [m.make().name, m.make()]));
 const awd = (p: CarParams) => !!p.centerDiff;
-/** shortcut: fysiken har ingen laddtrycksmodell, så turbon känns igen på namnet; lägg en flagga i motorn om turbon modelleras. */
-const TURBO = new Set(['Kvarn 240 Turbo', 'Kvarn Turbo 4x4', 'Sora 2.0 Turbo', 'Hoshi 2.0 4WD', 'Volpe 2.0 Turbo 16V', 'Brenner 5T Coupé']);
-const turbo = (p: CarParams) => TURBO.has(p.name);
-const brenner = (p: CarParams) => p.name === 'Brenner 5T Coupé';
+const turbo = (p: CarParams) => !!p.engine.turbo;
+const only = (name: string) => (p: CarParams) => p.name === name;
+const brenner = only('Brenner 5T Coupé');
+/** Ändrar turbons egenskaper; bara för delar med `fits: turbo`. */
+const tuneTurbo = (p: CarParams, t: Partial<NonNullable<CarParams['engine']['turbo']>>) => {
+  p.engine = { ...p.engine, turbo: { ...p.engine.turbo!, ...t } };
+};
 const fits = (u: Upgrade, p: CarParams) => u.fits?.(p) ?? true;
 
 /** Tar bort vikt och tröghet i samma andel. */
@@ -257,6 +260,28 @@ export const UPGRADES: Upgrade[] = [
       p.gripScale *= 1.06;
     },
   },
+  {
+    tier: 1,
+    id: 'wastegate',
+    sponsor: { name: 'Ventilen', fg: '#ffffff', bg: '#6a2fa0' },
+    group: 'Motor',
+    name: 'Justerbar wastegate',
+    price: 3000,
+    effect: '+8 % vridmoment över 3 500 rpm',
+    fits: turbo,
+    apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.08 : 1)),
+  },
+  {
+    tier: 1,
+    id: 'turbohose',
+    sponsor: { name: 'Slangbolaget', fg: '#1b1b1b', bg: '#ffffff' },
+    group: 'Motor',
+    name: 'Kortare turboslangar',
+    price: 2000,
+    effect: 'Laddtrycket byggs upp 20 % snabbare',
+    fits: turbo,
+    apply: (p) => tuneTurbo(p, { spool: p.engine.turbo!.spool * 0.8 }),
+  },
   // Klass 2: tävlingsdelar till kitcars och Grupp A-bilar.
   {
     tier: 2,
@@ -415,9 +440,12 @@ export const UPGRADES: Upgrade[] = [
     group: 'Motor',
     name: 'Antilag',
     price: 12000,
-    effect: 'Turbon laddar även av gasen: +25 % vridmoment under 3 500 rpm',
+    effect: 'Håller laddtrycket när du lyfter av gasen, och +15 % vridmoment under 3 500 rpm',
     fits: turbo,
-    apply: (p) => torque(p, (rpm) => (rpm < 3500 ? 1.25 : rpm < 4500 ? 1.1 : 1)),
+    apply: (p) => {
+      tuneTurbo(p, { antilag: 0.8 });
+      torque(p, (rpm) => (rpm < 3500 ? 1.15 : 1));
+    },
   },
   {
     tier: 2,
@@ -432,6 +460,61 @@ export const UPGRADES: Upgrade[] = [
       const c = p.centerDiff!;
       p.frontShare = Math.max(0.3, p.frontShare - 0.08);
       p.centerDiff = { lock: Math.min(0.9, c.lock + 0.15), preload: c.preload + 30 };
+    },
+  },
+  // Delar till en enda bil.
+  {
+    tier: 2,
+    id: 'headers',
+    sponsor: { name: 'Boxerverket', fg: '#ffffff', bg: '#1d5fa8' },
+    group: 'Motor',
+    name: 'Lika långa grenrör',
+    price: 7000,
+    effect: '+6 % vridmoment mellan 3 000 och 5 000 rpm, och laddtrycket byggs upp 20 % snabbare',
+    fits: only('Sora 2.0 Turbo'),
+    apply: (p) => {
+      torque(p, (rpm) => (rpm >= 3000 && rpm <= 5000 ? 1.06 : 1));
+      tuneTurbo(p, { spool: p.engine.turbo!.spool * 0.8 });
+    },
+  },
+  {
+    tier: 2,
+    id: 'shortfinal',
+    sponsor: { name: 'Kuggen', fg: '#1b1b1b', bg: '#f2d22e' },
+    group: 'Drivlina',
+    name: 'Kort slutväxelpaket',
+    price: 4500,
+    effect: '8 % kortare slutväxel: drar starkare men når toppfarten tidigare',
+    fits: only('Hoshi 2.0 4WD'),
+    apply: (p) => {
+      p.gearbox = { ...p.gearbox, final: p.gearbox.final * 1.08 };
+    },
+  },
+  {
+    tier: 2,
+    id: 'lightrear',
+    sponsor: { name: 'Bakvikt', fg: '#e8202a', bg: '#ffffff' },
+    group: 'Kaross',
+    name: 'Lätt bakparti',
+    price: 6000,
+    effect: '−35 kg i baklucka och bakre skärmar: vrider sig ännu villigare',
+    fits: only('Volpe 2.0 Turbo 16V'),
+    apply: (p) => {
+      lighten(p, 35);
+      p.inertia = [p.inertia[0], p.inertia[1] * 0.94, p.inertia[2]];
+    },
+  },
+  {
+    tier: 2,
+    id: 'sequential',
+    sponsor: { name: 'SEKVENS', fg: '#ffffff', bg: '#1b1b1b' },
+    group: 'Drivlina',
+    name: 'Sekventiell låda',
+    price: 10000,
+    effect: 'Växlar på 40 % av tiden',
+    fits: only('Ljung 2000 16V'),
+    apply: (p) => {
+      p.gearbox = { ...p.gearbox, shiftTime: p.gearbox.shiftTime * 0.4 };
     },
   },
   // Brenner: femcylindern och coupékarossen från Grupp B-tiden.
@@ -457,9 +540,12 @@ export const UPGRADES: Upgrade[] = [
     group: 'Motor',
     name: 'Stor tävlingsturbo',
     price: 18000,
-    effect: '+20 % vridmoment över 4 500 rpm, men −10 % under 3 500: ännu större turbohål',
+    effect: '+20 % vridmoment över 4 500 rpm, men −10 % under 3 500 och 40 % längre turbohål',
     fits: brenner,
-    apply: (p) => torque(p, (rpm) => (rpm >= 4500 ? 1.2 : rpm < 3500 ? 0.9 : 1.05)),
+    apply: (p) => {
+      torque(p, (rpm) => (rpm >= 4500 ? 1.2 : rpm < 3500 ? 0.9 : 1.05));
+      tuneTurbo(p, { spool: p.engine.turbo!.spool * 1.4 });
+    },
   },
   {
     tier: 2,
