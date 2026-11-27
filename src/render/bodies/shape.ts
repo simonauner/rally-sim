@@ -72,5 +72,7 @@ export interface BodyShape {
   roofVent?: boolean;
   /** Vita fälgar med en tät ring av hål, som rallyfälgar, i stället för navkapslar. */
   rallyRims?: boolean;
+  /** Guldfärgade fälgar med fem breda ekrar. */
+  goldRims?: boolean;
 }
 

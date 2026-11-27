@@ -119,9 +119,30 @@ src/physics/   ren TypeScript, ingen webbläsarkod (körs även i Node)
 src/account/   konto: protokoll (delas med sync/), återställningsnyckel, synk i webbläsaren
 sync/          synkservern (Cloudflare Worker, Durable Objects)
 src/render/    Three.js (WebGPU), clay-look, deformerbar kaross, terräng, damm per underlag, debug
+  bodies/        karossens form per bil, byggs i kod
+  models/        bilar modellerade i Blender (genererade filer, se nedan)
+blender/       Blender-källor: ett byggskript och en .blend per modellerad bil
 src/main.ts    spelloop: fast fysiksteg 240 Hz, rendering frikopplad
 tests/         fysiktester med förväntade intervall
 ```
+
+### Bilar från Blender
+
+Sora 2.0 Turbo är modellerad i Blender i stället för byggd av en form i `src/render/bodies/`.
+`blender/soraTurbo/soraTurbo.blend` är källan: redigera den i Blender och för över den till spelet med
+
+```sh
+blender -b blender/soraTurbo/soraTurbo.blend -P blender/export.py   # skriver src/render/models/soraTurbo.ts
+blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- /tmp/sora   # bilder från några vinklar
+```
+
+Modellen ligger i bilens koordinater (origo i tyngdpunkten, marken på y = −0,486) med Blenders
+X = x, Y = −z, Z = y, så bilen pekar mot −Y. Objekten i samlingen *Export* blir bilens delar:
+`body` bucklas, övriga är lösa detaljer som ramlar av (`flap…` = stänkskydd, `pod…` = extraljus, bara
+klass 2). Färgen väljs per yta med materialets namn (`paint`, `shade`, `glass`, `black`, `dark`, `chrome`,
+`lamp`, `amber`, `tail`, `reverse`, `plate`); `paint` och `shade` följer bilens lack. Samlingen
+*Reference* (hjul och mark) exporteras inte. `blender/soraTurbo/build.py` bygger en ny .blend från
+början och skriver över den gamla.
 
 ### Fysikens viktigaste val
 

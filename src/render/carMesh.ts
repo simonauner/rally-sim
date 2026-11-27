@@ -18,6 +18,8 @@ import { strandGt } from './bodies/strandGt';
 import { brenner5t } from './bodies/brenner5t';
 import { volpeTurbo } from './bodies/volpeTurbo';
 import { hoshi4wd } from './bodies/hoshi4wd';
+import { partGeometry, type ModelData } from './models/model';
+import { soraTurbo as soraTurboModel } from './models/soraTurbo';
 
 
 const GLASS = new THREE.Color(0x2b3a42);
@@ -54,14 +56,38 @@ function hash(i: number): number {
   return s - Math.floor(s);
 }
 
+/** Mjukt brus i rummet (värdebrus på ett gitter med rutan `cell`), 0..1. Kanal `k` ger ett annat brus. */
+function valueNoise(x: number, y: number, z: number, cell: number, k: number): number {
+  const fx = x / cell, fy = y / cell, fz = z / cell;
+  const ix = Math.floor(fx), iy = Math.floor(fy), iz = Math.floor(fz);
+  const s = (t: number) => t * t * (3 - 2 * t);
+  const tx = s(fx - ix), ty = s(fy - iy), tz = s(fz - iz);
+  const h = (a: number, b: number, c: number) => hash(((ix + a) * 73 + (iy + b) * 179 + (iz + c) * 283 + k * 1013) % 100003);
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const plane = (c: number) => lerp(lerp(h(0, 0, c), h(1, 0, c), tx), lerp(h(0, 1, c), h(1, 1, c), tx), ty);
+  return lerp(plane(0), plane(1), tz);
+}
+
 /** En kroppsdel vars hörn kan flyttas när bilen skadas. */
 class DeformablePart {
   readonly mesh: THREE.Mesh;
   private pos: THREE.BufferAttribute;
   private orig: Float32Array;
   private disp: Float32Array;
+  /** Fyra slumptal per hörn: bucklans styrka och skrynklan i x, y och z. */
+  private noise: Float32Array;
 
-  constructor(geo: THREE.BufferGeometry, material: THREE.Material) {
+  /**
+   * `noiseCell` > 0 tar slumpen ur ett mjukt brus i rummet i stället för per hörn: för oregelbundna nät
+   * (Blendermodeller), där hörn på samma plats vid en färgkant annars glipar och täta hörn blir taggiga.
+   */
+  /** `side` (0..1) skalar bucklor från träffar rakt från sidan: en styvare långsida. */
+  constructor(
+    geo: THREE.BufferGeometry,
+    material: THREE.Material,
+    noiseCell = 0,
+    private side = 1,
+  ) {
     this.mesh = new THREE.Mesh(geo, material);
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
@@ -69,11 +95,19 @@ class DeformablePart {
     this.pos = geo.getAttribute('position') as THREE.BufferAttribute;
     this.orig = new Float32Array(this.pos.array as Float32Array);
     this.disp = new Float32Array(this.orig.length);
+    this.noise = new Float32Array(this.pos.count * 4);
+    const o = this.orig;
+    [0, 7, 13, 19].forEach((off, k) => {
+      for (let i = 0; i < this.pos.count; i++) {
+        this.noise[i * 4 + k] = noiseCell > 0 ? valueNoise(o[i * 3]!, o[i * 3 + 1]!, o[i * 3 + 2]!, noiseCell, k) : hash(i + off);
+      }
+    });
   }
 
   dent(local: THREE.Vector3, dir: THREE.Vector3, amount: number, radius: number) {
     const MAX = 0.55;
     const r2 = radius * radius;
+    amount *= 1 + (this.side - 1) * Math.abs(dir.x);
     for (let i = 0; i < this.pos.count; i++) {
       const dx = this.orig[i * 3]! + this.disp[i * 3]! - local.x;
       const dy = this.orig[i * 3 + 1]! + this.disp[i * 3 + 1]! - local.y;
@@ -81,10 +115,11 @@ class DeformablePart {
       const d2 = dx * dx + dy * dy + dz * dz;
       if (d2 > r2 * 5) continue;
       const w = Math.exp(-d2 / r2);
-      const k = amount * w * (0.8 + 0.4 * hash(i));
-      let x = this.disp[i * 3]! + dir.x * k + (hash(i + 7) - 0.5) * 0.12 * k;
-      let y = this.disp[i * 3 + 1]! + dir.y * k + (hash(i + 13) - 0.5) * 0.12 * k;
-      let z = this.disp[i * 3 + 2]! + dir.z * k + (hash(i + 19) - 0.5) * 0.12 * k;
+      const n = this.noise;
+      const k = amount * w * (0.8 + 0.4 * n[i * 4]!);
+      let x = this.disp[i * 3]! + dir.x * k + (n[i * 4 + 1]! - 0.5) * 0.12 * k;
+      let y = this.disp[i * 3 + 1]! + dir.y * k + (n[i * 4 + 2]! - 0.5) * 0.12 * k;
+      let z = this.disp[i * 3 + 2]! + dir.z * k + (n[i * 4 + 3]! - 0.5) * 0.12 * k;
       const len = Math.hypot(x, y, z);
       if (len > MAX) {
         const s = MAX / len;
@@ -150,6 +185,57 @@ const BODIES: Record<CarModel['body'], BodyShape> = {
   volpeTurbo,
   hoshi4wd,
 };
+
+/** Bilar med en egen modell från Blender (blender/). Övriga byggs av formen i bodies/. */
+const MODELS: Partial<Record<CarModel['body'], ModelData>> = { soraTurbo: soraTurboModel };
+
+const PALETTE: Record<string, THREE.Color> = { glass: GLASS, black: BLACK, dark: DARK, chrome: CHROME, lamp: LAMP, amber: AMBER, tail: TAIL, reverse: REVERSE, plate: PLATE };
+
+/**
+ * Material för en del av en Blendermodell: färgen efter hörnets material, lacken (med dekaler på karossen)
+ * och skarvarna i lackens färg. Lyktorna lyser som på de byggda bilarna; `left` väljer strålkastarsidan.
+ */
+function modelMaterial(data: ModelData, paint: THREE.Color, lamp: THREE.Node<'float'>, tail: FloatUniform, painted: THREE.Node<'color'> = color(paint)) {
+  const m = attribute('mat', 'float');
+  const is = (name: string) => abs(m.sub(data.materials.indexOf(name))).lessThan(0.5);
+  const colorOf = (name: string): THREE.Node<'color'> => {
+    if (name === 'paint') return painted;
+    if (name === 'shade') return color(paint.clone().multiplyScalar(0.72));
+    const c = PALETTE[name];
+    if (!c) throw new Error(`Okänt material i bilmodellen: ${name}`);
+    return color(c);
+  };
+  const mat = new THREE.MeshToonNodeMaterial();
+  mat.colorNode = data.materials.reduce<THREE.Node<'color'>>((acc, name) => select(is(name), colorOf(name), acc), color(BLACK));
+  mat.emissiveNode = select(is('lamp'), color(LAMP).mul(lamp), select(is('tail'), color(TAIL).mul(tail), vec3(0)));
+  return mat;
+}
+
+/** Karossen och de lösa detaljerna ur en Blendermodell. Extraljusrampen ('pod…') bara om `pod`. */
+function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow: LampGlow, tailGlow: FloatUniform, decals: THREE.Texture, pod: boolean) {
+  let body: DeformablePart | null = null;
+  const details = new THREE.Group();
+  for (const part of data.parts) {
+    if (part.name.startsWith('pod') && !pod) continue;
+    const g = partGeometry(part);
+    if (part.name === 'body') {
+      // Dekaler på lacken: sidorna under gördellinjen, huven, bakluckan och taket.
+      const p = attribute('rest', 'vec3');
+      const side = abs(p.x).greaterThan(0.7).and(p.y.lessThan(b.belt));
+      const roof = p.y.greaterThan(b.roof - 0.04);
+      const painted = roofDecals(bodyDecals(color(paint), p, side, b, decals, paint), p.x, p.z, roof, b, decals, paint);
+      body = new DeformablePart(g, modelMaterial(data, paint, select(p.x.greaterThan(0), lampGlow[0], lampGlow[1]), tailGlow, painted), 0.12, 0.35);
+      continue;
+    }
+    const mesh = new THREE.Mesh(g, modelMaterial(data, paint, lampGlow[part.at[0] > 0 ? 0 : 1], tailGlow));
+    mesh.name = part.name;
+    mesh.position.set(...part.at);
+    mesh.castShadow = true;
+    details.add(mesh);
+  }
+  if (!body) throw new Error('Bilmodellen saknar body');
+  return { body, details };
+}
 
 type Hit = [x: number, y: number, z: number, nx: number, ny: number, nz: number];
 
@@ -494,7 +580,7 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
   return g;
 }
 
-function buildWheel(radius: number, rally = false): THREE.Group {
+function buildWheel(radius: number, rally = false, gold = false): THREE.Group {
   const g = new THREE.Group();
   const tyre = new THREE.Mesh(
     new THREE.CylinderGeometry(radius, radius, 0.22, 28).rotateZ(Math.PI / 2),
@@ -503,13 +589,15 @@ function buildWheel(radius: number, rally = false): THREE.Group {
   // Släta navkapslar med en ring av korta slitsar, som visar rotationen.
   const cap = (r: number, w: number, c: number) =>
     new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 28).rotateZ(Math.PI / 2), new THREE.MeshToonMaterial({ color: c }));
-  g.add(tyre, cap(radius * (rally ? 0.72 : 0.7), 0.232, rally ? 0xf2f2ee : 0xd6d6d6), cap(radius * 0.2, 0.24, 0xb4b4b4));
-  // Rallyfälgen: tät ring av smala hål nära kanten, så den liknar en ekrad fälg.
-  const slotMat = new THREE.MeshToonMaterial({ color: rally ? 0x2a2a2a : 0x6a6a6a });
-  const [count, at, len] = rally ? [20, 0.52, 0.32] : [10, 0.47, 0.2];
+  const rim = gold ? 0xc9a243 : rally ? 0xf2f2ee : 0xd6d6d6;
+  g.add(tyre, cap(radius * (rally || gold ? 0.72 : 0.7), 0.232, rim), cap(radius * 0.2, 0.24, gold ? rim : 0xb4b4b4));
+  // Rallyfälgen: tät ring av smala hål nära kanten, så den liknar en ekrad fälg. Guldfälgen: fem stora
+  // hål mellan fem breda ekrar.
+  const slotMat = new THREE.MeshToonMaterial({ color: rally || gold ? 0x2a2a2a : 0x6a6a6a });
+  const [count, at, len] = gold ? [5, 0.43, 0.4] : rally ? [20, 0.52, 0.32] : [10, 0.47, 0.2];
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2;
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.236, radius * len, rally ? 0.018 : 0.03), slotMat);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.236, radius * len, gold ? radius * 0.36 : rally ? 0.018 : 0.03), slotMat);
     s.position.set(0, Math.cos(a) * radius * at, Math.sin(a) * radius * at);
     s.rotation.x = -a;
     g.add(s);
@@ -556,7 +644,9 @@ export class CarMesh {
     // Främre stötfångaren går bak till hjulhuset, den bakre en bit runt hörnen.
     const front = b.nose + 0.1 - (wheelZ[0] + b.archR[0] + 0.04);
     const decals = decalTexture(b, wheelZ, c, startNumber(car.params.name), model.sponsors?.() ?? []);
-    this.parts = [
+    const data = MODELS[model.body];
+    const built = data && buildModel(data, b, c, this.lampGlow, this.tailGlow, decals, tierOf(car.params.name) === 2);
+    this.parts = built ? [built.body] : [
       buildBody(b, wheelZ, c, this.lampGlow, this.tailGlow, decals),
       buildCabin(b, c, decals),
       // En avsmalnande nos får en smalare stötfångare med rundare hörn, så den följer formen.
@@ -574,14 +664,14 @@ export class CarMesh {
       }),
     ];
     this.parts.forEach((p) => this.group.add(p.mesh));
-    this.detailGroup = buildDetails(b, wheelZ, c);
-    if (tierOf(car.params.name) === 2) addLampPod(this.detailGroup, b, this.lampGlow);
+    this.detailGroup = built ? built.details : buildDetails(b, wheelZ, c);
+    if (!built && tierOf(car.params.name) === 2) addLampPod(this.detailGroup, b, this.lampGlow);
     this.group.add(this.detailGroup);
     this.details = (this.detailGroup.children as THREE.Mesh[]).map((mesh) => ({
       mesh,
       home: mesh.position.clone(),
       dent: 0,
-      flap: mesh.name === 'flap',
+      flap: mesh.name.startsWith('flap'),
       loose: false,
       vel: new THREE.Vector3(),
       spin: new THREE.Vector3(),
@@ -600,7 +690,7 @@ export class CarMesh {
       this.group.add(spot, spot.target, bumper, bumper.target);
     });
     for (let i = 0; i < 4; i++) {
-      const w = buildWheel(car.params.wheelRadius, b.rallyRims);
+      const w = buildWheel(car.params.wheelRadius, b.rallyRims, b.goldRims);
       this.wheels.push(w);
     }
   }
