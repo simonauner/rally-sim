@@ -5,7 +5,7 @@ import { splitDiff } from '../src/physics/drivetrain';
 import { tierOf } from '../src/career/career';
 import { Barriers } from '../src/physics/barriers';
 import { rollWeather, type Weather } from '../src/physics/weather';
-import { bestTyre, FINISH_MARGIN, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
+import { bestTyre, FINISH_MARGIN, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad, driveAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
@@ -445,10 +445,10 @@ for (const def of STAGES) {
   check(`${def.name}: förare når målet på vägen`, time > 60 && time < 200 && maxOver < 1, `${TYRE_NAMES[tyre]}, ${Number.isNaN(time) ? 'nådde inte' : time.toFixed(1) + ' s'}, som mest ${maxOver.toFixed(2)} m utanför kanten`);
 }
 
-// 14. Däckrådet: grusdäck på grusetapperna, vinterdäck på snön.
+// 14. Däckrådet: grusdäck på grusetapperna, vinterdäck på snön och asfaltsdäck där det mest är asfalt.
 {
   const advice = STAGES.map((d) => `${d.name}: ${bestTyre(d)}`);
-  const ok = STAGES.every((d) => bestTyre(d) === (d.winter ? 'snow' : 'gravel'));
+  const ok = STAGES.every((d) => bestTyre(d) === (d.winter ? 'snow' : (surfaceShares(d).asphalt ?? 0) > 0.7 ? 'tarmac' : 'gravel'));
   check('däckråd per etapp', ok, advice.join(', '));
 }
 
