@@ -604,39 +604,6 @@ export function soraTurbo(): CarParams {
   };
 }
 
-/**
- * Klass 2: en fiktiv japansk sedan med fyrhjulsdrift, mest moment i klassen och hårt låsta diffar.
- * Vass: lyfter du av gasen i en kurva kommer bakvagnen.
- */
-export function arashiRs(): CarParams {
-  const p = kvarnTurbo4x4();
-  const mass = 1240;
-  const R = 0.31;
-  const cg = 0.5;
-  const wheelbase = 2.51;
-  return {
-    ...p,
-    name: 'Arashi 2.0 RS',
-    mass,
-    inertia: boxInertia(mass, 4.35, 1.77, 1.42, 0.78),
-    cgHeight: cg,
-    wheelRadius: R,
-    wheelbase,
-    trackFront: 1.51,
-    wheels: wheelsAt(R - cg + 0.125, 0.755, 0.755, wheelbase * 0.43, -wheelbase * 0.57),
-    body: { halfX: 0.88, halfZ: 2.18, bottomY: -0.3, topY: 0.9 },
-    susp: { ...p.susp, kFront: 35000, kRear: 33000, arbFront: 14000, arbRear: 15000 },
-    steer: { ...p.steer, rate: 2.2, centerRate: 3.6 },
-    diff: { lock: 0.55, preload: 80 },
-    frontShare: 0.38,
-    centerDiff: { lock: 0.55, preload: 110 },
-    engine: {
-      ...p.engine,
-      curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
-      curveNm: [110, 140, 220, 320, 370, 385, 380, 345, 285, 220],
-    },
-  };
-}
 
 /** En dekal på karossen: fiktivt namn, textfärg och eventuell bakgrund (CSS-färger). */
 export interface Sponsor {
@@ -648,7 +615,7 @@ export interface Sponsor {
 export interface CarModel {
   make: () => CarParams;
   /** Bilens egen kaross i src/render/bodies/ (samma namn som filen). */
-  body: 'kvarn240' | 'kvarn240Turbo' | 'kvarnTurbo4x4' | 'soraTurbo' | 'arashiRs' | 'ljung1600' | 'ljung2000' | 'strandGt' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
+  body: 'kvarn240' | 'kvarn240Turbo' | 'kvarnTurbo4x4' | 'soraTurbo' | 'ljung1600' | 'ljung2000' | 'strandGt' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
   /** En rad om bilen i bilväljaren. */
   blurb: string;
   /** Lackfärg. */
@@ -714,11 +681,5 @@ export const CARS: CarModel[] = [
     body: 'soraTurbo',
     paint: 0x1f4fb4,
     blurb: 'Tvådörrars boxercoupé med hög vinge och låg tyngdpunkt. Mjuk fjädring, stabil över ojämnheter och drar jämnt ur kurvorna.',
-  },
-  {
-    make: arashiRs,
-    body: 'arashiRs',
-    paint: 0x8f9399,
-    blurb: 'Mest moment i klassen och hårt låsta diffar. Vass: bakvagnen kommer om du lyfter av gasen i kurvan.',
   },
 ];

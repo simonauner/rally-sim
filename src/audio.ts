@@ -95,7 +95,6 @@ const ENGINE_SOUND: Record<string, EngineSound> = {
   'Kvarn Turbo 4x4': RALLY_FOUR,
   'Hoshi 2.0 4WD': RALLY_FOUR,
   'Volpe 2.0 Turbo 16V': RALLY_FOUR,
-  'Arashi 2.0 RS': RALLY_FOUR,
   'Brenner 5T Coupé': FIVE,
   'Sora 2.0 Turbo': BOXER,
 };

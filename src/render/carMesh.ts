@@ -11,7 +11,6 @@ import { kvarn240 } from './bodies/kvarn240';
 import { kvarn240Turbo } from './bodies/kvarn240Turbo';
 import { kvarnTurbo4x4 } from './bodies/kvarnTurbo4x4';
 import { soraTurbo } from './bodies/soraTurbo';
-import { arashiRs } from './bodies/arashiRs';
 import { ljung1600 } from './bodies/ljung1600';
 import { ljung2000 } from './bodies/ljung2000';
 import { strandGt } from './bodies/strandGt';
@@ -176,7 +175,6 @@ const BODIES: Record<CarModel['body'], BodyShape> = {
   kvarn240Turbo,
   kvarnTurbo4x4,
   soraTurbo,
-  arashiRs,
   ljung1600,
   ljung2000,
   strandGt,

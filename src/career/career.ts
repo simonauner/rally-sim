@@ -24,7 +24,6 @@ export const CAR_PRICES: Record<string, number> = {
   'Sora 2.0 Turbo': 52000,
   'Hoshi 2.0 4WD': 55000,
   'Volpe 2.0 Turbo 16V': 60000,
-  'Arashi 2.0 RS': 65000,
 };
 
 /**
@@ -40,7 +39,6 @@ const CAR_TIERS: Record<string, Tier> = {
   'Volpe 2.0 Turbo 16V': 2,
   'Brenner 5T Coupé': 2,
   'Sora 2.0 Turbo': 2,
-  'Arashi 2.0 RS': 2,
 };
 export const tierOf = (car: string): Tier => CAR_TIERS[car] ?? 1;
 
