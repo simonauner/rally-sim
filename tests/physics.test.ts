@@ -453,11 +453,17 @@ for (const def of STAGES) {
     const look = stage.poseAt(hit.s + 6 + c.speed * 0.6);
     const f = new Vector3(0, 0, 1).applyQuaternion(c.quat);
     const err = Math.atan2(look.x - c.pos.x, look.z - c.pos.z) - Math.atan2(f.x, f.z);
-    const a = stage.poseAt(hit.s + 10).heading;
-    const b = stage.poseAt(hit.s + 40).heading;
-    const turn = Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a)));
-    // Hårnålar (över ca 90° på 30 m) tas i krypfart, annars aldrig under 9 m/s.
-    const target = Math.max(turn > 1.5 ? 5 : 9, 24 - turn * 18) * gripK(hit.surface);
+    const turnAt = (at: number) => {
+      const a = stage.poseAt(at).heading;
+      const b = stage.poseAt(at + 30).heading;
+      return Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a)));
+    };
+    const turn = turnAt(hit.s + 10);
+    // Hårnålar (över ca 90° på 30 m) tas i krypfart, annars aldrig under 9 m/s. Inför en hårnål
+    // bromsar föraren i tid, upp till 80 m före (ca 3 m/s²); andra kurvor ser den 10–40 m fram.
+    let hairpin = Infinity;
+    for (let d = 10; d <= 80; d += 10) if (turnAt(hit.s + 10 + d) > 1.5) hairpin = Math.min(hairpin, Math.sqrt(25 + 6 * d));
+    const target = Math.min(hairpin, Math.max(turn > 1.5 ? 5 : 9, 24 - turn * 18)) * gripK(hit.surface);
     return {
       ...idle,
       steer: Math.max(-1, Math.min(1, Math.atan2(Math.sin(err), Math.cos(err)) * 4)),
