@@ -31,8 +31,8 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
       items: [
         ...groups.map(({ c, legs }) =>
           championshipUnlocked(career, c)
-            ? { label: c.name, detail: legs.length === 1 ? '1 etapp' : `${legs.length} etapper`, image: CHAMPIONSHIP_IMAGES[c.id], value: c.id }
-            : { label: c.name, note: legs.join(', '), detail: `${unlockHint(career, c)} i karriären`, image: CHAMPIONSHIP_IMAGES[c.id], value: c.id, locked: true },
+            ? { label: c.name, note: legs.length === 1 ? '1 etapp' : `${legs.length} etapper`, image: CHAMPIONSHIP_IMAGES[c.id], value: c.id }
+            : { label: c.name, note: `${unlockHint(career, c).replace(/^v/, 'V')} i karriären för att låsa upp`, image: CHAMPIONSHIP_IMAGES[c.id], value: c.id, locked: true },
         ),
         { label: '← Tillbaka', value: '' },
       ],

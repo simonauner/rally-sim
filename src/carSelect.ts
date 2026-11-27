@@ -214,7 +214,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   // Bilnamnet med pilar; inga <button> eftersom showMenu gör alla knappar i menyn till menyval.
   const navHtml = (list: CarModel[], m: CarModel, attr: string, detail = '') => {
     const extra = [list.length > 1 ? `${list.indexOf(m) + 1}/${list.length}` : '', detail].filter(Boolean).join(' · ');
-    const name = `<b>${locked(m) ? LOCK_ICON : ''}${m.make().name}</b>`;
+    const name = `<b>${m.make().name}${locked(m) ? LOCK_ICON : ''}</b>`;
     return `<div class="car-nav">${list.length > 1 ? `<span ${attr}="-1">‹</span>${name}<span ${attr}="1">›</span>` : name}</div>${extra ? `<div class="car-extra">${extra}</div>` : ''}`;
   };
   // carSpecs kör en accelerationssimulering, så värdena sparas per bil.
@@ -266,7 +266,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     // Kör-knappen följer bilen man bläddrat till.
     const btn = document.querySelector('#menu .items button[data-i="0"]');
     btn?.classList.toggle('locked', locked(m));
-    if (btn?.firstElementChild) btn.firstElementChild.innerHTML = (locked(m) ? LOCK_ICON : '') + pickLabel(m);
+    if (btn?.firstElementChild) btn.firstElementChild.innerHTML = pickLabel(m) + (locked(m) ? LOCK_ICON : '');
   };
   show(cars[current]!);
 

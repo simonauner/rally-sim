@@ -124,7 +124,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const items = `<div class="items">${opts.items
     .map((it, i) => {
       const cls = [it.image && 'pic', it.locked && 'locked'].filter(Boolean).join(' ');
-      return `<button data-i="${i}"${cls ? ` class="${cls}"` : ''}${it.image ? ` style="--img: url('${it.image}')"` : ''}>${it.image ? '<i class="thumb"></i>' : ''}<span>${it.locked ? LOCK_ICON : ''}${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`;
+      return `<button data-i="${i}"${cls ? ` class="${cls}"` : ''}${it.image ? ` style="--img: url('${it.image}')"` : ''}>${it.image ? '<i class="thumb"></i>' : ''}<span>${it.label}${it.locked ? LOCK_ICON : ''}${it.note ? `<span class="note">${it.note}</span>` : ''}</span>${it.detail ? `<small>${it.detail}</small>` : ''}</button>`;
     })
     .join('')}</div>`;
   const panels = `
