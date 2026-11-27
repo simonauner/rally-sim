@@ -145,17 +145,20 @@ export class Hud {
     ctx.fill();
   }
 
-  /** Klocka, mellantider och resultat. best är rekordet nu, previousBest rekordet före senaste åket. */
-  updateTimer(timer: StageTimer, best: StageRecord | null) {
+  /**
+   * Klocka, mellantider och resultat. best är rekordet nu. field är förarna som startat före dig
+   * i mästerskapet, med sina tider på etappen.
+   */
+  updateTimer(timer: StageTimer, best: StageRecord | null, field: RoadTime[] = []) {
     const splits = timer.splits.map((t, i) => `M${i + 1} ${formatTime(t)}${formatDelta(t, best?.splits[i])}`).join(' · ');
     let html: string;
     if (timer.state === 'ready') {
-      html = `Kör över startlinjen${best ? `<br/>Bästa ${formatTime(best.time)}` : ''}`;
+      html = `Kör över startlinjen${best ? `<br/>Bästa ${formatTime(best.time)}` : ''}${fieldHtml(timer, best, field)}`;
     } else if (timer.state === 'running') {
-      html = `<div class="clock">${formatTime(timer.time)}</div>${splits}`;
+      html = `<div class="clock">${formatTime(timer.time)}</div>${splits}${fieldHtml(timer, best, field)}`;
     } else {
       // Resultatet med jämförelser visas på målskärmen.
-      html = `<div class="clock">Mål ${formatTime(timer.time)}</div>`;
+      html = `<div class="clock">Mål ${formatTime(timer.time)}</div>${fieldHtml(timer, best, field)}`;
     }
     if (this.timer.innerHTML !== html) this.timer.innerHTML = html;
   }
@@ -365,6 +368,28 @@ export function resultHtml(timer: StageTimer, previousBest: StageRecord | null) 
 }
 
 /** " −0.32" i grönt eller " +0.84" i rött; tomt utan referens. */
+export interface RoadTime {
+  name: string;
+  time: number;
+}
+
+/** Förarna före dig på vägen vid din senaste mellantid eller i mål, med din plats bland dem. */
+function fieldHtml(timer: StageTimer, best: StageRecord | null, field: RoadTime[]) {
+  if (!field.length) return '';
+  const done = timer.state === 'finished';
+  const k = timer.splits.length - 1;
+  if (!done && k < 0) return `<div class="field">${field.length} förare före dig på vägen</div>`;
+  // Motståndarna har bara en sluttid; mellantiden tas som samma andel av den som i ditt rekord.
+  const frac = done ? 1 : best?.splits[k] && best.time ? best.splits[k]! / best.time : (k + 1) / (timer.splitAt.length + 1);
+  const mine = done ? timer.time : timer.splits[k]!;
+  const rows = [...field.map((f) => ({ name: f.name, t: f.time * frac })), { name: 'Du', t: mine }].sort((a, b) => a.t - b.t);
+  const rival = rows.find((r) => r.name !== 'Du')!.t;
+  const html = rows
+    .map((r, i) => (r.name === 'Du' ? `<div class="me">${i + 1}. Du ${formatTime(r.t)}${formatDelta(r.t, rival)}</div>` : `<div>${i + 1}. ${r.name} ${formatTime(r.t)}</div>`))
+    .join('');
+  return `<div class="field"><div>${done ? 'Mål' : `M${k + 1}`}</div>${html}</div>`;
+}
+
 function formatDelta(t: number, ref: number | undefined) {
   if (ref === undefined) return '';
   return ` <span class="${t <= ref ? 'ahead' : 'behind'}">${t <= ref ? '−' : '+'}${Math.abs(t - ref).toFixed(2)}</span>`;

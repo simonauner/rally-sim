@@ -18,7 +18,7 @@ import { START_S, Stage, STAGE_ASJON, STAGE_GRINSBOL, STAGES, type StageDef } fr
 import { pickStage, stagePreviewHtml } from './stageMenu';
 import { forcedWeather, isTyre, pickTyre } from './tyreMenu';
 import type { TyreType } from './physics/surfaces';
-import { CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
+import { aheadOnRoad, CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
@@ -383,6 +383,8 @@ async function main() {
   let spawn = Object.values(spawns)[0]!;
   const timer = stage ? new StageTimer(START_S, stage.finish) : null;
   let best: StageRecord | null = stage ? loadRecord(stage.def) : null;
+  /** Förarna som startar före dig i mästerskapet, och deras tider på etappen. */
+  const field = champ ? aheadOnRoad(champ) : [];
   /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
   let previousBest: StageRecord | null = null;
   let resultSaved = false;
@@ -729,7 +731,7 @@ async function main() {
     sun.target.position.copy(car.pos);
     hud.update(car, input, CAMERAS[camMode]!);
     hud.showGauges(!finishShown);
-    if (timer) hud.updateTimer(timer, best);
+    if (timer) hud.updateTimer(timer, best, field);
     if (stage && caller) {
       const s = stage.project(car.pos.x, car.pos.z).s;
       const called = caller.update(s, car.speed);

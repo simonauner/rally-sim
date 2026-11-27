@@ -28,9 +28,14 @@
       #help { position: fixed; left: 12px; top: 12px; max-width: 640px; font-size: 12px; color: #1b1b1b; background: #fffb; padding: 8px 10px; border-radius: 8px; line-height: 1.5; pointer-events: none; }
       #gg { position: fixed; right: 12px; bottom: 12px; width: 140px; height: 140px; background: #fff8; border-radius: 8px; pointer-events: none; }
       #unsupported { display: none; position: fixed; inset: 0; z-index: 2002; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 18px; background: #eceff1; }
-      #timer { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); text-align: center; color: #1b1b1b; background: #fffc; padding: 6px 16px; border-radius: 8px; font-size: 13px; line-height: 1.4; pointer-events: none; }
+      /* Klockan uppe till höger, i samma stil som noterna: vit text med svart kant. */
+      #timer { position: fixed; right: 16px; top: 12px; text-align: right; color: #fff; font-size: 16px; font-weight: 700; line-height: 1.35; font-variant-numeric: tabular-nums; pointer-events: none; -webkit-text-stroke: 4px #000; paint-order: stroke fill; text-shadow: 0 2px 4px #000a; }
       #timer:empty { display: none; }
-      #timer .clock { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      #timer .clock { font-size: 44px; -webkit-text-stroke-width: 6px; }
+      #timer .field { margin-top: 8px; font-size: 14px; -webkit-text-stroke-width: 3px; }
+      #timer .field .me { color: #ffd000; }
+      #timer .ahead { color: #4caf50; }
+      #timer .behind { color: #ff3b30; }
       .ahead { color: #2e7d32; }
       .behind { color: #c62828; }
       #notes { position: fixed; left: 50%; top: 20vh; transform: translateX(-50%); text-align: center; color: #fff; font-size: 30px; font-weight: 700; line-height: 1.3; pointer-events: none; -webkit-text-stroke: 6px #000; paint-order: stroke fill; text-shadow: 0 2px 4px #000a; }
