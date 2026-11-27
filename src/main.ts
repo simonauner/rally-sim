@@ -14,7 +14,7 @@ import { brakeAlongRoad } from './physics/autopilot';
 import { Barriers } from './physics/barriers';
 import { Car } from './physics/car';
 import { CARS, type CarModel } from './physics/params';
-import { FINISH_MARGIN, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
+import { START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES, type StageDef } from './physics/stage';
 import { pickStage } from './stageMenu';
 import { pickTyre } from './tyreMenu';
 import { CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
@@ -364,12 +364,12 @@ async function main() {
         ['Krocktest (20 m/s)', 'crash'],
       ];
   let spawn = Object.values(spawns)[0]!;
-  const timer = stage ? new StageTimer(START_S, stage.length - FINISH_MARGIN) : null;
+  const timer = stage ? new StageTimer(START_S, stage.finish) : null;
   let best: StageRecord | null = stage ? loadRecord(stage.def) : null;
   /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
   let previousBest: StageRecord | null = null;
   let resultSaved = false;
-  const caller = stage ? new NoteCaller(generateNotes(stage, START_S, stage.length - FINISH_MARGIN)) : null;
+  const caller = stage ? new NoteCaller(generateNotes(stage, START_S, stage.finish)) : null;
   const codriver = new CoDriver();
   const recorder = new GhostRecorder();
   const ghostMesh = buildGhostMesh(car.params);

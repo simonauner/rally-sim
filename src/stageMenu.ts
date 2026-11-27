@@ -2,7 +2,7 @@ import { CHAMPIONSHIPS, championshipUnlocked, unlockHint } from './career/champi
 import { loadCareer } from './career/store';
 import { formatTime } from './hud';
 import { showMenu } from './menu';
-import { FINISH_MARGIN, Stage, STAGES, START_S, surfaceShares, type Light, type StageDef } from './physics/stage';
+import { Stage, STAGES, START_S, surfaceShares, type Light, type StageDef } from './physics/stage';
 import { SURFACES, type SurfaceId } from './physics/surfaces';
 import { loadRecord } from './records';
 
@@ -65,7 +65,7 @@ const MAP_COLORS: Record<SurfaceId, string> = { asphalt: '#9aa4b0', gravel: '#d9
 /** Förhandsvisning av en etapp: tid på dygnet, längd, underlag och karta ovanifrån färgad efter underlag. */
 export function stagePreviewHtml(def: StageDef): string {
   const st = new Stage(def);
-  const end = st.length - FINISH_MARGIN;
+  const end = st.finish;
   const shares = (Object.entries(surfaceShares(def)) as [SurfaceId, number][]).sort((a, b) => b[1] - a[1]);
   // Ovanifrån med z uppåt; lokalt x är vänster, så x speglas.
   const px = (i: number) => -st.xs[i]!;

@@ -42,6 +42,8 @@ export interface StageDef {
   light?: Light;
   /** Källa för verklig kartdata, visas i etappens förhandsvisning. */
   credit?: string;
+  /** Väg efter mål att stanna på (m); FINISH_MARGIN om inget anges. */
+  runout?: number;
 }
 
 export type Light = 'day' | 'dawn' | 'dusk' | 'night';
@@ -80,9 +82,9 @@ export interface StageHit {
 }
 
 const SAMPLE_STEP = 1;
-/** Start- och mållinjen ligger en bit in från splinens ändar; efter mål finns 80 m att stanna på. */
+/** Start- och mållinjen ligger en bit in från splinens ändar; efter mål finns minst 80 m att stanna på. */
 export const START_S = 20;
-export const FINISH_MARGIN = 80;
+const FINISH_MARGIN = 80;
 const CELL = 20;
 /** Träd per etapp, och fler på långa etapper så skogen blir lika tät. */
 const TREES = 2500;
@@ -110,6 +112,8 @@ export class Stage extends World {
   readonly widths: Float64Array;
   readonly surfaces: SurfaceId[];
   readonly length: number;
+  /** Mållinjen längs etappen (m). */
+  readonly finish: number;
   readonly spurs: Spur[];
   /** Avspärrningar tvärs över de korsande vägarna, en per väg. Lokalt x går tvärs över vägen. */
   readonly barriers: { x: number; z: number; y: number; yaw: number; halfWidth: number }[];
@@ -172,6 +176,7 @@ export class Stage extends World {
     this.widths = Float64Array.from(widths);
     this.surfaces = surfaces;
     this.length = (xs.length - 1) * SAMPLE_STEP;
+    this.finish = this.length - (def.runout ?? FINISH_MARGIN);
 
     for (let i = 0; i < xs.length; i++) {
       const key = this.key(Math.floor(xs[i]! / CELL), Math.floor(zs[i]! / CELL));
@@ -759,6 +764,19 @@ export const STAGE_VADMYRA: StageDef = {
   ],
 };
 
+/** Extra raksträcka efter den verkliga vägens slut (m): på snö behövs mer än 80 m för att stanna. */
+const RUNOUT_EXTRA = 160;
+
+/** Förlänger vägen rakt fram från sista punkten, så mållinjen ligger kvar men utrullningen blir längre. */
+function withRunout(road: [number, number, number][]): [number, number, number][] {
+  const [x1, z1, y1] = road[road.length - 1]!;
+  const [x0, z0] = road[road.length - 2]!;
+  const d = Math.hypot(x1 - x0, z1 - z0);
+  const extra: [number, number, number][] = [];
+  for (let m = 20; m <= RUNOUT_EXTRA; m += 20) extra.push([x1 + ((x1 - x0) / d) * m, z1 + ((z1 - z0) / d) * m, y1]);
+  return [...road, ...extra];
+}
+
 /**
  * Verkliga vinteretapper: Andersvattnet ur Rally Sweden i fyra delar på snöig skogsväg, med
  * geometri och höjd från öppen kartdata (se andersvattnet.ts). Sista delen körs i skymning,
@@ -772,8 +790,9 @@ export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLAR
     winter: true,
     ...(i === ANDERSVATTNET.length - 1 ? { light: 'dusk' as const } : {}),
     credit: `Andersvattnet i Rally Sweden, del ${i + 1} av ${ANDERSVATTNET.length} · kartdata © OpenStreetMap contributors (ODbL) · höjd EU-DEM, Copernicus`,
-    points: part.road.map(([x, z, y]) => ({ x, z, y, width: 6, surface: 'snow' as const })),
+    points: withRunout(part.road).map(([x, z, y]) => ({ x, z, y, width: 6, surface: 'snow' as const })),
     spurs: part.spurs.map((points) => ({ points, width: 5, surface: 'snow' as const })),
+    runout: FINISH_MARGIN + RUNOUT_EXTRA,
   }),
 ) as [StageDef, StageDef, StageDef, StageDef];
 

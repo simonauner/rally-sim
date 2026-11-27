@@ -5,7 +5,7 @@ import { splitDiff } from '../src/physics/drivetrain';
 import { tierOf } from '../src/career/career';
 import { Barriers } from '../src/physics/barriers';
 import { rollWeather, type Weather } from '../src/physics/weather';
-import { bestTyre, FINISH_MARGIN, lightAt, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
+import { bestTyre, lightAt, surfaceShares, STAGE_CORRIDOR, START_S, Stage, STAGE_FROSTBERGA, STAGE_MYRKULLA, STAGE_SKOGSBERG, STAGES } from '../src/physics/stage';
 import { TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from '../src/physics/surfaces';
 import { brakeAlongRoad, driveAlongRoad } from '../src/physics/autopilot';
 import { GhostRecorder, sampleGhost } from '../src/physics/ghost';
@@ -284,7 +284,7 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
   const car = makeCar(stage, 'gravel');
   const p0 = stage.poseAt(START_S - 8);
   car.reset(p0.x, p0.z, p0.heading, 0);
-  const finish = stage.length - FINISH_MARGIN;
+  const finish = stage.finish;
   const timer = new StageTimer(START_S, finish);
   const recorder = new GhostRecorder();
   const caller = new NoteCaller(generateNotes(stage, START_S, finish));
@@ -365,7 +365,7 @@ for (const [v0, steer] of [[15, 0.6], [20, 0.5], [25, 0.4]] as const) {
 // 11. Pacenotes ur geometrin.
 {
   const stage = new Stage(STAGE_SKOGSBERG);
-  const notes = generateNotes(stage, START_S, stage.length - FINISH_MARGIN);
+  const notes = generateNotes(stage, START_S, stage.finish);
   const corners = notes.filter((n) => n.kind === 'corner');
   const sorted = notes.every((n, i) => i === 0 || notes[i - 1]!.s <= n.s);
   // Den snäva kurvan in mot asfalten (stödpunkterna 285,334 → 309,368) svänger höger.
@@ -436,7 +436,7 @@ for (const def of STAGES) {
   const gripK = (surf: SurfaceId) => Math.sqrt(TYRE_GRIP[tyre][surf] / TYRE_GRIP.gravel.gravel);
   const p0 = stage.poseAt(START_S - 8);
   car.reset(p0.x, p0.z, p0.heading, 0);
-  const finish = stage.length - FINISH_MARGIN;
+  const finish = stage.finish;
   let maxOver = 0;
   let time = NaN;
   // Testföraren håller i snitt minst 10 m/s, så etappens längd ger en övre gräns för tiden.

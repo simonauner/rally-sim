@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { FINISH_MARGIN, STAGE_CORRIDOR, START_S, type Stage } from '../physics/stage';
+import { STAGE_CORRIDOR, START_S, type Stage } from '../physics/stage';
 import { rng } from '../physics/rng';
 import { COLORS } from './terrain';
 
@@ -120,7 +120,7 @@ export function buildStage(stage: Stage): THREE.Group {
   const postMat = new THREE.MeshToonMaterial({ color: 0x2b2b2b });
   const bannerMats = [0x2e7d32, 0xc62828].map((color) => new THREE.MeshToonMaterial({ color }));
   const lineMat = new THREE.MeshToonMaterial({ color: 0xf5f5f5 });
-  [START_S, stage.length - FINISH_MARGIN].forEach((s, n) => {
+  [START_S, stage.finish].forEach((s, n) => {
     const p = sideOf(s);
     const hw = stage.project(p.x, p.z).width / 2 + 0.8;
     const y = stage.heightAt(p.x, p.z);

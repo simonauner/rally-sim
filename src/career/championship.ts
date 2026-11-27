@@ -9,7 +9,7 @@ import type { DamageState } from '../physics/car';
 import { STAGE_TARGETS, TIER_PACE, TIER_PRIZE, type Tier } from './career';
 import { isRival, newRivals, raceLeg, type Rival } from './rivals';
 import { rng } from '../physics/rng';
-import { FINISH_MARGIN, Stage, STAGES, START_S } from '../physics/stage';
+import { Stage, STAGES, START_S } from '../physics/stage';
 import { rollWeather, WEATHER_SLOWDOWN, type Weather } from '../physics/weather';
 
 export interface ChampionshipDef {
@@ -112,7 +112,7 @@ export function championshipKm(def: ChampionshipDef) {
   return def.legs.reduce((sum, leg) => {
     if (!legKm.has(leg)) {
       const s = STAGES.find((x) => x.name === leg);
-      legKm.set(leg, s ? (new Stage(s).length - FINISH_MARGIN - START_S) / 1000 : 0);
+      legKm.set(leg, s ? (new Stage(s).finish - START_S) / 1000 : 0);
     }
     return sum + legKm.get(leg)!;
   }, 0);
