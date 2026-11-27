@@ -86,7 +86,7 @@ type Pick = (
 ) => Promise<CarModel | null>;
 /** Öppnar vridbordet med bilen och dess skador. */
 export type ShowCar = (model: CarModel, damage: CarDamage) => Showroom;
-/** Visar en bakgrund i etappens tema bakom menyn; null stänger av den. */
+/** Visar en bakgrund i etappens tema bakom menyn; null går tillbaka till huvudmenyns kurva. */
 export type Scenery = (stage: StageDef | null) => void;
 
 const buyMessage = (

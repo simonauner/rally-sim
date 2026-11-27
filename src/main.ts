@@ -25,7 +25,7 @@ import type { StageRecord } from './account/protocol';
 import { loadRecord, saveRecord } from './records';
 import { World } from './physics/world';
 import { CarMesh } from './render/carMesh';
-import { pickCar, showroom } from './carSelect';
+import { pickCar, type PickOptions, showroom } from './carSelect';
 import { formatMoney } from './career/career';
 import { awardPrize, careerMenu, championshipLegDone, confirmAbort, resumeChampionship } from './career/menus';
 import { loadCareer } from './career/store';
@@ -210,16 +210,39 @@ async function main() {
     if (!backdrops.has(winter)) backdrops.set(winter, menuScene(renderer, winter ? STAGE_FROSTBERGA : STAGE_MYRKULLA));
     return backdrops.get(winter)!;
   };
-  /** Bakgrund i etappens tema (årstid och ljus) medan mästerskapets etapper visas; null stänger av. */
-  let themed: MenuScene | null = null;
+  /** Scenen som spelas bakom menyn just nu. */
+  let shown: MenuScene | null = null;
+  const hideScenery = () => {
+    shown?.stop();
+    shown = null;
+  };
+  /** Bakgrund i etappens tema (årstid och ljus), eller huvudmenyns kurva i klockans ljus med null. */
   const scenery = (s: StageDef | null) => {
-    themed?.stop();
-    themed = s && backdropFor(!!s.winter);
-    themed?.play(s?.light ?? 'day');
+    shown?.stop();
+    shown = backdropFor(!!s?.winter);
+    shown.play(s ? (s.light ?? 'day') : undefined);
+  };
+  // I karriärens menyer går kurvan i bakgrunden; bilväljaren och vridbordet tar över renderaren medan de visas.
+  const careerPick = async (models: CarModel[], opts?: PickOptions) => {
+    hideScenery();
+    const picked = await pickCar(renderer, models, opts);
+    scenery(null);
+    return picked;
+  };
+  const careerShowCar = (m: CarModel, d: CarDamage) => {
+    hideScenery();
+    const room = showCar(m, d);
+    return {
+      ...room,
+      close() {
+        room.close();
+        scenery(null);
+      },
+    };
   };
   while (!resumed) {
     if (choice === 'controls') {
-      backdropFor(false).play();
+      scenery(null);
       if (settings.firstVisit) await showWelcome();
     }
     while (choice === 'settings' || choice === 'controls' || choice === 'account') {
@@ -240,9 +263,10 @@ async function main() {
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
     }
-    backdrops.get(false)?.stop();
+    if (choice !== 'career') hideScenery();
     if (choice === 'career') {
-      const launch = await careerMenu((models, opts) => pickCar(renderer, models, opts), showCar, scenery, gained);
+      const launch = await careerMenu(careerPick, careerShowCar, scenery, gained);
+      hideScenery();
       gained = 0;
       if (launch) {
         ({ model, stage: stageDef, championship: champ } = launch);
