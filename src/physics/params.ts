@@ -152,6 +152,7 @@ export function kvarn240Turbo(): CarParams {
       curveRpm: [900, 1500, 2500, 3000, 3500, 4500, 5500, 6200, 6800],
       curveNm: [100, 125, 160, 230, 275, 285, 255, 215, 160],
       launchRpm: 4200,
+      // Ungefär 0,7 bar som förebildens gatversion med laddluftkylare.
       turbo: { spool: 0.7, offBoost: 0.6, antilag: 0, bar: 0.7 },
     },
     gearbox: { ...p.gearbox, final: 4.1 },
@@ -413,7 +414,8 @@ export function kvarnTurbo4x4(): CarParams {
       inertia: 0.2,
       clutchLockRpm: 2600,
       launchRpm: 4500,
-      turbo: { spool: 0.6, offBoost: 0.6, antilag: 0, bar: 1 },
+      // Grupp A-bilarna gick på runt 1,5 bar före restriktorerna 1995.
+      turbo: { spool: 0.6, offBoost: 0.6, antilag: 0, bar: 1.5 },
     },
     gearbox: {
       ratios: [3.2, 2.2, 1.65, 1.3, 1.06, 0.88],
@@ -557,7 +559,8 @@ export function brenner5t(): CarParams {
       curveNm: [100, 115, 140, 200, 310, 360, 370, 330, 275, 210],
       inertia: 0.22,
       launchRpm: 5000,
-      turbo: { spool: 0.8, offBoost: 0.55, antilag: 0, bar: 1.2 },
+      // 1,6 bar som rallyversionen av förebilden med 230 kW.
+      turbo: { spool: 0.8, offBoost: 0.55, antilag: 0, bar: 1.6 },
     },
     gearbox: { ...p.gearbox, ratios: [3.0, 2.0, 1.5, 1.18, 0.95], final: 4.4, shiftTime: 0.2 },
     gauges: { rpmMax: 8000, rpmRed: 7000, speedMin: 20, speedMax: 240 },
@@ -595,6 +598,8 @@ export function soraTurbo(): CarParams {
       ...p.engine,
       curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
       curveNm: [115, 150, 230, 310, 340, 352, 345, 325, 295, 225],
+      // Gatversionen av förebilden: 1,1 bar från 3 000 rpm.
+      turbo: { ...p.engine.turbo!, bar: 1.1 },
     },
     // Vit urtavla med svarta siffror och orange nål; rött fält från 8000 som på förlagan.
     gauges: {

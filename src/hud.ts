@@ -98,7 +98,7 @@ export class Hud {
     const tacho = { x: w / 2, y: w / 2, r, min: 0, max: g.rpmMax, a0: s.tachoArc[0], a1: s.tachoArc[1] };
     const speedo = { x: w / 2, y: w * 1.5, r, min: g.speedMin, max: g.speedMax, a0: s.speedoArc[0], a1: s.speedoArc[1] };
     // Skalan i tiondels bar, så att stegen blir heltal.
-    const gauge = { x: w + 90, y: w / 2, r: w * 0.28, min: 0, max: 20, a0: 135, a1: 405 };
+    const gauge = { x: w + 90, y: w / 2, r: w * 0.28, min: 0, max: 25, a0: 135, a1: 405 };
     const shift = shiftPattern(params.gearbox.ratios.length, w / 2, w * 2.45, w * 0.36);
     if (this.faces?.params !== params) {
       const canvas = document.createElement('canvas');
