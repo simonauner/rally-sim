@@ -5,13 +5,7 @@ import { localChanged } from "../account/sync";
 import type { PickOptions, Showroom } from "../carSelect";
 import { applause, coins, showMenu } from "../menu";
 import { confetti } from "../confetti";
-import skogsrallytImg from "../assets/champ-skogsrallyt.webp";
-import myrkullarallytImg from "../assets/champ-myrkullarallyt.webp";
-import vinterrallytImg from "../assets/champ-vinterrallyt.webp";
-import forsrallytImg from "../assets/champ-forsrallyt.webp";
-import tallmoklassikernImg from "../assets/champ-tallmoklassikern.webp";
-import ljunghedsrallytImg from "../assets/champ-ljunghedsrallyt.webp";
-import israllytImg from "../assets/champ-israllyt.webp";
+import { CHAMPIONSHIP_IMAGES } from "../images";
 import { CARS, type CarModel } from "../physics/params";
 import { STAGES, type StageDef } from "../physics/stage";
 import { pickStage, stagePreviewHtml } from "../stageMenu";
@@ -260,17 +254,6 @@ export async function careerMenu(
     career = loadCareer().career;
   }
 }
-
-/** Vyn från motorhuven vid starten av en etapp i varje mästerskap, tagen i spelet i uppehållsväder. */
-const CHAMPIONSHIP_IMAGES: Record<string, string> = {
-  skogsrallyt: skogsrallytImg,
-  myrkullarallyt: myrkullarallytImg,
-  vinterrallyt: vinterrallytImg,
-  forsrallyt: forsrallytImg,
-  tallmoklassikern: tallmoklassikernImg,
-  ljunghedsrallyt: ljunghedsrallytImg,
-  israllyt: israllytImg,
-};
 
 /** Mästerskapen: först klassen, sedan mästerskapet i den. */
 async function championshipMenu(

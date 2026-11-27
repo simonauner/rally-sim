@@ -1,6 +1,7 @@
 import { CHAMPIONSHIPS, championshipUnlocked, unlockHint } from './career/championship';
 import { loadCareer } from './career/store';
 import { formatTime } from './hud';
+import { CHAMPIONSHIP_IMAGES, stageImage } from './images';
 import { showMenu } from './menu';
 import { STAGE_LENGTHS } from './physics/real/lengths';
 import { STAGES, START_S, surfaceShares, type Light, type StageDef } from './physics/stage';
@@ -30,8 +31,8 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
       items: [
         ...groups.map(({ c, legs }) =>
           championshipUnlocked(career, c)
-            ? { label: c.name, detail: legs.length === 1 ? '1 etapp' : `${legs.length} etapper`, value: c.id }
-            : { label: c.name, note: legs.join(', '), detail: `${unlockHint(career, c)} i karriären`, value: c.id, locked: true },
+            ? { label: c.name, detail: legs.length === 1 ? '1 etapp' : `${legs.length} etapper`, image: CHAMPIONSHIP_IMAGES[c.id], value: c.id }
+            : { label: c.name, note: legs.join(', '), detail: `${unlockHint(career, c)} i karriären`, image: CHAMPIONSHIP_IMAGES[c.id], value: c.id, locked: true },
         ),
         { label: '← Tillbaka', value: '' },
       ],
@@ -50,7 +51,7 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
           if (!s) return [];
           const best = loadRecord(s);
           const detail = [LIGHT_NAMES[s.light ?? 'day'], best ? `bästa ${formatTime(best.time)}` : '', extra?.(s) ?? ''].filter(Boolean).join(' · ');
-          return [{ label: s.name, note: s.credit ? 'verklig väg · kartdata © OpenStreetMap contributors' : undefined, detail: detail || undefined, value: s.name }];
+          return [{ label: s.name, note: s.credit ? 'verklig väg · kartdata © OpenStreetMap contributors' : undefined, detail: detail || undefined, image: stageImage(s.name), value: s.name }];
         }),
         { label: '← Tillbaka', value: '' },
       ],
@@ -97,7 +98,8 @@ export function stagePreviewHtml(def: StageDef): string {
   const sw = Math.max(maxX - minX, maxZ - minZ) / 60;
   const pad = sw * 1.5; // rymmer start-/målpunkten (r = 1,3 sw)
   const dot = (p: { x: number; z: number }, c: string) => `<circle cx="${p.x.toFixed(0)}" cy="${p.z.toFixed(0)}" r="${(sw * 1.3).toFixed(1)}" fill="${c}"/>`;
-  return `<table class="specs">
+  const image = stageImage(def.name);
+  return `${image ? `<img class="banner" src="${image}" alt="">` : ''}<table class="specs">
     <tr><th>Tid på dygnet</th><td>${LIGHT_NAMES[def.light ?? 'day'] || 'dag'}</td></tr>
     <tr><th>Längd</th><td>${(length / 1000).toFixed(1).replace('.', ',')} km</td></tr>
     <tr><th>Underlag</th><td>${shares.map(([s, k]) => `${SURFACES[s].name.toLowerCase()} ${Math.round(k * 100)} %`).join(', ')}${def.winter ? ' · vinter' : ''}</td></tr>
