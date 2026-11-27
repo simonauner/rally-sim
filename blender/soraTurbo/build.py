@@ -22,10 +22,12 @@ import sys
 import bpy
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import parts  # noqa: E402
 import shell  # noqa: E402
 from common import GROUND, TRACK, WHEELS, to_blender, to_car  # noqa: E402
+from simplify import simplify  # noqa: E402
 
 
 def reference(wheel):
@@ -83,6 +85,9 @@ def main():
     for obj in [body, *panels]:
         shell.flare(obj)
     shell.body_side(body)
+    # De små panelerna tål mindre: 0,3 tar bort stötfångarnas och dörrarnas former (upp till 18 mm).
+    for obj in [body, *panels]:
+        simplify(obj, 0.3 if obj is body else 0.6)
     objs = [body, *lamps, *panels, *parts.details(surface([body, *panels]))]
     for obj in objs:
         for c in obj.users_collection:

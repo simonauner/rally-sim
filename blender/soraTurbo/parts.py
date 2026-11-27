@@ -113,7 +113,7 @@ def wheel():
     """Ett hjul med utsidan åt +x (vänster sida; spelet speglar det på höger sida). Origo i navet, och
     objektet står på vänster framhjuls plats så det syns på bilen i Blender."""
     bm = bmesh.new()
-    revolve(bm, tyre_profile(), 'x', 48)
+    revolve(bm, tyre_profile(), 'x', 32)
     # Fälgen: guldläpp ytterst, mörk insida bakom ekrarna.
     rim = [
         (0.096, 0.2, 'gold'),
@@ -127,7 +127,7 @@ def wheel():
         (-0.09, 0.195, 'gold'),
         (0.09, 0.195, 'gold'),
     ]
-    revolve(bm, rim, 'x', 48)
+    revolve(bm, rim, 'x', 32)
     # Bakplåt och bromsskiva bakom ekrarna, så man inte ser igenom hjulet.
     revolve(bm, [(-0.06, 0.002, 'black'), (-0.06, 0.19, 'black'), (-0.07, 0.19, 'black'), (-0.07, 0.002, 'black')], 'x', 24)
     revolve(bm, [(-0.005, 0.08, 'chrome'), (-0.005, 0.165, 'chrome'), (-0.025, 0.165, 'chrome'), (-0.025, 0.08, 'chrome')], 'x', 32)
