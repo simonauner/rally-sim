@@ -4,7 +4,7 @@
  */
 
 import { MAX_HISTORY, type CareerState, type HistoryEntry } from '../account/protocol';
-import type { CarParams, Sponsor } from '../physics/params';
+import { CARS, type CarParams, type Sponsor } from '../physics/params';
 
 /**
  * Pengar man börjar med, utan bil. Räcker till en av de billiga bilarna hos bilhandlaren:
@@ -64,8 +64,26 @@ export interface Upgrade {
   price: number;
   /** Vad delen gör, för menyn. */
   effect: string;
+  /** Vilka bilar i klassen delen passar; saknas den passar alla. */
+  fits?: (p: CarParams) => boolean;
   apply: (p: CarParams) => void;
 }
+
+/** Bilarnas fabriksparametrar efter namn. */
+const PARAMS = new Map(CARS.map((m) => [m.make().name, m.make()]));
+const awd = (p: CarParams) => !!p.centerDiff;
+/** shortcut: fysiken har ingen laddtrycksmodell, så turbon känns igen på namnet; lägg en flagga i motorn om turbon modelleras. */
+const TURBO = new Set(['Kvarn 240 Turbo', 'Kvarn Turbo 4x4', 'Sora 2.0 Turbo', 'Hoshi 2.0 4WD', 'Volpe 2.0 Turbo 16V', 'Brenner 5T Coupé']);
+const turbo = (p: CarParams) => TURBO.has(p.name);
+const brenner = (p: CarParams) => p.name === 'Brenner 5T Coupé';
+const fits = (u: Upgrade, p: CarParams) => u.fits?.(p) ?? true;
+
+/** Tar bort vikt och tröghet i samma andel. */
+const lighten = (p: CarParams, kg: number) => {
+  const k = (p.mass - kg) / p.mass;
+  p.mass -= kg;
+  p.inertia = p.inertia.map((i) => i * k) as CarParams['inertia'];
+};
 
 /** Skalar vridmomentkurvan med en faktor som beror på varvtalet. */
 const torque = (p: CarParams, factor: (rpm: number) => number) => {
@@ -292,6 +310,8 @@ export const UPGRADES: Upgrade[] = [
     name: 'Lamellspärr',
     price: 7000,
     effect: 'Nästan låst diff: drar rakt ut ur kurvorna men vill gå rakt fram',
+    // Låser både fram- och bakaxeln på en fyrhjulsbil och gör den bara mer understyrd.
+    fits: (p) => !awd(p),
     apply: (p) => {
       p.diff = { lock: Math.max(p.diff.lock, 0.75), preload: Math.max(p.diff.preload, 120) };
     },
@@ -340,11 +360,7 @@ export const UPGRADES: Upgrade[] = [
     name: 'Lättviktskaross',
     price: 7000,
     effect: '−50 kg: tunnare plåt och plexiglasrutor',
-    apply: (p) => {
-      const k = (p.mass - 50) / p.mass;
-      p.mass -= 50;
-      p.inertia = p.inertia.map((i) => i * k) as CarParams['inertia'];
-    },
+    apply: (p) => lighten(p, 50),
   },
   {
     tier: 2,
@@ -358,6 +374,104 @@ export const UPGRADES: Upgrade[] = [
       p.gripScale *= 1.06;
     },
   },
+  // Klass 2 efter motor och drivlina.
+  {
+    tier: 2,
+    id: 'throttles',
+    sponsor: { name: 'Spjällgruppen', fg: '#ffffff', bg: '#2f7d4f' },
+    group: 'Motor',
+    name: 'Separata gasspjäll',
+    price: 6500,
+    effect: '+7 % vridmoment över 5 000 rpm',
+    fits: (p) => !turbo(p),
+    apply: (p) => torque(p, (rpm) => (rpm >= 5000 ? 1.07 : 1.01)),
+  },
+  {
+    tier: 2,
+    id: 'intercooler',
+    sponsor: { name: 'Kylarn', fg: '#1d5fa8', bg: '#ffffff' },
+    group: 'Motor',
+    name: 'Större laddluftkylare',
+    price: 5000,
+    effect: '+6 % vridmoment mellan 3 000 och 6 000 rpm',
+    fits: turbo,
+    apply: (p) => torque(p, (rpm) => (rpm >= 3000 && rpm <= 6000 ? 1.06 : 1.02)),
+  },
+  {
+    tier: 2,
+    id: 'boost',
+    sponsor: { name: 'TRYCKET', fg: '#f2d22e', bg: '#1b1b1b' },
+    group: 'Motor',
+    name: 'Högre laddtryck',
+    price: 8000,
+    effect: '+10 % vridmoment över 3 500 rpm',
+    fits: turbo,
+    apply: (p) => torque(p, (rpm) => (rpm >= 3500 ? 1.1 : 1)),
+  },
+  {
+    tier: 2,
+    id: 'antilag',
+    sponsor: { name: 'Smällen', fg: '#ffffff', bg: '#e8202a' },
+    group: 'Motor',
+    name: 'Antilag',
+    price: 12000,
+    effect: 'Turbon laddar även av gasen: +25 % vridmoment under 3 500 rpm',
+    fits: turbo,
+    apply: (p) => torque(p, (rpm) => (rpm < 3500 ? 1.25 : rpm < 4500 ? 1.1 : 1)),
+  },
+  {
+    tier: 2,
+    id: 'centerdiff',
+    sponsor: { name: 'Mittpunkt', fg: '#1b1b1b', bg: '#e8902a' },
+    group: 'Drivlina',
+    name: 'Justerbar mittdiff',
+    price: 8000,
+    effect: 'Mer moment bak och hårdare låsning: vrider in på gas',
+    fits: awd,
+    apply: (p) => {
+      const c = p.centerDiff!;
+      p.frontShare = Math.max(0.3, p.frontShare - 0.08);
+      p.centerDiff = { lock: Math.min(0.9, c.lock + 0.15), preload: c.preload + 30 };
+    },
+  },
+  // Brenner: femcylindern och coupékarossen från Grupp B-tiden.
+  {
+    tier: 2,
+    id: 'head20v',
+    sponsor: { name: 'Fünfzylinder', fg: '#ffffff', bg: '#1b1b1b' },
+    group: 'Motor',
+    name: '20-ventilstopp',
+    price: 14000,
+    effect: '+10 % vridmoment över 4 500 rpm och 500 rpm högre varvtak',
+    fits: brenner,
+    apply: (p) => {
+      torque(p, (rpm) => (rpm >= 4500 ? 1.1 : 1));
+      p.engine = { ...p.engine, limiterRpm: p.engine.limiterRpm + 500 };
+      p.gearbox = { ...p.gearbox, upshiftRpm: p.gearbox.upshiftRpm + 400 };
+    },
+  },
+  {
+    tier: 2,
+    id: 'bigturbo',
+    sponsor: { name: 'GROSSLADER', fg: '#f2d22e', bg: '#e8202a' },
+    group: 'Motor',
+    name: 'Stor tävlingsturbo',
+    price: 18000,
+    effect: '+20 % vridmoment över 4 500 rpm, men −10 % under 3 500: ännu större turbohål',
+    fits: brenner,
+    apply: (p) => torque(p, (rpm) => (rpm >= 4500 ? 1.2 : rpm < 3500 ? 0.9 : 1.05)),
+  },
+  {
+    tier: 2,
+    id: 'kevlar',
+    sponsor: { name: 'Faserwerk', fg: '#1b1b1b', bg: '#f2d22e' },
+    group: 'Kaross',
+    name: 'Kevlarkaross',
+    price: 16000,
+    effect: '−90 kg: skärmar, huv och luckor i kevlar',
+    fits: brenner,
+    apply: (p) => lighten(p, 90),
+  },
 ];
 
 /** De gamla uppgraderingarna i nivåer, och vad varje nivå kostade. Köpta nivåer återbetalas. */
@@ -368,7 +482,7 @@ const OLD_UPGRADES: Record<string, number[]> = {
   tyres: [1500, 3500, 6000],
 };
 
-/** Byter gamla nivåuppgraderingar mot pengarna tillbaka. Samma resultat varje gång, så den kan köras vid varje laddning. */
+/** Byter gamla nivåuppgraderingar, och delar som inte längre passar bilen, mot pengarna tillbaka. Samma resultat varje gång, så den kan köras vid varje laddning. */
 export function migrateCareer(career: CareerState): CareerState {
   let refund = 0;
   const garage: CareerState['garage'] = {};
@@ -376,7 +490,10 @@ export function migrateCareer(career: CareerState): CareerState {
     const kept: Record<string, number> = {};
     for (const [id, level] of Object.entries(upgrades)) {
       const old = OLD_UPGRADES[id];
+      const part = UPGRADES.find((u) => u.id === id);
+      const p = PARAMS.get(car);
       if (old) refund += old.slice(0, level).reduce((a, b) => a + b, 0);
+      else if (part && p && !fits(part, p)) refund += part.price;
       else kept[id] = level;
     }
     garage[car] = { upgrades: kept };
@@ -391,7 +508,10 @@ export function newCareer(): CareerState {
 export const levelOf = (career: CareerState, car: string, upgrade: string) => career.garage[car]?.upgrades[upgrade] ?? 0;
 
 /** Delarna som passar bilen. */
-export const upgradesFor = (car: string) => UPGRADES.filter((u) => u.tier === tierOf(car));
+export const upgradesFor = (car: string) => {
+  const p = PARAMS.get(car);
+  return UPGRADES.filter((u) => u.tier === tierOf(car) && (!p || fits(u, p)));
+};
 
 /** Dekalerna för bilens monterade delar, i delarnas ordning. */
 export const sponsorsOf = (upgrades: Record<string, number>) => UPGRADES.filter((u) => upgrades[u.id]).map((u) => u.sponsor);
@@ -399,7 +519,7 @@ export const sponsorsOf = (upgrades: Record<string, number>) => UPGRADES.filter(
 /** Bilens parametrar med karriärens uppgraderingar. */
 export function applyUpgrades(params: CarParams, upgrades: Record<string, number>): CarParams {
   const p = { ...params };
-  for (const u of UPGRADES) if (upgrades[u.id]) u.apply(p);
+  for (const u of UPGRADES) if (upgrades[u.id] && fits(u, params)) u.apply(p);
   return p;
 }
 

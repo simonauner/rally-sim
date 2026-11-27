@@ -195,12 +195,14 @@ Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
 - **Klass 2:** när alla tre mästerskapen i klass 1 är vunna säljer bilhandlaren sju snabbare
   bilar (Ljung 2000 16V med framhjulsdrift, Strand 2.0 GT med bakhjulsdrift och fem med
   fyrhjulsdrift och mittdiff: Kvarn Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé och
-  Sora 2.0 Turbo). De har egna delar i garaget och egna mästerskap
+  Sora 2.0 Turbo). De har egna delar i garaget, efter drivlina och motor (mittdiff för
+  fyrhjulsdrift, laddtryck och antilag för turbo, gasspjäll för sugmotorer, och Brenner har egna
+  Grupp B-delar), och egna mästerskap
   (Tallmoklassikern, Ljunghedsrallyt och Israllyt). Medaljgränserna och fältet är
   8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
   Varje klass kör bara sina egna mästerskap.
 
-Pengarna köper uppgraderingar i garaget (motor, bromsar, fjädring, däck, tre nivåer var) och
+Pengarna köper uppgraderingar i garaget (motor, drivlina, bromsar, fjädring, kaross och däck, en gång per bil) och
 bilar hos bilhandlaren. Man börjar med Kvarn 240 GL. Regler och priser finns i
 `src/career/career.ts`. Fri körning finns kvar med alla bilar och utan pengar.
 
