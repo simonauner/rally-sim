@@ -20,7 +20,8 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
       title,
       solid: true,
       items: [
-        ...CHAMPIONSHIPS.map((c) =>
+        // Klass 2 kör samma etapper som klass 1, så etapperna listas bara under klass 1.
+        ...CHAMPIONSHIPS.filter((c) => c.tier === 1).map((c) =>
           championshipUnlocked(career, c)
             ? { label: c.name, detail: `${c.legs.length} etapper`, value: c.id }
             : { label: c.name, note: c.legs.join(', '), detail: `${unlockHint(career, c)} i karriären`, value: c.id, locked: true },

@@ -23,9 +23,12 @@ import {
   logged,
   MEDALS,
   prizeFor,
-  STAGE_TARGETS,
-  UPGRADES,
+  stageTargets,
+  tierOf,
+  TIER_PRIZE,
+  upgradesFor,
   type BuyResult,
+  type Tier,
   type Upgrade,
 } from './career';
 import {
@@ -34,6 +37,8 @@ import {
   championshipById,
   championshipPrize,
   championshipUnlocked,
+  hasWon,
+  tierUnlocked,
   unlockHint,
   withWin,
   legWeather,
@@ -142,7 +147,7 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
             { label: '← Tillbaka', value: 'back' },
           ]
         : [
-            { label: 'Enstaka lopp', detail: `upp till ${formatMoney(MEDALS[0].prize)}`, value: 'stage' },
+            { label: 'Enstaka lopp', detail: `upp till ${formatMoney(MEDALS[0].prize * Math.max(...Object.keys(career.garage).map((car) => TIER_PRIZE[tierOf(car)])))}`, value: 'stage' },
             ongoing
               ? { label: 'Mästerskap', detail: `pågår: ${championshipById(ongoing.id)?.name}, etapp ${ongoing.leg + 1} av ${championshipById(ongoing.id)?.legs.length}`, value: 'champ' }
               : { label: 'Mästerskap', detail: `upp till ${formatMoney(Math.max(...CHAMPIONSHIPS.map((ch) => championshipMedals(ch)[0]!.prize)))}`, value: 'champ' },
@@ -163,8 +168,9 @@ export async function careerMenu(pick: Pick, showCar: ShowCar, gained = 0): Prom
     if (c === 'back') return null;
     if (c === 'stage') {
       const stage = await pickStage('Enstaka lopp', (s) => {
-        const t = STAGE_TARGETS[s.name];
-        return t ? `guld under ${t[0]} s` : '';
+        const t = stageTargets(s.name);
+        const t2 = tierUnlocked(career, 2) && stageTargets(s.name, 2);
+        return t ? `guld under ${t[0]} s${t2 ? `, i klass 2 under ${t2[0]} s` : ''}` : '';
       });
       const model = stage && (await pick(ownedModels(career)));
       if (stage && model) return { model, stage, championship: null };
@@ -185,18 +191,49 @@ const CHAMPIONSHIP_IMAGES: Record<string, string> = {
   skogsrallyt: skogsrallytImg,
   myrkullarallyt: myrkullarallytImg,
   vinterrallyt: vinterrallytImg,
+  // shortcut: klass 2 lånar bilderna från klass 1-mästerskapet med samma etapper; ta egna om de behövs.
+  tallmoklassikern: skogsrallytImg,
+  ljunghedsrallyt: myrkullarallytImg,
+  israllyt: vinterrallytImg,
 };
 
-/** Mästerskapen att välja mellan. */
+/** Mästerskapen: först klassen, sedan mästerskapet i den. */
 async function championshipMenu(career: CareerState, pick: Pick, showCar: ShowCar): Promise<Launch | null> {
+  const tiers = [...new Set(CHAMPIONSHIPS.map((ch) => ch.tier))];
   for (;;) {
-    const id = await showMenu<string>({
+    const tier = await showMenu<Tier | 0>({
       title: 'Mästerskap',
       subtitle: `Kassa: ${formatMoney(career.money)}`,
       solid: true,
-      body: '<div>Flera etapper i följd med samma bil mot ett fält av andra förare. Skador följer med mellan etapperna; du kan göra service mellan etapperna och laga bilen om du behöver.</div>',
+      body: '<div>Flera etapper i följd med samma bil mot ett fält av andra förare. Skador följer med mellan etapperna; du kan göra service mellan etapperna och laga bilen om du behöver. Varje klass har egna mästerskap, och bara bilar i klassen får köra.</div>',
       items: [
-        ...CHAMPIONSHIPS.map((ch) =>
+        ...tiers.map((t) => {
+          const list = CHAMPIONSHIPS.filter((ch) => ch.tier === t);
+          const cars = CARS.map(nameOf).filter((n) => tierOf(n) === t).join(', ');
+          return tierUnlocked(career, t)
+            ? { label: `Klass ${t}`, note: cars, detail: `${list.filter((ch) => hasWon(career, ch)).length}/${list.length} vunna`, value: t }
+            : { label: `Klass ${t}`, note: cars, detail: `vinn alla mästerskap i klass ${t - 1}`, value: t, locked: true };
+        }),
+        { label: '← Tillbaka', value: 0 },
+      ],
+      cancel: 0,
+    });
+    if (!tier) return null;
+    if (!tierUnlocked(career, tier)) continue;
+    const launch = await tierMenu(tier, career, pick, showCar);
+    if (launch) return launch;
+  }
+}
+
+/** Mästerskapen i en klass. Null = tillbaka till klasserna. */
+async function tierMenu(tier: Tier, career: CareerState, pick: Pick, showCar: ShowCar): Promise<Launch | null> {
+  for (;;) {
+    const id = await showMenu<string>({
+      title: `Klass ${tier}`,
+      subtitle: `Kassa: ${formatMoney(career.money)}`,
+      solid: true,
+      items: [
+        ...CHAMPIONSHIPS.filter((ch) => ch.tier === tier).map((ch) =>
           championshipUnlocked(career, ch)
             ? { label: ch.name, image: CHAMPIONSHIP_IMAGES[ch.id], detail: `upp till ${formatMoney(championshipMedals(ch)[0]!.prize)}`, value: ch.id }
             : { label: ch.name, image: CHAMPIONSHIP_IMAGES[ch.id], detail: unlockHint(career, ch), value: ch.id, locked: true },
@@ -275,14 +312,14 @@ async function garage(pick: Pick) {
 async function upgrades(car: string) {
   for (;;) {
     const career = loadCareer().career;
-    const groups = [...new Set(UPGRADES.map((u) => u.group))];
+    const groups = [...new Set(upgradesFor(car).map((u) => u.group))];
     const group = await showMenu<string>({
       title: car,
       subtitle: `Kassa: ${formatMoney(career.money)}`,
       side: true,
       items: [
         ...groups.map((g) => {
-          const parts = UPGRADES.filter((u) => u.group === g);
+          const parts = upgradesFor(car).filter((u) => u.group === g);
           return { label: g, detail: `${parts.filter((u) => levelOf(career, car, u.id)).length}/${parts.length} monterade`, value: g };
         }),
         { label: '← Tillbaka', value: '' },
@@ -295,7 +332,7 @@ async function upgrades(car: string) {
 }
 
 async function parts(car: string, group: string) {
-  const parts = UPGRADES.filter((u) => u.group === group);
+  const parts = upgradesFor(car).filter((u) => u.group === group);
   let message = '';
   let countFrom = loadCareer().career.money;
   for (;;) {
@@ -360,8 +397,11 @@ async function dealer(pick: Pick) {
     const bought = await pick(forSale, {
       title: 'Bilhandlare',
       subtitle: () => `Kassa: ${formatMoney(loadCareer().career.money)}`,
-      detail: (m) => formatMoney(CAR_PRICES[nameOf(m)] ?? 0),
+      detail: (m) => `klass ${tierOf(nameOf(m))} · ${formatMoney(CAR_PRICES[nameOf(m)] ?? 0)}`,
       compare: ownedModels(career),
+      // Klass 2 säljs först när alla mästerskap i klass 1 är vunna.
+      locked: (m) => !tierUnlocked(career, tierOf(nameOf(m))),
+      lockedLabel: 'Vinn alla mästerskap i klass 1',
       action: {
         label: 'Köp',
         denied: (m) => buyCar(loadCareer().career, nameOf(m)) === 'poor',
@@ -394,7 +434,7 @@ async function dealer(pick: Pick) {
 
 /** Delar ut prispengar för ett enstaka åk och returnerar en rad till målskärmen. */
 export function awardPrize(stageName: string, time: number, car: string): string {
-  const { medal, prize } = prizeFor(stageName, time);
+  const { medal, prize } = prizeFor(stageName, time, tierOf(car));
   const career = loadCareer().career;
   commit(logged({ ...career, money: career.money + prize }, { kind: 'stage', name: stageName, car, time, medal, amount: prize }));
   return `<div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ''}</div><div>Bilen lagas gratis efter enstaka lopp.</div>`;
@@ -426,7 +466,7 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
   const c = await showMenu<'go' | 'back'>({
     title: def.name,
     solid: true,
-    body: `<img class="banner" src="${CHAMPIONSHIP_IMAGES[def.id]}" alt=""><div>Etapper: ${def.legs.join(', ')}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen. Omstart finns inte.</div><table class="specs">${championshipMedals(def)
+    body: `<img class="banner" src="${CHAMPIONSHIP_IMAGES[def.id]}" alt=""><div>Klass ${def.tier}. Etapper: ${def.legs.join(', ')}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen. Omstart finns inte.</div><table class="specs">${championshipMedals(def)
       .map((m, i) => `<tr><th>${trophy(i + 1)}${i + 1}:a</th><td>${formatMoney(m.prize)}</td></tr>`)
       .join('')}</table>`,
     items: [
@@ -436,7 +476,7 @@ async function startChampionship(def: ChampionshipDef, career: CareerState, pick
     cancel: 'back',
   });
   if (c !== 'go') return null;
-  const model = await pick(ownedModels(career));
+  const model = await pick(ownedModels(career), { locked: (m) => tierOf(nameOf(m)) !== def.tier, lockedLabel: `Bara bilar i klass ${def.tier}` });
   const stage = STAGES.find((s) => s.name === def.legs[0]);
   if (!model || !stage) return null;
   // Samma förhandsvisning och service som mellan etapperna, med hel bil.

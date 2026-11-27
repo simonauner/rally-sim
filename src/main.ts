@@ -200,7 +200,7 @@ async function main() {
   };
   const freeDriveDetail = () => {
     const career = loadCareer().career;
-    const stages = CHAMPIONSHIPS.filter((c) => championshipUnlocked(career, c)).reduce((n, c) => n + c.legs.length, 0);
+    const stages = CHAMPIONSHIPS.filter((c) => c.tier === 1 && championshipUnlocked(career, c)).reduce((n, c) => n + c.legs.length, 0);
     const cars = freeCars().length;
     return `${stages} av ${STAGES.length} etapper, ${cars === 1 ? '1 bil' : `${cars} bilar`}`;
   };
