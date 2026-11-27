@@ -260,7 +260,6 @@ async function championshipMenu(
   for (;;) {
     const tier = await showMenu<Tier | 0>({
       title: "Mästerskap",
-      subtitle: `Kassa: ${formatMoney(career.money)}`,
       solid: true,
       body: "<div>Flera etapper i följd med samma bil mot ett fält av andra förare. Skador följer med mellan etapperna; du kan göra service mellan etapperna och laga bilen om du behöver. Varje klass har egna mästerskap, och bara bilar i klassen får köra.</div>",
       items: [
