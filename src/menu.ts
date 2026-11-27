@@ -117,7 +117,7 @@ export const coins = () => playClip(coinsUrl, 0.6);
 export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const el = root();
   el.className = opts.solid ? 'solid' : opts.side ? 'side' : opts.aside ? 'pair' : '';
-  el.innerHTML = `
+  const panels = `
     <div class="panel">
       <h1>${opts.title}</h1>
       ${opts.subtitle ? `<div class="subtitle">${opts.subtitle}</div>` : ''}
@@ -130,7 +130,9 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
         })
         .join('')}</div>
     </div>
-    ${opts.aside ? `<div class="panel aside">${opts.aside}</div>` : ''}
+    ${opts.aside ? `<div class="panel aside">${opts.aside}</div>` : ''}`;
+  // Vid sidan ligger panelerna i en rad som kan glida upp (se #menu.side i index.html).
+  el.innerHTML = `${opts.side && !opts.solid ? `<div class="panels">${panels}</div>` : panels}
     ${opts.footer ? `<div class="corner">${opts.footer}</div>` : ''}`;
   el.style.display = 'flex';
   const buttons = [...el.querySelectorAll('button')];
