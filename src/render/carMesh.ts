@@ -324,20 +324,23 @@ function buildUnderbody(b: BodyShape, wheels: WheelDef[], frontShare: number, ex
   const zR = rear[0]!.mount[2];
   // The hub sits about 0.125 m below the mount at rest (see yMount in params.ts).
   const hubY = wheels[0]!.mount[1] - 0.125;
+  // Nothing may hang more than 3 cm below the floor, or it reaches the ground on low cars.
+  const low = y0 - 0.03;
+  const axleY = Math.max(hubY, low + 0.035);
 
   box(2 * b.halfX - 0.14, 0.02, b.nose - b.tail - 0.2, 0, y0 - 0.012, (b.nose + b.tail) / 2, floor);
-  box(0.5, 0.14, 0.55, 0, y0 - 0.07, zF - 0.05, metal); // engine sump
-  box(0.28, 0.12, 0.5, 0, y0 - 0.06, zF - 0.55, metal); // gearbox
-  box(2 * b.halfX - 0.5, 0.06, 0.1, 0, y0 - 0.04, zF + 0.05, metal); // front crossmember
-  for (const w of front) rod(0.025, v(0, hubY, zF), v(w.mount[0] * 0.9, hubY, zF), frontShare > 0 ? metal : pipe);
+  box(0.5, 0.06, 0.55, 0, y0, zF - 0.05, metal); // engine sump
+  box(0.28, 0.05, 0.5, 0, y0, zF - 0.55, metal); // gearbox
+  box(2 * b.halfX - 0.5, 0.04, 0.1, 0, y0, zF + 0.05, metal); // front crossmember
+  for (const w of front) rod(0.025, v(0, axleY, zF), v(w.mount[0] * 0.9, axleY, zF), frontShare > 0 ? metal : pipe);
   // Rear axle tube between the hubs; a diff and a propshaft when the rear is driven.
-  rod(0.035, v(rear[0]!.mount[0] * 0.9, hubY, zR), v(rear[1]!.mount[0] * 0.9, hubY, zR), metal);
+  rod(0.035, v(rear[0]!.mount[0] * 0.9, axleY, zR), v(rear[1]!.mount[0] * 0.9, axleY, zR), metal);
   if (frontShare < 1) {
-    box(0.26, 0.2, 0.24, 0, hubY, zR, metal);
-    rod(0.035, v(0, y0 - 0.06, zF - 0.8), v(0, hubY, zR + 0.12), pipe);
+    box(0.26, 0.2, 0.24, 0, Math.max(axleY, low + 0.1), zR, metal);
+    rod(0.035, v(0, y0 - 0.005, zF - 0.8), v(0, axleY, zR + 0.12), pipe);
   }
-  box(0.8, 0.16, 0.42, 0, y0 - 0.07, (zR + b.tail) / 2 + 0.05, metal); // fuel tank
-  if (exhaust) rod(0.03, v(-0.32, y0 - 0.05, zF - 0.3), v(-0.32, y0 - 0.05, b.tail - 0.05), pipe);
+  box(0.8, 0.06, 0.42, 0, y0, (zR + b.tail) / 2 + 0.05, metal); // fuel tank
+  if (exhaust) rod(0.02, v(-0.32, y0 - 0.01, zF - 0.3), v(-0.32, y0 - 0.01, b.tail - 0.05), pipe);
   return g;
 }
 
