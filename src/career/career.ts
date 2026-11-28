@@ -586,7 +586,8 @@ export function migrateCareer(career: CareerState): CareerState {
   let refund = 0;
   const renamed = Object.keys(career.garage).some((car) => car in RENAMED_CARS) || !!career.history?.some((e) => (e.car ?? '') in RENAMED_CARS || (e.kind === 'car' && e.name in RENAMED_CARS));
   const garage: CareerState['garage'] = {};
-  for (const [old, { upgrades }] of Object.entries(career.garage)) {
+  for (const [old, owned] of Object.entries(career.garage)) {
+    const { upgrades } = owned;
     const car = currentCarName(old);
     const kept: Record<string, number> = {};
     for (const [id, level] of Object.entries(upgrades)) {
@@ -597,7 +598,7 @@ export function migrateCareer(career: CareerState): CareerState {
       else if (part && p && !fits(part, p)) refund += part.price;
       else kept[id] = level;
     }
-    garage[car] = { upgrades: { ...garage[car]?.upgrades, ...kept } };
+    garage[car] = { ...owned, upgrades: { ...garage[car]?.upgrades, ...kept } };
   }
   if (!refund && !renamed) return career;
   const history = career.history?.map((e) => ({
@@ -644,7 +645,7 @@ export function buyUpgrade(career: CareerState, car: string, upgradeId: string):
   if (levelOf(career, car, upgradeId)) return 'maxed';
   if (career.money < u.price) return 'poor';
   return logged(
-    { ...career, money: career.money - u.price, garage: { ...career.garage, [car]: { upgrades: { ...owned.upgrades, [upgradeId]: 1 } } } },
+    { ...career, money: career.money - u.price, garage: { ...career.garage, [car]: { ...owned, upgrades: { ...owned.upgrades, [upgradeId]: 1 } } } },
     { kind: 'upgrade', name: u.name, car, amount: -u.price },
   );
 }
@@ -654,6 +655,34 @@ export function buyCar(career: CareerState, car: string): BuyResult {
   if (price === undefined || career.garage[car]) return 'unknown';
   if (career.money < price) return 'poor';
   return logged({ ...career, money: career.money - price, garage: { ...career.garage, [car]: { upgrades: {} } } }, { kind: 'car', name: car, amount: -price });
+}
+
+/** Paint colours in the garage: cosmetic only, a money sink once everything is bought. Class 2 pays double (TIER_PRIZE). */
+export const PAINTS: { name: string; color: number; price: number }[] = [
+  { name: 'Polarvit', color: 0xf2f2ee, price: 5000 },
+  { name: 'Midnattsblå', color: 0x1c2a4a, price: 8000 },
+  { name: 'Racinggrön', color: 0x1f5a3a, price: 10000 },
+  { name: 'Signalgul', color: 0xf0c419, price: 12000 },
+  { name: 'Tävlingsröd', color: 0xc8141c, price: 12000 },
+  { name: 'Lavaorange', color: 0xe8661c, price: 15000 },
+  { name: 'Mattsvart', color: 0x18181a, price: 15000 },
+  { name: 'Guld', color: 0xc9a227, price: 25000 },
+];
+
+export const paintPrice = (car: string, paint: (typeof PAINTS)[number]) => paint.price * TIER_PRIZE[tierOf(car)];
+
+/** Paints the car; `color` null goes back to the factory paint for free. Earlier colours are not kept. */
+export function buyPaint(career: CareerState, car: string, color: number | null): BuyResult {
+  const owned = career.garage[car];
+  const paint = PAINTS.find((p) => p.color === color);
+  if (!owned || (color !== null && !paint)) return 'unknown';
+  if ((owned.paint ?? null) === color) return 'maxed';
+  const { paint: _, ...rest } = owned;
+  if (!paint) return { ...career, garage: { ...career.garage, [car]: rest } };
+  const price = paintPrice(car, paint);
+  if (career.money < price) return 'poor';
+  // Logged as an upgrade so older clients, which only know the existing kinds, still accept the history.
+  return logged({ ...career, money: career.money - price, garage: { ...career.garage, [car]: { ...rest, paint: color! } } }, { kind: 'upgrade', name: `Lack: ${paint.name}`, car, amount: -price });
 }
 
 /** The daily bonus, once per day. `today` is YYYY-MM-DD in local time. */

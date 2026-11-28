@@ -90,8 +90,8 @@ function parseRecord(value: string): StageRecord | null {
 /** The career: money and garage. Shared with the server for validation. */
 export interface CareerState {
   money: number;
-  /** Owned cars (the car's name) and their upgrade levels per category. */
-  garage: Record<string, { upgrades: Record<string, number> }>;
+  /** Owned cars (the car's name), their upgrade levels per category and a bought paint colour (0xRRGGBB; missing = factory paint). */
+  garage: Record<string, { upgrades: Record<string, number>; paint?: number }>;
   /** The day (YYYY-MM-DD, local time) the daily bonus was last collected. */
   bonusDay?: string;
   /** What the player has done, oldest first: runs, championships and purchases. Missing in careers from before the history. */
@@ -165,7 +165,8 @@ export function isCareerState(value: unknown): value is CareerState {
       name.length <= 40 &&
       typeof car?.upgrades === 'object' &&
       car.upgrades !== null &&
-      Object.entries(car.upgrades).every(([id, level]) => id.length <= 20 && Number.isInteger(level) && level >= 0 && level <= 10),
+      Object.entries(car.upgrades).every(([id, level]) => id.length <= 20 && Number.isInteger(level) && level >= 0 && level <= 10) &&
+      (car.paint === undefined || (Number.isInteger(car.paint) && car.paint >= 0 && car.paint <= 0xffffff)),
   );
 }
 

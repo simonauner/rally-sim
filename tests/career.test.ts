@@ -1,5 +1,5 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
-import { applyUpgrades, buyCar, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
+import { applyUpgrades, buyCar, buyPaint, PAINTS, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
 import { afterLeg, bestPlace, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, startOrder, aheadOnRoad, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
@@ -183,6 +183,22 @@ const CAR = 'Kvarn 240 GL';
   check('history: capped', full.history!.length === MAX_HISTORY && full.history!.at(-1)!.time === 90 + MAX_HISTORY + 4 && isCareerState(full), `${full.history!.length} rows`);
   const bad = { ...c, history: [{ kind: 'stage', at: 1, name: '', amount: 0 }] };
   check('history: sanitized', !isCareerState(bad) && !isCareerState({ ...c, history: [{ ...c.history![0]!, amount: 1.5 }] }), 'rejected');
+}
+
+// Paint: cosmetic, bought per car, kept through upgrades and migration, validated.
+{
+  const c = { ...(buyCar(newCareer(), CAR) as ReturnType<typeof newCareer>), money: 100_000 };
+  const gold = PAINTS.at(-1)!;
+  const painted = buyPaint(c, CAR, gold.color) as typeof c;
+  check('paint: bought', painted.garage[CAR]!.paint === gold.color && painted.money === c.money - gold.price && painted.history!.at(-1)!.amount === -gold.price && isCareerState(painted), `${painted.money} kr`);
+  check('paint: same colour and unknown rejected', buyPaint(painted, CAR, gold.color) === 'maxed' && buyPaint(c, CAR, 0x123456) === 'unknown' && buyPaint(c, 'Ingen bil', gold.color) === 'unknown' && buyPaint({ ...c, money: 0 }, CAR, gold.color) === 'poor', 'rejected');
+  const kept = buyUpgrade(painted, CAR, 'pads') as typeof c;
+  check('paint: kept through upgrades and migration', kept.garage[CAR]!.paint === gold.color && migrateCareer({ ...kept, garage: { 'Strand 2.0 GT': kept.garage[CAR]! } }).garage['Strand 1800']!.paint === gold.color, 'kept');
+  const factory = buyPaint(painted, CAR, null) as typeof c;
+  check('paint: factory paint is free', !('paint' in factory.garage[CAR]!) && factory.money === painted.money, `${factory.money} kr`);
+  const t2 = { ...c, garage: { ...c.garage, 'Sora 2.0 Turbo': { upgrades: {} } } };
+  check('paint: class 2 costs double', (buyPaint(t2, 'Sora 2.0 Turbo', gold.color) as typeof c).money === c.money - 2 * gold.price, 'doubled');
+  check('paint: sanitized', [-1, 0x1000000, 1.5, '#fff'].every((paint) => !isCareerState({ ...c, garage: { [CAR]: { upgrades: {}, paint } } })), 'rejected');
 }
 
 // Championships unlock in order; old wins in the history count.
