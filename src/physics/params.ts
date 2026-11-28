@@ -19,8 +19,8 @@ export interface CarParams {
   wheelbase: number;
   trackFront: number;
   wheels: WheelDef[];
-  /** Kroppens kollisionsbox (halva mått) och markfrigång. */
-  body: { halfX: number; halfZ: number; bottomY: number; topY: number };
+  /** Collision box of the body (half sizes) and ground clearance. centerZ moves the box along the car (default 0). */
+  body: { halfX: number; halfZ: number; bottomY: number; topY: number; centerZ?: number };
 
   susp: {
     kFront: number;
@@ -546,7 +546,8 @@ export function brenner5t(): CarParams {
     trackFront: 1.46,
     // Motorn hänger framför framaxeln: 58 % av vikten fram.
     wheels: wheelsAt(R - cg + 0.125, 0.73, 0.74, wheelbase * 0.42, -wheelbase * 0.58),
-    body: { halfX: 0.86, halfZ: 2.2, bottomY: -0.29, topY: 0.8 },
+    // As the Blender model: nose 1.905 m forward, tail 2.415 m back, roof 0.775 m above the centre of gravity.
+    body: { halfX: 0.865, halfZ: 2.16, centerZ: -0.255, bottomY: -0.305, topY: 0.775 },
     susp: { ...p.susp, kFront: 36000, kRear: 28000, arbFront: 17000, arbRear: 9000 },
     brake: { ...p.brake, bias: 0.66 },
     steer: { ...p.steer, rate: 1.9, centerRate: 3.3 },

@@ -136,12 +136,15 @@ export function collide(car: Car, world: World, dt: number) {
  */
 function collideTrunks(car: Car, world: World, contacts: Contact[]) {
   const b = car.params.body;
-  const reach = Math.hypot(b.halfX, b.halfZ) + 1;
+  const cz = b.centerZ ?? 0;
+  const reach = Math.hypot(b.halfX, b.halfZ + Math.abs(cz)) + 1;
   const inv = tmpQ.copy(car.quat).invert();
   for (const t of world.trunks) {
     if (Math.abs(t.x - car.pos.x) > reach || Math.abs(t.z - car.pos.z) > reach) continue;
     // Stammens mitt i bilens ram (lutningen ignoreras; stammen är lodrät och hög).
+    // Relative to the box centre, which may sit offset along the car.
     const c = tmpL.set(t.x - car.pos.x, 0, t.z - car.pos.z).applyQuaternion(inv);
+    c.z -= cz;
     const px = Math.min(b.halfX, Math.max(-b.halfX, c.x));
     const pz = Math.min(b.halfZ, Math.max(-b.halfZ, c.z));
     const dx = px - c.x;
@@ -166,6 +169,7 @@ function collideTrunks(car: Car, world: World, contacts: Contact[]) {
       n.set(0, 0, -sz);
       lp.z = sz * b.halfZ;
     }
+    lp.z += cz;
     n.applyQuaternion(car.quat);
     n.y = 0;
     n.normalize();

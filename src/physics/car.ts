@@ -110,11 +110,12 @@ export class Car {
     this.wheels = params.wheels.map(() => new WheelState());
     this.drivetrain = new Drivetrain(params.engine, params.gearbox);
     const b = params.body;
+    const cz = b.centerZ ?? 0;
     for (const x of [-b.halfX, 0, b.halfX])
       for (const y of [b.bottomY, (b.bottomY + b.topY) / 2, b.topY])
         for (const z of [-b.halfZ, -b.halfZ / 2, 0, b.halfZ / 2, b.halfZ]) {
           const interior = Math.abs(x) < 1e-6 && y > b.bottomY && y < b.topY && Math.abs(z) < b.halfZ - 1e-6;
-          if (!interior) this.collisionPoints.push(new Vector3(x, y, z));
+          if (!interior) this.collisionPoints.push(new Vector3(x, y, z + cz));
         }
     this.reset(0, 0, 0, 0);
   }
@@ -184,8 +185,9 @@ export class Car {
     const scale = (kind === 'ground' ? 0.35 : 1) * impulse / (this.params.mass * 14);
     const d = this.damage;
     const b = this.params.body;
-    if (local.z > b.halfZ * 0.6) d.front = Math.min(1, d.front + scale);
-    else if (local.z < -b.halfZ * 0.6) d.rear = Math.min(1, d.rear + scale);
+    const lz = local.z - (b.centerZ ?? 0);
+    if (lz > b.halfZ * 0.6) d.front = Math.min(1, d.front + scale);
+    else if (lz < -b.halfZ * 0.6) d.rear = Math.min(1, d.rear + scale);
     else if (local.y > b.topY * 0.8) d.roof = Math.min(1, d.roof + scale);
     else if (local.x > 0) d.left = Math.min(1, d.left + scale);
     else d.right = Math.min(1, d.right + scale);
@@ -202,7 +204,7 @@ export class Car {
     const wheel = this.wheels[best]!;
     wheel.damage = Math.min(1, wheel.damage + scale * 0.8);
     // Träffar framifrån tar strålkastaren på den sidan, och lite av den andra.
-    if (local.z > b.halfZ * 0.6) {
+    if (lz > b.halfZ * 0.6) {
       const side = local.x > 0 ? 0 : 1;
       this.lamps[side] = Math.min(1, this.lamps[side]! + scale * 3);
       this.lamps[1 - side] = Math.min(1, this.lamps[1 - side]! + scale * 0.8);
