@@ -797,7 +797,9 @@ def flare(body, zw, yw, s, name):
     return new_object(name, bm, ['black'], at)
 
 
-MUFFLER_X, MUFFLER_Z, MUFFLER_R = 0.42, (-1.72, -1.98), 0.075
+# Golvet är plant fram till z ≈ -1,72 och stiger sedan mot bakpartiet, så ljuddämparen sitter framför det.
+MUFFLER_X, MUFFLER_Z, MUFFLER_R = 0.42, (-1.44, -1.70), 0.075
+PIPE_R, PIPE_END = 0.027, -2.15
 
 
 def surface_x(body, y, z):
@@ -864,10 +866,18 @@ def details(body):
     objs.append(assembly('plate_rear', (0, 0.37, -2.072), [('black', (-0.285, 0.285), (0.3, 0.44), (-2.074, -2.06)),
                                                           ('plate', (-0.25, 0.25), (0.315, 0.425), (-2.078, -2.066))]))
     # Ljuddämparen under golvet framför bakstötfångaren; avgasröret går ut under stötfångaren.
+    # Röret följer golvet uppåt bakåt och mynnar strax under stötfångaren.
     top = min(floor_y(body, MUFFLER_X, z) for z in MUFFLER_Z)
-    y = top - MUFFLER_R + 0.01
+    y = top - MUFFLER_R + 0.005
     objs.append(cylinder_z('muffler', 'dark', (MUFFLER_X, y, sum(MUFFLER_Z) / 2), MUFFLER_R, MUFFLER_Z[0] - MUFFLER_Z[1], 16))
-    objs.append(cylinder_z('exhaust', 'chrome', (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.15) / 2), 0.027, MUFFLER_Z[1] + 2.15))
+    y0, z0 = top - PIPE_R - 0.005, MUFFLER_Z[1]
+    y1 = floor_y(body, MUFFLER_X, -2.05) - PIPE_R - 0.035
+    length = math.hypot(y1 - y0, z0 - PIPE_END)
+    bm = bmesh.new()
+    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=PIPE_R, radius2=PIPE_R, depth=length)
+    tilt = math.atan2(y1 - y0, z0 - PIPE_END)
+    bmesh.ops.rotate(bm, cent=Vector(), matrix=Matrix.Rotation(math.pi / 2 + tilt, 3, 'X'), verts=res['verts'])
+    objs.append(new_object('exhaust', bm, ['chrome'], (MUFFLER_X, (y0 + y1) / 2, (z0 + PIPE_END) / 2)))
     if KIT:
         # Luftintag framtill på taket.
         objs.append(assembly('scoop', (0, 0.9, -0.25), [('dark', (-0.14, 0.14), (0.84, 0.92), (-0.38, -0.12)),
