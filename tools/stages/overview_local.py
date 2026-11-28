@@ -1,4 +1,4 @@
-"""Lokal georeferering av en sträcka på översiktskartan: grov förskjutningssökning och ICP mot OSM."""
+"""Local georeferencing of a special stage on the overview map: coarse shift search and ICP against OSM."""
 import json, math, sys, urllib.request
 import os
 cfgp = sys.argv[1]; cfg = json.load(open(cfgp)); D = os.path.dirname(os.path.abspath(cfgp)); R = os.path.join(D, cfg['royal'])
@@ -7,7 +7,7 @@ x0, y0, x1, y1 = cfg['crop']
 inside = lambda p: x0 <= p[0] <= x1 and y0 <= p[1] <= y1
 orange = [p for p in json.load(open(R + '/orange.json')) if inside(p)]
 green = [p for p in json.load(open(R + '/green.json')) if inside(p)]
-# Samma ram som pipeline.py: LAT0/LON0 = medel av ankarna i config.
+# Same frame as pipeline.py: LAT0/LON0 = mean of the anchors in the config.
 lats = [a[2] for a in cfg['anchors']]; lons = [a[3] for a in cfg['anchors']]
 LAT0, LON0 = sum(lats)/len(lats), sum(lons)/len(lons); KX = 111320*math.cos(math.radians(LAT0)); KY = 110540
 m = lambda lat, lon: ((lon-LON0)*KX, (lat-LAT0)*KY)
@@ -15,7 +15,7 @@ gKX = 111320*math.cos(math.radians(g['LAT0']))
 def glob(p):
     e = g['AX'][0]*p[0]+g['AX'][1]*p[1]+g['AX'][2]; n = g['AY'][0]*p[0]+g['AY'][1]*p[1]+g['AY'][2]
     return m(g['LAT0'] + n/110540, g['LON0'] + e/gKX)
-# px -> lokala meter som affin: anpassa till globala transformen i tre punkter
+# px -> local metres as an affine: fit to the global transform at three points
 pts3 = [(x0, y0), (x1, y0), (x0, y1)]
 import itertools
 def solve(P, Q):
@@ -29,7 +29,7 @@ def solve(P, Q):
         return [a, b, c]
     return coef([q[0] for q in Q]), coef([q[1] for q in Q])
 AX, AY = solve(pts3, [glob(p) for p in pts3])
-# OSM-vägar i området
+# OSM roads in the area
 corners = [glob(p) for p in [(x0, y0), (x1, y1)]]
 lat_lo = LAT0 + min(c[1] for c in corners)/KY - 0.03; lat_hi = LAT0 + max(c[1] for c in corners)/KY + 0.03
 lon_lo = LON0 + min(c[0] for c in corners)/KX - 0.06; lon_hi = LON0 + max(c[0] for c in corners)/KX + 0.06
@@ -68,7 +68,7 @@ for dx in range(-3000, 3001, 100):
         if sc > best[0]: best = (sc, dx, dy)
 print('coarse shift', best[1:], 'hits', best[0], 'of', len(sample[::3]), file=sys.stderr)
 AX[2] += best[1]; AY[2] += best[2]
-# fin: 100 m-steg -> 20 m
+# fine: 100 m steps -> 20 m
 b2 = (-1, 0, 0)
 for dx in range(-100, 101, 20):
     for dy in range(-100, 101, 20):

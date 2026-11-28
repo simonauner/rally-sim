@@ -1,10 +1,10 @@
 import type { Lang, PaceNote } from './physics/pacenotes';
 import { settings } from './settings';
 
-/** Kartläsarens röst via webbläsarens inbyggda talsyntes; inga ljudfiler. */
+/** The co-driver's voice via the browser's built-in speech synthesis; no audio files. */
 export class CoDriver {
   private voice: SpeechSynthesisVoice | null = null;
-  /** true när webbläsaren har laddat sina röster men ingen av dem är svensk eller engelsk. */
+  /** true when the browser has loaded its voices but none of them is Swedish or English. */
   missingVoice = false;
 
   constructor() {
@@ -12,7 +12,7 @@ export class CoDriver {
       this.missingVoice = true;
       return;
     }
-    // Rösterna laddas asynkront; listan kan vara tom tills voiceschanged har kommit.
+    // Voices load asynchronously; the list can be empty until voiceschanged has fired.
     this.pickVoice();
     speechSynthesis.addEventListener('voiceschanged', () => this.pickVoice());
   }
@@ -24,7 +24,7 @@ export class CoDriver {
       const all = voices.filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith(lang));
       return all.find((v) => v.localService) ?? all[0];
     };
-    // Utan svensk röst läses noterna på engelska, med engelsk röst.
+    // Without a Swedish voice the notes are read in English, with an English voice.
     this.voice = find('sv') ?? find('en') ?? null;
     this.missingVoice = !this.voice;
   }
@@ -32,7 +32,7 @@ export class CoDriver {
   say(notes: PaceNote[]) {
     if (!settings.voice) return;
     if (!this.voice) this.pickVoice();
-    // Utan röst läser webbläsaren med sin standardröst på fel språk. Hellre tyst.
+    // Without a voice the browser reads with its default voice in the wrong language. Better silent.
     if (!this.voice) return;
     const lang: Lang = this.voice.lang.toLowerCase().startsWith('sv') ? 'sv' : 'en';
     const u = new SpeechSynthesisUtterance(notes.map((n) => n.speech[lang]).join(', '));
@@ -42,7 +42,7 @@ export class CoDriver {
     speechSynthesis.speak(u);
   }
 
-  /** Tystar det som köats, t.ex. vid omstart. */
+  /** Silences anything queued, e.g. on restart. */
   stop() {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   }

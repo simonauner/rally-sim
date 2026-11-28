@@ -1,7 +1,7 @@
 /**
- * Motståndarna i ett mästerskap: ett fält fiktiva förare med egen takt, mätt som andel av
- * etappens guldtid (1 = guldtid, lägre = snabbare). Ren logik utan DOM; allt slumpas från ett frö
- * per mästerskap och etapp, så samma framsteg ger samma tider efter en omladdning.
+ * The rivals in a championship: a field of fictional drivers with their own pace, measured as a fraction of
+ * the stage's gold time (1 = gold time, lower = faster). Pure logic without DOM; everything is randomized from a seed
+ * per championship and stage, so the same progress gives the same times after a reload.
  */
 
 import { rng } from '../physics/rng';
@@ -9,9 +9,9 @@ import { STAGE_TARGETS } from './career';
 
 export interface Rival {
   name: string;
-  /** Takt som andel av guldtiden. */
+  /** Pace as a fraction of the gold time. */
   pace: number;
-  /** Tid per körd etapp. */
+  /** Time per stage driven. */
   times: number[];
 }
 
@@ -21,12 +21,12 @@ const FIRST = ['Agnes', 'Björn', 'Cecilia', 'David', 'Elin', 'Fredrik', 'Greta'
 const LAST = ['Stenbacka', 'Mossberg', 'Kärrlund', 'Tallroth', 'Hedvall', 'Björkfelt', 'Frostell', 'Älvgren', 'Myrén', 'Snårberg', 'Gransjö', 'Ljungqvist', 'Hällström', 'Rimfors', 'Kvistedt', 'Grusell'];
 
 const pick = <T>(list: readonly T[], r: () => number) => list[Math.floor(r() * list.length)]!;
-/** Ungefär normalfördelat brus med standardavvikelse 1. */
+/** Roughly normally distributed noise with standard deviation 1. */
 const gauss = (r: () => number) => (r() + r() + r() + r() - 2) * 1.73;
 
 /**
- * Ett nytt fält. Den snabbaste kör på mästerskapets grundtakt `base` eller strax över, resten
- * sprids ut mot bronsnivå. Fältet beror inte på spelaren, så en snabbare bil ger en marginal som märks.
+ * A new field. The fastest drives at the championship's base pace `base` or just above, the rest
+ * spread out towards bronze level. The field does not depend on the player, so a faster car gives a noticeable margin.
  */
 export function newRivals(seed: number, base = 0.985): Rival[] {
   const r = rng(seed);
@@ -39,21 +39,21 @@ export function newRivals(seed: number, base = 0.985): Rival[] {
 
 export const goldTime = (stage: string) => STAGE_TARGETS[stage]?.[0] ?? 100;
 
-/** En motståndares tid på en etapp: takten plus brus, och ibland ett misstag. */
+/** A rival's time on a stage: the pace plus noise, and sometimes a mistake. */
 function legTime(stage: string, pace: number, r: () => number): number {
   const mistake = r() < 0.1 ? 4 + r() * 14 : 0;
   return Math.round((goldTime(stage) * pace * (1 + gauss(r) * 0.012) + mistake) * 100) / 100;
 }
 
 /**
- * Motståndarnas tider på etapp `leg`, och deras takt inför nästa. Är spelaren snabbare än hela
- * fältet hittills (bästa takt över körda etapper) närmar sig en eller två av de snabbaste, oftast till
- * strax efter, så att ledningen inte blir gratis. De blir aldrig snabbare än golvet `floor`, så den
- * som har en bil som räcker under golvet vinner om den kör jämnt.
+ * The rivals' times on stage `leg`, and their pace for the next one. If the player is faster than the whole
+ * field so far (best pace over stages driven), one or two of the fastest close in, usually to
+ * just behind, so the lead does not come for free. They never get faster than the floor `floor`, so
+ * a player whose car is good enough to go below the floor wins by driving consistently.
  */
 export function raceLeg(rivals: Rival[], legs: string[], leg: number, playerTimes: number[], seed: number, slowdown: number[] = [], floor = 0.97): Rival[] {
   const r = rng(seed + 7919 * (leg + 1));
-  // Vädret gör alla långsammare; spelarens takt räknas utan vädret, så ett regnigt åk inte ser långsamt ut.
+  // Weather slows everyone down; the player's pace is computed without the weather, so a rainy run doesn't look slow.
   const raced = rivals.map((v) => ({ ...v, times: [...v.times.slice(0, leg), legTime(legs[leg]!, v.pace * (slowdown[leg] ?? 1), r)] }));
   const playerPace = Math.min(...playerTimes.map((t, i) => t / goldTime(legs[i]!) / (slowdown[i] ?? 1)));
   const best = Math.min(...raced.map((v) => v.pace));
@@ -70,12 +70,12 @@ export function raceLeg(rivals: Rival[], legs: string[], leg: number, playerTime
 export interface Standing {
   name: string;
   total: number;
-  /** Tid på senaste etappen. */
+  /** Time on the latest stage. */
   last: number;
   player: boolean;
 }
 
-/** Ställningen efter de etapper spelaren kört, snabbast först. */
+/** The standings after the stages the player has driven, fastest first. */
 export function standings(rivals: Rival[], playerTimes: number[]): Standing[] {
   const n = playerTimes.length;
   const sum = (t: number[]) => t.slice(0, n).reduce((a, b) => a + b, 0);

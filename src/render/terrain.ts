@@ -7,17 +7,17 @@ export const COLORS: Record<string, number> = {
   gravel: 0xb89f78,
   asphalt: 0x44464c,
   mud: 0x5f4532,
-  // Packad vägsnö är gråare än den lösa snön i vallarna.
+  // Packed road snow is greyer than the loose snow in the banks.
   snow: 0xe3e6e7,
   snowbank: 0xfafcfd,
-  // Stenbotten i vadställen, under vattenytan.
+  // Stone bed in fords, below the water surface.
   water: 0x5d6660,
 };
 
 export function buildTerrain(world: World): THREE.Group {
   const group = new THREE.Group();
 
-  // Detaljerat område där fysiken händer
+  // Detailed area where the physics happens
   const x0 = -70;
   const x1 = 70;
   const z0 = -60;
@@ -64,7 +64,7 @@ export function buildTerrain(world: World): THREE.Group {
   ground.receiveShadow = true;
   group.add(ground);
 
-  // Stort plan utanför
+  // Large plane outside
   const outer = new THREE.Mesh(
     new THREE.PlaneGeometry(2000, 2000).rotateX(-Math.PI / 2),
     new THREE.MeshToonMaterial({ color: 0xa89a70 }),
@@ -73,7 +73,7 @@ export function buildTerrain(world: World): THREE.Group {
   outer.receiveShadow = true;
   group.add(outer);
 
-  // Hinder
+  // Obstacles
   const wallMat = new THREE.MeshToonMaterial({ color: 0xcfcfc8 });
   for (const b of world.boxes) {
     const m = new THREE.Mesh(
@@ -85,7 +85,7 @@ export function buildTerrain(world: World): THREE.Group {
     m.receiveShadow = true;
     group.add(m);
   }
-  // Randiga varningsband på väggen
+  // Striped warning bands on the wall
   const stripeMat = new THREE.MeshToonMaterial({ color: 0xe0a320 });
   for (let i = -38; i <= 38; i += 4) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.05), stripeMat);
@@ -93,7 +93,7 @@ export function buildTerrain(world: World): THREE.Group {
     group.add(s);
   }
 
-  // Avståndsstolpar var 20:e meter ger fartkänsla
+  // Distance posts every 20 metres give a sense of speed
   const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.4, 8);
   const poleCount = 2 * 17;
   const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshToonMaterial({ color: 0xffffff }), poleCount);
@@ -111,7 +111,7 @@ export function buildTerrain(world: World): THREE.Group {
   poles.castShadow = true;
   group.add(poles);
 
-  // Träd av lera runt området
+  // Clay trees around the area
   const r = rng(99);
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
   const crownGeo = new THREE.ConeGeometry(1.6, 4.5, 9);

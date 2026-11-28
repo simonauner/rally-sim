@@ -6,17 +6,17 @@ import { buildLandmarks } from './landmarks';
 
 const VERGE = 0x6f5a3e;
 const FOREST = 0x6f7d4c;
-/** Åker i sensommar, klippt gräs på gårdstomter, myrens starr och kalhyggets ris. */
+/** Fields in late summer, mown grass on farm plots, bog sedge and clear-cut slash. */
 const AREA: Record<string, number> = { field: 0xaaa65c, farm: 0x86a04e, bog: 0xa09a64, clearcut: 0x8b7a52 };
-/** Snötäckt skogsmark på vinteretapper. */
+/** Snow-covered forest floor on winter stages. */
 const WINTER_FOREST = 0xf2f5f7;
 const BANK_SHADE = 0xaab9cd;
 const STEP = 0.75;
 
 /**
- * Terräng för en etapp: ett rutnät över etappens omfång där bara hörn nära vägen behålls.
- * shortcut: vägar som kommer närmare sig själva än 2 × STAGE_CORRIDOR ger överlappande nät;
- * byt till ett band längs splinen om etapperna börjar få hårnålar.
+ * Terrain for a stage: a grid over the stage's extent where only vertices near the road are kept.
+ * shortcut: roads that come closer to themselves than 2 × STAGE_CORRIDOR give overlapping meshes;
+ * switch to a band along the spline if stages start getting hairpins.
  */
 export function buildStage(stage: Stage): THREE.Group {
   const group = new THREE.Group();
@@ -58,7 +58,7 @@ export function buildStage(stage: Stage): THREE.Group {
       side.setHex(stage.def.winter ? COLORS.snowbank! : surface === 'snow' ? COLORS.snow! : VERGE).lerp(c.setHex(forest), smooth(hw + 2, hw + 6, d));
       if (area && area.lm.kind !== 'lake') side.lerp(c.setHex(AREA[area.lm.kind]!), area.t * smooth(hw + 3, hw + 7, d));
       c.copy(road).lerp(side, smooth(hw - 0.2, hw + 0.4, d)).multiplyScalar(0.93 + rand() * 0.14);
-      // Snövallens insida mot vägen ligger i blå skugga, som i lågt vintersolljus.
+      // The inside of the snowbank facing the road lies in blue shadow, as in low winter sunlight.
       if (stage.def.winter) c.lerp(side.setHex(BANK_SHADE), 0.9 * smooth(hw + 0.1, hw + 0.7, d) * (1 - smooth(hw + 1.3, hw + 1.9, d)));
       positions.push(x, stage.heightAt(x, z), z);
       colors.push(c.r, c.g, c.b);
@@ -97,10 +97,10 @@ export function buildStage(stage: Stage): THREE.Group {
   group.add(buildWater(stage));
   group.add(buildLandmarks(stage));
 
-  // Kantpinnar var 25:e meter
+  // Edge posts every 25 metres
   const sideOf = (s: number) => {
     const p = stage.poseAt(s);
-    // Vänster om färdriktningen: heading 0 = +Z, vänster = +X.
+    // Left of the direction of travel: heading 0 = +Z, left = +X.
     return { ...p, lx: Math.cos(p.heading), lz: -Math.sin(p.heading) };
   };
   const mat = new THREE.Matrix4();
@@ -114,7 +114,7 @@ export function buildStage(stage: Stage): THREE.Group {
     for (const k of [-1, 1]) {
       const x = p.x + p.lx * hw * k;
       const z = p.z + p.lz * hw * k;
-      if (stage.roadAt(x, z).d < 4) continue; // inte mitt i en korsande väg
+      if (stage.roadAt(x, z).d < 4) continue; // not in the middle of a crossing road
       poles.setMatrixAt(pi++, mat.makeTranslation(x, stage.heightAt(x, z) + 0.55, z));
     }
   }
@@ -122,7 +122,7 @@ export function buildStage(stage: Stage): THREE.Group {
   poles.castShadow = true;
   group.add(poles);
 
-  // Start- och målportal (bara grafik, ingen kollision)
+  // Start and finish gantry (graphics only, no collision)
   const postMat = new THREE.MeshToonMaterial({ color: 0x2b2b2b });
   const bannerMats = [0x2e7d32, 0xc62828].map((color) => new THREE.MeshToonMaterial({ color }));
   const lineMat = new THREE.MeshToonMaterial({ color: 0xf5f5f5 });
@@ -148,13 +148,13 @@ export function buildStage(stage: Stage): THREE.Group {
     group.add(gate);
   });
 
-  // Skog längs vägen (placerad i fysiken, där stammarna kolliderar)
+  // Forest along the road (placed in the physics, where the trunks collide)
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
   const trees = stage.trunks.filter((t) => !t.hidden);
   const N = trees.length;
   const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshToonMaterial({ color: 0x6b4a32 }), N);
-  // Kronan som kon(er) runt stammen: y = konens mitt, i trädets skala. Vintergranar har tre
-  // våningar med snö ovanpå varje, så grönt syns i kanterna och undertill.
+  // The crown as cone(s) around the trunk: y = the cone's centre, in the tree's scale. Winter spruces have three
+  // tiers with snow on top of each, so green shows at the edges and underneath.
   const tiers = stage.def.winter
     ? [
         { r: 1.7, h: 2.6, y: 3.2 },
@@ -168,7 +168,7 @@ export function buildStage(stage: Stage): THREE.Group {
   for (const t of tiers) {
     layers.push({ mesh: new THREE.InstancedMesh(new THREE.ConeGeometry(t.r, t.h, 9), green, N), y: t.y });
     if (stage.def.winter) {
-      // Snöhättan har samma lutning som grenverket och spetsen lite ovanför det.
+      // The snow cap has the same slope as the branches and its tip slightly above them.
       const k = 0.8;
       layers.push({ mesh: new THREE.InstancedMesh(new THREE.ConeGeometry(t.r * k * 1.05, t.h * k, 9), snowMat, N), y: t.y + t.h / 2 + 0.06 - (t.h * k) / 2 });
     }
@@ -195,7 +195,7 @@ export function buildStage(stage: Stage): THREE.Group {
     group.add(l.mesh);
   }
 
-  // Buskar, tuvor och stenar nära vägkanten som susar förbi (bara grafik, ingen kollision).
+  // Bushes, tussocks and rocks near the road edge that whizz past (graphics only, no collision).
   const snowy = stage.surfaces.includes('snow');
   const kinds = [
     { geo: new THREE.IcosahedronGeometry(0.7, 0), color: snowy ? 0x8a9a86 : 0x5c7a3e, every: 3, near: 1.0, far: 6.5, size: [0.6, 1.4] },
@@ -209,13 +209,13 @@ export function buildStage(stage: Stage): THREE.Group {
     let ki = 0;
     for (let s = 0; s < stage.length && ki < n - 1; s += k.every) {
       const p = sideOf(s + r() * k.every);
-      if (stage.project(p.x, p.z).surface === 'water') continue; // inga buskar i bäcken
+      if (stage.project(p.x, p.z).surface === 'water') continue; // no bushes in the stream
       const hw = stage.project(p.x, p.z).width / 2;
       for (const side of [-1, 1]) {
         const off = (hw + k.near + r() * (k.far - k.near)) * side;
         const x = p.x + p.lx * off;
         const z = p.z + p.lz * off;
-        if (stage.roadAt(x, z).d < hw + k.near - 0.1) continue; // inte på en korsande väg
+        if (stage.roadAt(x, z).d < hw + k.near - 0.1) continue; // not on a crossing road
         scale.set(1, 0.6 + r() * 0.5, 1).multiplyScalar(k.size[0]! + r() * (k.size[1]! - k.size[0]!));
         q.setFromAxisAngle(pos.set(0, 1, 0), r() * Math.PI * 2);
         pos.set(x, stage.heightAt(x, z) + 0.1 * scale.y, z);
@@ -230,8 +230,8 @@ export function buildStage(stage: Stage): THREE.Group {
 }
 
 /**
- * Vattenytan i varje vadställe: en rektangel tvärs över vägen, en bit över stenbotten, så hjulen
- * försvinner ner i vattnet. Bäckfåran utanför vägen är samma sänka i terrängen.
+ * The water surface in each ford: a rectangle across the road, a little above the stone bed, so the wheels
+ * sink into the water. The stream bed outside the road is the same dip in the terrain.
  */
 function buildWater(stage: Stage): THREE.Group {
   const group = new THREE.Group();
@@ -252,7 +252,7 @@ function buildWater(stage: Stage): THREE.Group {
   return group;
 }
 
-/** Hjulspårens färg per underlag: packad snö blir beigegrå, grus och lera mörkare där stenarna sopats undan. */
+/** Wheel-track colour per surface: packed snow turns beige-grey, gravel and mud darker where the stones are swept away. */
 const TRACK: Record<string, (c: THREE.Color) => THREE.Color> = {
   snow: (c) => c.setHex(0xd3cbbb),
   gravel: (c) => c.setHex(COLORS.gravel!).multiplyScalar(0.82),
@@ -261,7 +261,7 @@ const TRACK: Record<string, (c: THREE.Color) => THREE.Color> = {
   water: (c) => c.setHex(COLORS.water!).multiplyScalar(0.85),
 };
 
-/** Två hjulspår längs etappens mitt, som vandrar lite i sidled och varierar i bredd och ton. */
+/** Two wheel tracks along the middle of the stage, wandering a little sideways and varying in width and tone. */
 function buildTracks(stage: Stage): THREE.Mesh {
   const positions: number[] = [];
   const colors: number[] = [];

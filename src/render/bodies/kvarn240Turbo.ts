@@ -1,9 +1,9 @@
 import type { BodyShape } from './shape';
 
 /**
- * Kvarn 240 Turbo: kantig 80-talssedan: lång flat huv och baklucka, stora fyrkantiga lyktor. Karossen ritas av
- * Blendermodellen (blender/kvarn240/), så formen här används bara till skadezonerna, dekalerna, lyktornas
- * sken och följer modellens mått.
+ * Kvarn 240 Turbo: boxy 80s saloon: long flat hood and boot lid, large square lamps. The body is drawn by the
+ * Blender model (blender/kvarn240/), so the shape here is only used for the damage zones, the decals, the lamp
+ * glow, and follows the model's dimensions.
  */
 export const kvarn240Turbo: BodyShape = {
   halfX: 0.855,

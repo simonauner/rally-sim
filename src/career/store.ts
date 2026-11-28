@@ -1,6 +1,6 @@
 /**
- * Karriären i webbläsaren. Kontot (account/sync.ts) synkar den; senaste ändringen vinner.
- * En karriär som aldrig ändrats har tidsstämpel 0, så en ny enhet aldrig skriver över kontots.
+ * The career in the browser. The account (account/sync.ts) syncs it; the latest change wins.
+ * A career that was never changed has timestamp 0, so a new device never overwrites the account's.
  */
 
 import { isCareerState, type CareerState } from '../account/protocol';
@@ -11,7 +11,7 @@ const KEY = 'rally.career';
 
 interface Stored {
   career: CareerState;
-  /** När den senast ändrades här (ms), eller 0 för en ny karriär. */
+  /** When it was last changed here (ms), or 0 for a new career. */
   updatedAt: number;
 }
 
@@ -20,25 +20,25 @@ export function loadCareer(): Stored {
     const s = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Stored | null;
     if (s && isCareerState(s.career) && Number.isInteger(s.updatedAt)) return { ...s, career: migrateCareer(s.career) };
   } catch {
-    // Trasig data: börja om.
+    // Broken data: start over.
   }
   return { career: newCareer(), updatedAt: 0 };
 }
 
-/** Sparar en karriär som ändrats på den här enheten, eller (med updatedAt) en som kommit från kontot. */
+/** Saves a career changed on this device, or (with updatedAt) one that came from the account. */
 export function saveCareer(career: CareerState, updatedAt = Date.now()) {
   try {
     localStorage.setItem(KEY, JSON.stringify({ career, updatedAt }));
   } catch {
-    // Privat läge eller full lagring: ändringen gäller bara den här sessionen.
+    // Private mode or full storage: the change only lasts this session.
   }
 }
 
 const CHAMPIONSHIP_KEY = 'rally.championship';
 
 /**
- * Pågående mästerskap. Bara i den här webbläsaren, eftersom det lever minuter, inte dagar.
- * shortcut: synkas inte; byter man enhet mitt i ett mästerskap börjar det om.
+ * The championship in progress. Only in this browser, since it lives for minutes, not days.
+ * shortcut: not synced; switching device mid-championship starts it over.
  */
 export function loadChampionship(): ChampionshipProgress | null {
   try {
@@ -54,6 +54,6 @@ export function saveChampionship(p: ChampionshipProgress | null) {
     if (p) localStorage.setItem(CHAMPIONSHIP_KEY, JSON.stringify(p));
     else localStorage.removeItem(CHAMPIONSHIP_KEY);
   } catch {
-    // Privat läge: mästerskapet går inte att fortsätta efter omladdning.
+    // Private mode: the championship cannot be continued after a reload.
   }
 }

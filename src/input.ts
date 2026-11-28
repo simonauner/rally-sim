@@ -1,6 +1,6 @@
 import type { Input } from './physics/car';
 
-/** Tangentbord och gamepad. Ramper gör tangenter mjukare än av/på. */
+/** Keyboard and gamepad. Ramps make keys softer than on/off. */
 export class Controls {
   private keys = new Set<string>();
   private pressed = new Set<string>();
@@ -19,7 +19,7 @@ export class Controls {
     addEventListener('blur', () => this.keys.clear());
   }
 
-  /** Sant en gång per tangenttryck. */
+  /** True once per key press. */
   wasPressed(code: string): boolean {
     return this.pressed.delete(code);
   }

@@ -1,6 +1,6 @@
 /**
- * Etappernas längd från start till mål (m), förberäknad så att menyerna slipper bygga varje etapp.
- * Fysiktestet jämför med den byggda etappen och skriver ut rätt värde om en väg ändrats.
+ * Stage lengths from start to finish (m), precomputed so the menus don't have to build every stage.
+ * The physics test compares them with the built stage and prints the correct value if a road changed.
  */
 export const STAGE_LENGTHS: Record<string, number> = {
   'Grinsbol': 4492,

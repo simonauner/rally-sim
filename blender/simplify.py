@@ -1,4 +1,4 @@
-"""Gemensamt för byggskripten i blender/<bil>/build.py."""
+"""Shared by the build scripts in blender/<car>/build.py."""
 
 import math
 
@@ -10,15 +10,15 @@ SHARP = math.radians(30)
 
 
 def simplify(obj, ratio, keep=()):
-    """Glesar ut nätet efter färgsättningen: kollapsar kanter inne i färgfälten men låser hörnen på
-    färgkanterna, skarpa kanter och öppna kanter (skarvar mot andra paneler), så fälten behåller sina
-    raka kanter och små detaljer som handtagens urgröpningar finns kvar.
-    0,3 håller en hel kaross inom ~4 mm; under ~0,24 börjar kollapsen slita sönder ytan. Små paneler
-    tål mindre. Bucklorna blir grövre veck på plana paneler, vilket räcker. Ytor med material i `keep`
-    behåller sitt nät."""
+    """Thins out the mesh after colouring: collapses edges inside the colour fields but locks the vertices on
+    colour edges, sharp edges and open edges (seams against other panels), so the fields keep their
+    straight edges and small details such as the handle recesses survive.
+    0.3 keeps a whole body within ~4 mm; below ~0.24 the collapse starts tearing the surface. Small panels
+    tolerate less. Dents become coarser creases on flat panels, which is good enough. Faces with a material
+    in `keep` keep their mesh."""
     bm = bmesh.new()
     bm.from_mesh(obj.data)
-    # Kortaste diagonalen: decimeringens egen triangulering (beauty) ger strimmor på välvda rutor.
+    # Shortest diagonal: the decimation's own triangulation (beauty) gives streaks on curved quads.
     bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='SHORT_EDGE', ngon_method='EAR_CLIP')
     bm.to_mesh(obj.data)
     lock = set()

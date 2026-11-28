@@ -11,18 +11,18 @@ import { loadRecord } from './records';
 const LIGHT_NAMES: Record<Light, string> = { day: '', dawn: 'gryning', dusk: 'skymning', night: 'natt' };
 
 /**
- * Väljer etapp i två steg: först mästerskapet den hör till, sedan etappen, med bästa tid per
- * etapp. `extra` lägger till text efter tiden. Null = Tillbaka från första steget.
- * Etapperna i mästerskap som inte är upplåsta i karriären visas låsta.
+ * Picks a stage in two steps: first the championship it belongs to, then the stage, with the best time per
+ * stage. `extra` adds text after the time. Null = Tillbaka from the first step.
+ * Stages in championships not yet unlocked in the career are shown locked.
  */
 export async function pickStage(title: string, extra?: (s: StageDef) => string): Promise<StageDef | null> {
   const career = loadCareer().career;
-  // Etappbilderna hämtas redan nu, så de syns direkt när man går in i ett mästerskap.
+  // The stage images are fetched right away, so they show immediately when you enter a championship.
   for (const s of STAGES) {
     const url = stageImage(s.name);
     if (url) new Image().src = url;
   }
-  // Varje etapp listas under det första mästerskapet den körs i; klass 2 visas bara med sina nya etapper.
+  // Each stage is listed under the first championship it is run in; class 2 shows only its new stages.
   const listed = new Set<string>();
   const groups = CHAMPIONSHIPS.map((c) => {
     const legs = c.legs.filter((leg) => !listed.has(leg));
@@ -55,7 +55,7 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
           const s = STAGES.find((x) => x.name === leg);
           if (!s) return [];
           const best = loadRecord(s);
-          // Under namnet: ljus, bästa tid, det extra och källan, en rad var.
+          // Under the name: light, best time, the extra and the source, one line each.
           const lines = [
             LIGHT_NAMES[s.light ?? 'day'],
             best ? `bästa ${formatTime(best.time)}` : '',
@@ -75,16 +75,16 @@ export async function pickStage(title: string, extra?: (s: StageDef) => string):
 
 const MAP_COLORS: Record<SurfaceId, string> = { asphalt: '#9aa4b0', gravel: '#d9a55b', mud: '#8a5a2b', snow: '#7fa8d6', snowbank: '#7fa8d6', water: '#2fb8d8' };
 
-/** Förhandsvisning av en etapp: tid på dygnet, längd, underlag och karta ovanifrån färgad efter underlag. */
+/** Stage preview: time of day, length, surface and a top-down map coloured by surface. */
 export function stagePreviewHtml(def: StageDef): string {
-  // Kartan ritas direkt ur etappens punkter (var 20:e meter), utan att bygga hela etappen.
+  // The map is drawn straight from the stage's points (every 20 m), without building the whole stage.
   const pts = def.points;
   const shares = (Object.entries(surfaceShares(def)) as [SurfaceId, number][]).sort((a, b) => b[1] - a[1]);
   const at = [0];
   for (let i = 1; i < pts.length; i++) at.push(at[i - 1]! + Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.z - pts[i - 1]!.z));
   const length = STAGE_LENGTHS[def.name] ?? at[at.length - 1]! - START_S;
   const end = START_S + length;
-  // Ovanifrån med z uppåt; lokalt x är vänster, så x speglas. Punkten på sträckan s mellan två punkter.
+  // Top-down with z up; local x is left, so x is mirrored. The point at distance s between two points.
   const point = (s: number) => {
     let i = 0;
     while (i < pts.length - 2 && at[i + 1]! < s) i++;
@@ -96,7 +96,7 @@ export function stagePreviewHtml(def: StageDef): string {
   const zs = path.map((p) => p.z);
   const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
   const xy = (p: { x: number; z: number }) => `${p.x.toFixed(0)},${p.z.toFixed(0)}`;
-  // En linje per sträcka med samma underlag; varje punkts underlag gäller fram till nästa punkt.
+  // One line per stretch with the same surface; each point's surface applies up to the next point.
   const lines: string[] = [];
   let run = [xy(path[0]!)];
   for (let i = 1; i < path.length; i++) {
@@ -107,7 +107,7 @@ export function stagePreviewHtml(def: StageDef): string {
     }
   }
   const sw = Math.max(maxX - minX, maxZ - minZ) / 60;
-  const pad = sw * 1.5; // rymmer start-/målpunkten (r = 1,3 sw)
+  const pad = sw * 1.5; // fits the start/finish marker (r = 1.3 sw)
   const dot = (p: { x: number; z: number }, c: string) => `<circle cx="${p.x.toFixed(0)}" cy="${p.z.toFixed(0)}" r="${(sw * 1.3).toFixed(1)}" fill="${c}"/>`;
   const image = stageImage(def.name);
   return `${image ? `<img class="banner" src="${image}" alt="">` : ''}<table class="specs">

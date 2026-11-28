@@ -1,8 +1,8 @@
 """
-Gemensamt för Soras byggskript: mått, material, koordinater och små verktyg för att bygga nät.
+Shared by the Sora build scripts: dimensions, materials, coordinates and small mesh-building helpers.
 
-Allt räknas i bilens koordinater (x = vänster, y = upp, z = framåt, origo i tyngdpunkten) och läggs in i
-Blender som X = x, Y = -z, Z = y, så bilen pekar mot -Y som i Blenders framvy.
+Everything is computed in car coordinates (x = left, y = up, z = forward, origin at the centre of mass)
+and placed in Blender as X = x, Y = -z, Z = y, so the car points towards -Y as in Blender's front view.
 """
 
 import math
@@ -12,11 +12,11 @@ import bpy
 from mathutils import Matrix, Vector
 
 GROUND = -0.486
-WHEELS = [(1.109, -0.169), (-1.411, -0.185)]  # (z, y) fram och bak
+WHEELS = [(1.109, -0.169), (-1.411, -0.185)]  # (z, y) front and rear
 TRACK = [0.735, 0.73]
 TYRE_R = 0.31
 
-# Materialen; namnen är färgerna i spelets palett (src/render/carMesh.ts).
+# The materials; the names are the colours in the game's palette (src/render/carMesh.ts).
 MATERIALS = [
     ('paint', (0.12, 0.31, 0.71)),
     ('glass', (0.17, 0.23, 0.26)),
@@ -28,9 +28,9 @@ MATERIALS = [
     ('tail', (0.63, 0.09, 0.09)),
     ('reverse', (0.85, 0.83, 0.8)),
     ('plate', (0.93, 0.93, 0.92)),
-    ('shade', (0.08, 0.2, 0.47)),  # skarvar: lacken i skugga
-    ('gold', (0.79, 0.64, 0.26)),  # fälgarna
-    ('rubber', (0.14, 0.14, 0.14)),  # däcken
+    ('shade', (0.08, 0.2, 0.47)),  # seams: paint in shadow
+    ('gold', (0.79, 0.64, 0.26)),  # the rims
+    ('rubber', (0.14, 0.14, 0.14)),  # the tyres
 ]
 M = {name: i for i, (name, _) in enumerate(MATERIALS)}
 
@@ -52,7 +52,7 @@ def clamp01(t):
 
 
 def piecewise(points, x):
-    """Linjär interpolation i en lista (x, y) sorterad på x."""
+    """Linear interpolation in a list of (x, y) sorted by x."""
     if x <= points[0][0]:
         return points[0][1]
     for (x0, y0), (x1, y1) in zip(points, points[1:]):
@@ -68,7 +68,7 @@ def apply_all(obj):
 
 
 def set_materials(obj):
-    """Ger objektet alla material i paletten, i samma ordning, så materialindex = M[namn]."""
+    """Gives the object every material in the palette, in the same order, so material index = M[name]."""
     obj.data.materials.clear()
     for name, rgb in MATERIALS:
         mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -77,8 +77,8 @@ def set_materials(obj):
 
 
 def new_object(name, bm, at=(0, 0, 0), tilt=0.0, smooth=False):
-    """Ett objekt av bm (hörn i bilens koordinater relativt `at`), lutat `tilt` radianer kring x
-    (positivt lyfter bakkanten)."""
+    """An object from bm (vertices in car coordinates relative to `at`), tilted `tilt` radians about x
+    (positive lifts the rear edge)."""
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
@@ -107,7 +107,8 @@ def face(bm, verts, mat):
 
 
 def hexa(bm, corners, mat, side_mat=None):
-    """Sexsidig kropp av åtta hörn: fyra i ena änden (runt om) och fyra i den andra, i samma ordning."""
+    """Six-sided solid from eight vertices: four at one end (going around) and four at the other, in the same
+    order."""
     v = [vert(bm, c) for c in corners]
     a, b = v[:4], v[4:]
     face(bm, list(reversed(a)), mat)
@@ -118,7 +119,7 @@ def hexa(bm, corners, mat, side_mat=None):
 
 
 def box(bm, center, size, mat, rot=None, side_mat=None):
-    """Låda i bilens koordinater: mitt, storlek (x, y, z) och en valfri rotationsmatris (3x3)."""
+    """Box in car coordinates: centre, size (x, y, z) and an optional rotation matrix (3x3)."""
     sx, sy, sz = (s / 2 for s in size)
     rot = rot or Matrix.Identity(3)
     c = Vector(center)
@@ -127,9 +128,9 @@ def box(bm, center, size, mat, rot=None, side_mat=None):
 
 
 def revolve(bm, profile, axis, segs, center=(0, 0, 0), start=0.0, closed=True):
-    """Rotationskropp: profile = [(a, r, material)] längs axeln ('x' eller 'z'); materialet gäller
-    sträckan till nästa punkt. En sluten profil (sista punkten binds till den första) ger en sluten kropp,
-    så normalerna kan räknas ut."""
+    """Solid of revolution: profile = [(a, r, material)] along the axis ('x' or 'z'); the material applies
+    to the stretch up to the next point. A closed profile (the last point joins the first) gives a closed
+    solid, so the normals can be computed."""
     c = Vector(center)
 
     def point(a, r, t):
@@ -151,7 +152,7 @@ def revolve(bm, profile, axis, segs, center=(0, 0, 0), start=0.0, closed=True):
 
 
 def prism(bm, outline, x0, x1, mat, side_mat=None):
-    """Polygonen outline = [(z, y)] utdragen längs x från x0 till x1 (konvex eller nästan konvex)."""
+    """The polygon outline = [(z, y)] extruded along x from x0 to x1 (convex or nearly convex)."""
     a = [vert(bm, (x0, y, z)) for z, y in outline]
     b = [vert(bm, (x1, y, z)) for z, y in outline]
     face(bm, list(reversed(a)), mat)

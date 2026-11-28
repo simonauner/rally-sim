@@ -1,6 +1,6 @@
 import type { BodyShape } from './shape';
 
-/** Strand 2.0 GT: låg tvådörrars coupé: lång huv, kraftigt lutad vindruta, kort tak och kort bagagelucka. */
+/** Strand 2.0 GT: low two-door coupé: long hood, steeply raked windscreen, short roof and short boot lid. */
 export const strandGt: BodyShape = {
   halfX: 0.84,
   bottom: -0.29,

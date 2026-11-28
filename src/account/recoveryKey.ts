@@ -1,9 +1,9 @@
 /**
- * En återställningsnyckel är kontots hemlighet skriven så att den kan skrivas av för hand,
- * som 7KQM-3XF2-…: 28 tecken Crockford base32 i grupper om fyra. Den rymmer hemlighetens
- * 128 bitar och 10 kontrollbitar, så en felskriven nyckel avvisas i stället för att leda till
- * ett nytt, tomt konto. Alfabetet saknar I, L, O och U; I och L läses som 1 och O som 0.
- * Samma format som i season-o-meter.
+ * A recovery key is the account's secret written so it can be copied by hand,
+ * like 7KQM-3XF2-…: 28 characters of Crockford base32 in groups of four. It holds the secret's
+ * 128 bits and 10 check bits, so a mistyped key is rejected instead of leading to
+ * a new, empty account. The alphabet lacks I, L, O and U; I and L are read as 1 and O as 0.
+ * Same format as in season-o-meter.
  */
 
 import { fromBase64Url, isSecret, toBase64Url } from './protocol';
@@ -11,11 +11,11 @@ import { fromBase64Url, isSecret, toBase64Url } from './protocol';
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const SECRET_BYTES = 16;
 const CHECK_BITS = 10;
-/** 128 + 10 bitar, och 2 nollbitar som fyller sista tecknet. */
+/** 128 + 10 bits, plus 2 zero bits that fill the last character. */
 const LENGTH = 28;
 const GROUP = 4;
 
-/** Bitar från FNV-1a över hemlighetens byte. */
+/** Bits from FNV-1a over the secret's bytes. */
 function check(bytes: Uint8Array) {
   let hash = 0x811c9dc5;
   for (const byte of bytes) hash = Math.imul(hash ^ byte, 0x01000193);
@@ -38,7 +38,7 @@ export function recoveryKey(secret: string) {
   return key;
 }
 
-/** Hemligheten i en återställningsnyckel, eller null om det inte är en giltig nyckel. */
+/** The secret in a recovery key, or null if it is not a valid key. */
 export function secretFromKey(input: string): string | null {
   const text = input.toUpperCase().replace(/[\s-]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0');
   if (text.length !== LENGTH) return null;

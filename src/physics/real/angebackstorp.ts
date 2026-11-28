@@ -1,14 +1,15 @@
 /**
- * Ängebäckstorp, ca 11,5 km i två etapper, ur Royal Rally of Scandinavia 2025. Vägen är hittad på
- * rallyts översiktskarta (ca 26 m per pixel, utan GPS-punkter), georefererad mot orter och vägnätet
- * i OpenStreetMap; den kan avvika ±50 m och ta fel väg där två vägar går tätt. Hörn i korsningar är
- * utjämnade, och lutningen är begränsad till 12 % där höjddatan tar med branter bredvid vägen.
- * Vägen följer OpenStreetMap och höjden EU-DEM, samplad var 20:e meter med lätt utjämning. Varje
- * del har origo i sin startpunkt: x väster, z norr, y höjd över starten, i meter.
+ * Ängebäckstorp, about 11.5 km in two stages, from Royal Rally of Scandinavia 2025.
+ * The road was traced from the rally's overview map (about 26 m per pixel, no GPS points) and
+ * georeferenced against towns and the road network in OpenStreetMap; it can be off by ±50 m and take
+ * the wrong road where two roads run close together. Corners at junctions are smoothed, and the
+ * gradient is capped at 12 % where the elevation data picks up steep slopes beside the road.
+ * The road follows OpenStreetMap and the elevation EU-DEM, sampled every 20 m with light smoothing.
+ * Each part has its origin at its start point: x west, z north, y height above the start, in metres.
  *
- * Vägdata © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
- * Höjd: EU-DEM v1.1 via OpenTopoData, framställd med Copernicus-data finansierad av EU.
- * Datan i den här filen är härledd från OpenStreetMap och delas under ODbL 1.0.
+ * Road data © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
+ * Elevation: EU-DEM v1.1 via OpenTopoData, produced using Copernicus data funded by the EU.
+ * The data in this file is derived from OpenStreetMap and shared under ODbL 1.0.
  */
 
 import type { RealStagePart } from '../stage';

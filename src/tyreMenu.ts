@@ -3,14 +3,14 @@ import { WEATHER_GRIP, WEATHER_NAMES, type Weather } from './physics/weather';
 import { bestTyre, surfaceShares, type StageDef } from './physics/stage';
 import { SURFACES, TYRE_GRIP, TYRE_NAMES, type SurfaceId, type TyreType } from './physics/surfaces';
 
-/** ?vader=regn|dimma|snöfall tvingar fram ett väder vid felsökning. */
+/** ?vader=regn|dimma|snöfall forces a weather for debugging. */
 export const forcedWeather = () =>
   (Object.keys(WEATHER_NAMES) as Weather[]).find((w) => WEATHER_NAMES[w] === new URLSearchParams(location.search).get('vader'));
 
-/** Sant för ett däcknamn, t.ex. ur ?mastarskap=<däck>. */
+/** True for a tyre name, e.g. from ?mastarskap=<tyre>. */
 export const isTyre = (v: string | null): v is TyreType => v !== null && Object.hasOwn(TYRE_GRIP, v);
 
-/** Däckval före start, med etappens underlag och det däck som greppar bäst i snitt förvalt. Null = Tillbaka. */
+/** Tyre choice before the start, with the stage's surface and the tyre with the best average grip preselected. Null = Tillbaka. */
 export async function pickTyre(stage: StageDef, weather: Weather): Promise<TyreType | null> {
   const grip = (t: TyreType, s: SurfaceId) => TYRE_GRIP[t][s] * (WEATHER_GRIP[weather][s] ?? 1);
   const shares = Object.entries(surfaceShares(stage)) as [SurfaceId, number][];

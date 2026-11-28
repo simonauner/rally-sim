@@ -4,51 +4,51 @@ import { settings } from './settings';
 
 export interface MenuItem<T> {
   label: string;
-  /** Liten text till höger, t.ex. bästa tid. */
+  /** Small text on the right, e.g. best time. */
   detail?: string;
-  /** Liten rad under texten, t.ex. vad en del gör. */
+  /** Small line below the text, e.g. what a part does. */
   note?: string;
-  /** Bild (URL) till vänster i knappen, t.ex. en vy från mästerskapets etapper. */
+  /** Image (URL) on the left of the button, e.g. a view from the championship's stages. */
   image?: string;
   value: T;
-  /** Sant om valet inte går, t.ex. för lite pengar: då låter det duh-duh i stället för klick. Läses vid klicket. */
+  /** True if the choice isn't allowed, e.g. too little money: then it goes duh-duh instead of a click. Read on click. */
   denied?: () => boolean;
   /**
-   * Låst: grå text med hänglås. Utan denied skakar raden på huvudet med duh-duh och menyn står kvar med
-   * markeringen på raden; med denied gäller den, och värdet returneras som vanligt.
+   * Locked: grey text with a padlock. Without denied the row shakes its head with duh-duh and the menu stays with
+   * the highlight on the row; with denied that applies, and the value is returned as usual.
    */
   locked?: boolean;
-  /** Frågan när raden vänds för att bekräftas, t.ex. vid köp. Läses vid klicket; Ja ger värdet, Nej vänder tillbaka. */
+  /** The question when the row flips for confirmation, e.g. on purchase. Read on click; Ja gives the value, Nej flips back. */
   confirm?: () => string;
 }
 
-/** Lucides lock (lucide-static 1.81.0, ISC). */
+/** Lucide's lock (lucide-static 1.81.0, ISC). */
 export const LOCK_ICON =
   '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
 
 export interface MenuOptions<T> {
   title: string;
   subtitle?: string;
-  /** Fritext under rubriken (HTML), t.ex. kontrollistan. */
+  /** Free text below the heading (HTML), e.g. the controls list. */
   body?: string;
   items: MenuItem<T>[];
-  /** Värdet som Esc ger; utan det gör Esc ingenting. */
+  /** The value Esc gives; without it Esc does nothing. */
   cancel?: T;
-  /** Täck spelet helt (huvudmeny) i stället för att visa det dämpat bakom (paus). */
+  /** Cover the game fully (main menu) instead of showing it dimmed behind (pause). */
   solid?: boolean;
-  /** Panelen vid högerkanten utan att dämpa spelet, t.ex. målskärmen där bilen syns. */
+  /** The panel at the right edge without dimming the game, e.g. the finish screen where the car is visible. */
   side?: boolean;
-  /** En panel till, till höger om den vanliga (HTML), t.ex. bilen man jämför med. */
+  /** One more panel, to the right of the usual one (HTML), e.g. the car you compare with. */
   aside?: string;
-  /** Valen i aside-panelen i stället för den vanliga, t.ex. när de hör till den. */
+  /** The choices in the aside panel instead of the usual one, e.g. when they belong to it. */
   itemsInAside?: boolean;
-  /** Liten text nere i högra hörnet av skärmen, t.ex. version. */
+  /** Small text in the bottom right corner of the screen, e.g. version. */
   footer?: string;
-  /** Ett textfält under texten; onDone får det inskrivna när menyn stängs. */
+  /** A text field below the text; onDone gets what was typed when the menu closes. */
   input?: { placeholder: string; onDone: (value: string) => void };
-  /** Valet som är markerat när menyn öppnas; annars det första. */
+  /** The choice highlighted when the menu opens; otherwise the first. */
   initial?: T;
-  /** Anropas när markeringen flyttas, även för första valet. */
+  /** Called when the highlight moves, also for the first choice. */
   onSelect?: (value: T) => void;
 }
 
@@ -58,11 +58,11 @@ let blipCtx: AudioContext | null = null;
 let clickNoise: AudioBuffer | null = null;
 const menuAudio = () => {
   if (!settings.sound || !settings.menuSound) return null;
-  // Skapas vid första klicket, som är en användargest, så webbläsaren tillåter ljudet.
+  // Created on the first click, which is a user gesture, so the browser allows the sound.
   return (blipCtx ??= new AudioContext());
 };
 
-/** Lätt klick: en kort brusstöt, ljusare för val. */
+/** Light click: a short noise burst, brighter for selection. */
 function click(freq: number, delay = 0) {
   const ctx = menuAudio();
   if (!ctx) return;
@@ -85,7 +85,7 @@ function click(freq: number, delay = 0) {
   src.start(t);
 }
 
-/** Ton som faller, för när ett val inte går. */
+/** Falling tone, for when a choice isn't allowed. */
 function blip(freq: number, length: number, delay = 0) {
   const ctx = menuAudio();
   if (!ctx) return;
@@ -106,20 +106,20 @@ function playClip(url: string, volume: number) {
   if (!settings.sound || !settings.menuSound) return;
   const a = new Audio(url);
   a.volume = volume;
-  // Webbläsaren kan vägra spela; då blir det tyst i stället för ett fel.
+  // The browser may refuse to play; then it's silent instead of an error.
   a.play().catch(() => {});
 }
 
-/** Applåder och jubel när ett mästerskap är klart. */
+/** Applause and cheering when a championship is finished. */
 export const applause = () => playClip(applauseUrl, 0.6);
 
-/** Mynt som faller ner i en börs när man betalar för något. */
+/** Coins dropping into a purse when you pay for something. */
 export const coins = () => playClip(coinsUrl, 0.6);
 
 /**
- * Visar en meny och väntar på ett val. Styrs med piltangenter/W/S och Enter, eller musen.
- * Menyn fångar tangenttryck så att spelet inte ser dem; släppta tangenter går igenom,
- * annars kan en tangent som hölls in när menyn öppnades fastna i spelet.
+ * Shows a menu and waits for a choice. Controlled with arrow keys/W/S and Enter, or the mouse.
+ * The menu captures key presses so the game doesn't see them; key releases pass through,
+ * otherwise a key held down when the menu opened could get stuck in the game.
  */
 export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
   const el = root();
@@ -139,20 +139,20 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       ${opts.itemsInAside ? '' : items}
     </div>
     ${opts.aside ? `<div class="panel aside">${opts.aside}${opts.itemsInAside ? items : ''}</div>` : ''}`;
-  // Vid sidan ligger panelerna i en rad som kan glida upp (se #menu.side i index.html).
+  // To the side, the panels sit in a row that can slide up (see #menu.side in index.html).
   el.innerHTML = `${opts.side && !opts.solid ? `<div class="panels">${panels}</div>` : panels}
     ${opts.footer ? `<div class="corner">${opts.footer}</div>` : ''}`;
   el.style.display = 'flex';
   const buttons = [...el.querySelectorAll('button')];
   let sel = 0;
-  // Den vända raden (index) och om Ja är markerat; vid sidan om ligger radens vanliga innehåll.
+  // The flipped row (index) and whether Ja is highlighted; alongside it sits the row's usual content.
   let flipped: { i: number; yes: boolean; html: string } | null = null;
   const unflip = () => {
     if (!flipped) return;
     const b = buttons[flipped.i]!;
     b.innerHTML = flipped.html;
     b.classList.remove('flipped');
-    // Vänds tillbaka med samma rörelse; omstart av animationen kräver en omritning emellan.
+    // Flipped back with the same motion; restarting the animation needs a reflow in between.
     b.classList.remove('unflip');
     void b.offsetWidth;
     b.classList.add('unflip');
@@ -170,7 +170,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     const b = buttons[i]!;
     flipped = { i, yes: true, html: b.innerHTML };
     b.innerHTML = `<span>${question}</span><span class="choices"><b data-c="yes">Ja</b><b data-c="no">Nej</b></span>`;
-    // Samma animation som unflip: utan omritning emellan startar den inte om.
+    // Same animation as unflip: without a reflow in between it doesn't restart.
     b.classList.remove('unflip');
     void b.offsetWidth;
     b.classList.add('flipped');
@@ -200,14 +200,14 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
         select(i);
         blip(220, 0.14);
         blip(165, 0.22, 0.17);
-        // Starta om skakningen även om den redan pågår.
+        // Restart the shake even if it is already running.
         const b = buttons[i]!;
         b.classList.remove('shake');
         void b.offsetWidth;
         b.classList.add('shake');
         return;
       }
-      // Första valet av en rad som ska bekräftas vänder den i stället för att välja.
+      // The first choice of a row that needs confirming flips it instead of choosing.
       if (item?.confirm && !denied && flipped?.i !== opts.items.indexOf(item)) {
         flip(opts.items.indexOf(item), item.confirm());
         return;
@@ -218,12 +218,12 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
         unflip();
         return;
       }
-      // Duh-duh: två låga, fallande toner när valet inte går.
+      // Duh-duh: two low, falling tones when the choice isn't allowed.
       if (denied) {
         blip(220, 0.14);
         blip(165, 0.22, 0.17);
       } else if (value === opts.cancel) {
-        // Tillbaka: två klick som faller, så det skiljer sig från ett vanligt val.
+        // Tillbaka: two falling clicks, so it differs from a normal choice.
         click(2600);
         click(1400, 0.06);
       } else click(4500);
@@ -234,7 +234,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
         el.innerHTML = '';
         resolve(value);
       };
-      // Efter Ja syns raden vändas tillbaka innan menyn stängs.
+      // After Ja the row is seen flipping back before the menu closes.
       if (flipped) {
         closing = true;
         unflip();
@@ -243,7 +243,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     };
     const onKey = (e: KeyboardEvent) => {
       e.stopImmediatePropagation();
-      // I textfältet skrivs tangenterna som vanligt; bara Enter och Esc styr menyn.
+      // In the text field keys are typed as usual; only Enter and Esc control the menu.
       if (e.target === input && e.code !== 'Enter' && e.code !== 'Escape') return;
       e.preventDefault();
       if (e.repeat && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) return;
@@ -258,7 +258,7 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
       else if (e.code === 'Enter' || e.code === 'Space') done(opts.items[sel]!.value, opts.items[sel]);
       else if (e.code === 'Escape' && opts.cancel !== undefined) done(opts.cancel);
     };
-    // Capture på window: körs före spelets egna lyssnare.
+    // Capture on window: runs before the game's own listeners.
     addEventListener('keydown', onKey, true);
     buttons.forEach((b, i) => {
       b.addEventListener('mouseenter', () => select(i));
@@ -276,8 +276,8 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
 }
 
 /**
- * Laddningsskärm som täcker spelet, med `body` (t.ex. etappkortet) under snurren, så att den syns ovanför kartan. `status` byter raden
- * vid snurren och väntar tills den syns; `hide` tar bort skärmen.
+ * Loading screen covering the game, with `body` (e.g. the stage card) under the spinner, so it shows above the map. `status` changes the line
+ * by the spinner and waits until it is visible; `hide` removes the screen.
  */
 export function showLoading(title: string, body = '', subtitle = ''): { status: (text: string) => Promise<void>; hide: () => void } {
   const el = root();
@@ -288,7 +288,7 @@ export function showLoading(title: string, body = '', subtitle = ''): { status: 
   return {
     async status(t) {
       text.textContent = t;
-      // Vänta tills skärmen faktiskt har ritats, annars syns texten inte förrän det tunga jobbet är klart.
+      // Wait until the screen has actually been drawn, otherwise the text doesn't show until the heavy work is done.
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     },
     hide() {

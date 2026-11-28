@@ -1,7 +1,7 @@
 /**
- * Mästerskap: flera etapper i följd med samma bil. Skador följer med mellan etapperna och lagas
- * för pengar på servicen; den som avbryter får bilen lagad gratis men inga prispengar. Ren logik
- * utan DOM; framsteget sparas i webbläsaren eftersom spelet laddar om sidan mellan etapperna.
+ * Championships: several stages in a row with the same car. Damage carries over between stages and is repaired
+ * for money at service; a player who retires gets the car repaired for free but no prize money. Pure logic
+ * without DOM; progress is saved in the browser because the game reloads the page between stages.
  */
 
 import type { CareerState } from '../account/protocol';
@@ -16,37 +16,37 @@ import { rollWeather, WEATHER_SLOWDOWN, type Weather } from '../physics/weather'
 export interface ChampionshipDef {
   id: string;
   name: string;
-  /** Etappernas namn, i körordning (StageDef.name). */
+  /** The stage names, in running order (StageDef.name). */
   legs: string[];
-  /** Fältets grundtakt som andel av guldtiden; ingen motståndare blir snabbare än strax under den. */
+  /** The field's base pace as a fraction of the gold time; no rival gets faster than just below it. */
   pace: number;
-  /** Bilklassen som får köra. */
+  /** The car class allowed to enter. */
   tier: Tier;
 }
 
 export const CHAMPIONSHIPS: ChampionshipDef[] = [
   { id: 'skogsrallyt', name: 'Skogsrallyt', legs: ['Grinsbol', 'Tollesrud', 'Åsterud'], pace: 0.985, tier: 1 },
   { id: 'myrkullarallyt', name: 'Myrkullarallyt', legs: ['Botten', 'Rannsjön', 'Larssäter', 'Stor-Jangen'], pace: 0.965, tier: 1 },
-  // Fem etapper ger fältet fler chanser att hinna ikapp, så grundtakten är lite lägre än tre etappers.
+  // Five stages give the field more chances to catch up, so the base pace is a bit lower than for three stages.
   { id: 'vinterrallyt', name: 'Vinterrallyt', legs: ['Åsjön', 'Altarliden', 'Bergtjärnen', 'Torpet', 'Trollberget'], pace: 0.95, tier: 1 },
-  // Klass 2 har egna verkliga sträckor och ett snabbare fält.
+  // Class 2 has its own real roads and a faster field.
   { id: 'tallmoklassikern', name: 'Tallmoklassikern', legs: ['Södra Hulteby', 'Ämten', 'Lindås', 'Lungsund'], pace: 0.985, tier: 2 },
   { id: 'ljunghedsrallyt', name: 'Ljunghedsrallyt', legs: ['Sundstorp', 'Bäckelid', 'Niklasdamm', 'Broby'], pace: 0.965, tier: 2 },
   { id: 'israllyt', name: 'Israllyt', legs: ['Storberget', 'Hösjöälven', 'Röjmyrberget', 'Flarkån'], pace: 0.945, tier: 2 },
-  // Ligger sist så att klass 2 fortfarande öppnas av de tre första klass 1-mästerskapen.
+  // Placed last so that class 2 is still unlocked by the first three class 1 championships.
   { id: 'forsrallyt', name: 'Forsrallyt', legs: ['Näs', 'Rickleån', 'Valsfäboda'], pace: 0.945, tier: 1 },
 ];
 
-/** Fältets takt i klass 1-guldtider: klass 2 kör fortare. */
+/** The field's pace in class 1 gold times: class 2 drives faster. */
 const fieldPace = (def: ChampionshipDef) => def.pace * TIER_PACE[def.tier];
 
-/** Vunnet; vinster från före `won` läses ur historiken. */
+/** Won; wins from before `won` are read from the history. */
 export const hasWon = (career: CareerState, def: ChampionshipDef) =>
   !!career.won?.includes(def.id) || !!career.history?.some((e) => e.kind === 'championship' && e.place === 1 && e.name === def.name);
 
 /**
- * Bästa placeringen i mästerskapet, eller null om det aldrig körts.
- * shortcut: läses ur historiken, som bara sparar de senaste raderna; vinster finns kvar i `won`.
+ * The best position in the championship, or null if it was never driven.
+ * shortcut: read from the history, which only keeps the latest rows; wins remain in `won`.
  */
 export function bestPlace(career: CareerState, def: ChampionshipDef): number | null {
   const places = (career.history ?? []).filter((e) => e.kind === 'championship' && e.name === def.name && e.place).map((e) => e.place!);
@@ -54,77 +54,77 @@ export function bestPlace(career: CareerState, def: ChampionshipDef): number | n
   return places.length ? Math.min(...places) : null;
 }
 
-/** Mästerskapen i samma klass som står före det i listan. */
+/** The championships in the same class that come before it in the list. */
 const earlierInTier = (def: ChampionshipDef) => CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.indexOf(def)).filter((c) => c.tier === def.tier);
 
-/** Klassen är öppen när mästerskapen före klassens första i listan är vunna. */
+/** The class is unlocked when the championships before the class's first one in the list are won. */
 export const tierUnlocked = (career: CareerState, tier: Tier) =>
   CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.findIndex((c) => c.tier === tier)).every((c) => hasWon(career, c));
 
-/** Klass 2-bilar som säljs först när alla mästerskap i klass 2 är vunna. */
+/** Class 2 cars that are only sold once all class 2 championships are won. */
 const LATE_CARS = ['Sora 2.0 Turbo', 'Hoshi 2.0 4WD', 'Volpe 2.0 Turbo 16V', 'Brenner 5T Coupé'];
 
-/** Om bilhandlaren säljer bilen: klassen ska vara öppen, och de sena bilarna kräver hela klass 2 vunnen. */
+/** Whether the dealer sells the car: the class must be unlocked, and the late cars require all of class 2 won. */
 export const carUnlocked = (career: CareerState, car: string) =>
   tierUnlocked(career, tierOf(car)) && (!LATE_CARS.includes(car) || CHAMPIONSHIPS.filter((c) => c.tier === 2).every((c) => hasWon(career, c)));
 
-/** Vad som låser upp bilen, för bilhandlarens knapp. */
+/** What unlocks the car, for the dealer's button. */
 export const carUnlockHint = (car: string) => (LATE_CARS.includes(car) ? 'Vinn alla mästerskap i klass 2' : 'Vinn alla mästerskap i klass 1');
 
-/** Skogsrallyt är alltid öppet; därefter krävs öppen klass och att klassens tidigare mästerskap är vunna. */
+/** Skogsrallyt is always open; after that the class must be unlocked and the class's earlier championships won. */
 export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>
   tierUnlocked(career, def.tier) && earlierInTier(def).every((c) => hasWon(career, c));
 
 /**
- * Vad som låser upp mästerskapet, för menyn: bara det sista ovunna före det, de tidigare följer av det.
- * Klassens första mästerskap har inga före sig i klassen; där är det mästerskapen som öppnar klassen.
+ * What unlocks the championship, for the menu: only the last unwon one before it, the earlier ones follow from it.
+ * The class's first championship has none before it in the class; there it is the championships that unlock the class.
  */
 export const unlockHint = (career: CareerState, def: ChampionshipDef) => {
   const opensTier = CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.findIndex((c) => c.tier === def.tier));
   return `vinn ${[...opensTier, ...earlierInTier(def)].filter((c) => !hasWon(career, c)).at(-1)?.name}`;
 };
 
-/** Karriären med mästerskapet vunnet. */
+/** The career with the championship won. */
 export const withWin = (career: CareerState, def: ChampionshipDef): CareerState =>
   career.won?.includes(def.id) ? career : { ...career, won: [...(career.won ?? []), def.id] };
 
-/** Det som följer med bilen mellan etapperna. */
+/** What carries over with the car between stages. */
 export interface CarDamage {
   body: DamageState;
-  /** Skada per hjul, 0..1. */
+  /** Damage per wheel, 0..1. */
   wheels: number[];
-  /** Motorns kvarvarande effekt, 0..1. */
+  /** The engine's remaining power, 0..1. */
   powerFactor: number;
-  /** Strålkastarnas skada [vänster, höger], 0..1. Saknas i framsteg sparade före lyktorna. */
+  /** Headlight damage [left, right], 0..1. Missing in progress saved before the lamps. */
   lamps?: number[];
 }
 
 export interface ChampionshipProgress {
   id: string;
-  /** Bilens namn (CarParams.name). */
+  /** The car's name (CarParams.name). */
   car: string;
-  /** Etappen som ska köras härnäst, index i legs. */
+  /** The stage to drive next, index in legs. */
   leg: number;
-  /** Tider för körda etapper. */
+  /** Times for stages driven. */
   times: number[];
   damage: CarDamage | null;
-  /** Frö för motståndarnas slump, och fältet med tider för de etapper spelaren kört. */
+  /** Seed for the rivals' randomness, and the field with times for the stages the player has driven. */
   seed?: number;
   rivals?: Rival[];
-  /** Svårighetsgradens takt (DIFFICULTY_PACE); saknas i framsteg sparade före den och betyder lätt. */
+  /** The difficulty's pace (DIFFICULTY_PACE); missing in progress saved before it, meaning easy. */
   difficulty?: number;
 }
 
-/** Fältets takt per svårighetsgrad, som faktor på mästerskapets grundtakt (lägre = snabbare). */
+/** The field's pace per difficulty, as a factor on the championship's base pace (lower = faster). */
 export const DIFFICULTY_PACE = { easy: 1, medium: 0.97, hard: 0.94 } as const;
 export type Difficulty = keyof typeof DIFFICULTY_PACE;
-/** Medaljpengarna per svårighetsgrad: svårare fält ger mer, lättare mindre (Skogsrallyt: 15 500 / 20 500 / 25 500). */
+/** Medal money per difficulty: harder fields pay more, easier less (Skogsrallyt: 15 500 / 20 500 / 25 500). */
 export const DIFFICULTY_PRIZE: Record<Difficulty, number> = { easy: 0.75, medium: 1, hard: 1.25 };
-/** Svårighetsgraden mästerskapet startades med; framsteg sparade före den räknas som lätt. */
+/** The difficulty the championship was started with; progress saved before it counts as easy. */
 export const difficultyOf = (p: ChampionshipProgress) =>
   (Object.keys(DIFFICULTY_PACE) as Difficulty[]).find((k) => DIFFICULTY_PACE[k] === (p.difficulty ?? 1))!;
 
-/** Prispengar per kilometer och placering: betydligt mer än för enstaka etapper. */
+/** Prize money per kilometre and position: considerably more than for single stages. */
 const CHAMPIONSHIP_MEDALS = [
   { name: 'guld', prize: 1500 },
   { name: 'silver', prize: 1000 },
@@ -132,10 +132,10 @@ const CHAMPIONSHIP_MEDALS = [
 ] as const;
 export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
 
-/** Mästerskapets etapper sammanlagt (km), ur de förberäknade längderna. */
+/** The championship's stages combined (km), from the precomputed lengths. */
 export const championshipKm = (def: ChampionshipDef) => def.legs.reduce((sum, leg) => sum + (STAGE_LENGTHS[leg] ?? 0), 0) / 1000;
 
-/** Medaljerna med prispengar som växer med sträckan, så att långa mästerskap bär sina reparationer. */
+/** The medals with prize money that grows with distance, so long championships pay for their repairs. */
 export const championshipMedals = (def: ChampionshipDef, difficulty: Difficulty) =>
   CHAMPIONSHIP_MEDALS.map((m) => ({
     name: m.name,
@@ -144,35 +144,35 @@ export const championshipMedals = (def: ChampionshipDef, difficulty: Difficulty)
 
 export const championshipById = (id: string) => CHAMPIONSHIPS.find((c) => c.id === id) ?? null;
 
-/** Medaljgränser för totaltiden: summan av etappernas gränser. */
+/** Medal thresholds for the total time: the sum of the stages' thresholds. */
 export function championshipTargets(def: ChampionshipDef): [number, number, number] | null {
   const all = def.legs.map((name) => STAGE_TARGETS[name]);
   if (all.some((t) => !t)) return null;
   return [0, 1, 2].map((i) => Math.round(all.reduce((sum, t) => sum + t![i]!, 0) * TIER_PACE[def.tier])) as [number, number, number];
 }
 
-/** Prispengarna efter placering i mästerskapet (1 = vinst). */
+/** The prize money by championship position (1 = win). */
 export function championshipPrize(def: ChampionshipDef, place: number, difficulty: Difficulty): { medal: string | null; prize: number } {
   const medal = championshipMedals(def, difficulty)[place - 1];
   return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE * TIER_PRIZE[def.tier] };
 }
 
-/** Vädret på etappen som ska köras härnäst; samma frö ger samma väder efter en omladdning. */
+/** The weather on the stage to drive next; the same seed gives the same weather after a reload. */
 export function legWeather(p: ChampionshipProgress, leg = p.leg): Weather {
   const def = championshipById(p.id)!;
   const stage = STAGES.find((s) => s.name === def.legs[leg]);
   return stage ? rollWeather(stage, rng((p.seed ?? 0) + 31 * (leg + 1))()) : 'clear';
 }
 
-/** Ett nytt mästerskap med ett slumpat fält motståndare. */
+/** A new championship with a random field of rivals. */
 export function newProgress(def: ChampionshipDef, car: string, seed: number, difficulty: Difficulty = 'easy'): ChampionshipProgress {
   const d = DIFFICULTY_PACE[difficulty];
   return { id: def.id, car, leg: 0, times: [], damage: null, seed, rivals: newRivals(seed, fieldPace(def) * d), difficulty: d };
 }
 
 /**
- * Motståndarnas tider på etappen spelaren just kört på `time`. Framsteg sparade före
- * motståndarna får ett fält vars tidigare etapper körs i efterhand.
+ * The rivals' times on the stage the player just drove in `time`. Progress saved before
+ * the rivals gets a field whose earlier stages are raced afterwards.
  */
 export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipProgress {
   const def = championshipById(p.id)!;
@@ -185,13 +185,13 @@ export function raceRivals(p: ChampionshipProgress, time: number): ChampionshipP
   return { ...p, seed, rivals };
 }
 
-/** Hur mycket vädret saktar ner fältet på varje etapp. */
+/** How much the weather slows the field on each stage. */
 const legSlowdown = (p: ChampionshipProgress) => championshipById(p.id)!.legs.map((_, i) => WEATHER_SLOWDOWN[legWeather(p, i)]);
 
 /**
- * Startordningen på nästa etapp, namn för namn ('Du' är spelaren). Första etappen seedas snabbast
- * först med spelaren sist, som oseedad nykomling; sedan startar fältet i omvänd ordning mot
- * ställningen, så ledaren går sist och får vägen sopad av de andra, som i VM.
+ * The start order on the next stage, name by name ('Du' is the player). The first stage is seeded fastest
+ * first with the player last, as an unseeded newcomer; after that the field starts in reverse order of
+ * the standings, so the leader goes last and gets the road swept by the others, as in the WRC.
  */
 export function startOrder(p: ChampionshipProgress): string[] {
   if (!p.rivals) return ['Du'];
@@ -200,8 +200,8 @@ export function startOrder(p: ChampionshipProgress): string[] {
 }
 
 /**
- * Förarna som startar före spelaren på nästa etapp, med sina tider där. Tiderna beror bara på fröet,
- * takten och vädret, inte på spelarens åk, så de blir samma som raceRivals ger efter målgång.
+ * The drivers starting before the player on the next stage, with their times there. The times depend only on the seed,
+ * the pace and the weather, not on the player's run, so they match what raceRivals gives after the finish.
  */
 export function aheadOnRoad(p: ChampionshipProgress): { name: string; time: number }[] {
   if (!p.rivals || p.seed === undefined) return [];
@@ -213,7 +213,7 @@ export function aheadOnRoad(p: ChampionshipProgress): { name: string; time: numb
 
 export type RepairPart = 'body' | 'wheels' | 'engine' | 'lamps';
 
-/** Vad det kostar att laga varje del: kaross, hjul, motor och strålkastare. Avrundat till 50 kr. */
+/** What it costs to repair each part: body, wheels, engine and headlights. Rounded to 50 kr. */
 export function partCosts(d: CarDamage): Record<RepairPart, number> {
   const round = (kr: number) => Math.round(kr / 50) * 50;
   return {
@@ -224,13 +224,13 @@ export function partCosts(d: CarDamage): Record<RepairPart, number> {
   };
 }
 
-/** Vad det kostar att laga allt. */
+/** What it costs to repair everything. */
 export function repairCost(d: CarDamage): number {
   const c = partCosts(d);
   return c.body + c.wheels + c.engine + c.lamps;
 }
 
-/** Skadan efter att en del lagats; resten är som förut. */
+/** The damage after one part is repaired; the rest is as before. */
 export function repairPart(d: CarDamage, part: RepairPart): CarDamage {
   if (part === 'body') return { ...d, body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 } };
   if (part === 'wheels') return { ...d, wheels: d.wheels.map(() => 0) };
@@ -240,7 +240,7 @@ export function repairPart(d: CarDamage, part: RepairPart): CarDamage {
 
 export const hasDamage = (d: CarDamage | null) => !!d && repairCost(d) > 0;
 
-/** Framsteget efter en körd etapp. Med `repaired` lämnar bilen servicen hel. */
+/** The progress after a stage driven. With `repaired` the car leaves service intact. */
 export function afterLeg(p: ChampionshipProgress, time: number, damage: CarDamage, repaired: boolean): ChampionshipProgress {
   return { ...p, leg: p.leg + 1, times: [...p.times, time], damage: repaired ? null : damage };
 }

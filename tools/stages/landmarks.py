@@ -1,7 +1,7 @@
-"""Landmärken längs etapperna ur OpenStreetMap -> src/physics/real/landmarks.ts.
-Användning: python3 -I tools/stages/landmarks.py > src/physics/real/landmarks.ts
-Hämtar OSM-objekt runt varje rutt via Overpass till <etapp>/features.json (en gång) och anger
-landmärkena som sträckor längs vägen, så de hamnar rätt även där rutten avviker från kartan."""
+"""Landmarks along the stages from OpenStreetMap -> src/physics/real/landmarks.ts.
+Usage: python3 -I tools/stages/landmarks.py > src/physics/real/landmarks.ts
+Fetches OSM objects around each route via Overpass into <stage>/features.json (once) and gives
+the landmarks as spans along the road, so they land right even where the route deviates from the map."""
 import json, math, os, sys, time, urllib.parse, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -18,7 +18,7 @@ def fetch(route, out):
             req = urllib.request.Request(url, data=urllib.parse.urlencode({'data': q}).encode(), headers={'User-Agent': 'rally-sim-research/0.1'})
             data = urllib.request.urlopen(req, timeout=200).read(); open(out, 'wb').write(data); return
         except Exception as e: print('overpass', url, e, file=sys.stderr); time.sleep(5)
-    raise SystemExit('Overpass svarar inte')
+    raise SystemExit('Overpass is not responding')
 
 def inside(x, z, pts):
     c = False
@@ -27,7 +27,7 @@ def inside(x, z, pts):
     return c
 
 def cross(a, b, c, d):
-    """Skärningen mellan sträckorna ab och cd som andel längs ab, eller None."""
+    """The intersection of segments ab and cd as a fraction along ab, or None."""
     r = (b[0]-a[0], b[1]-a[1]); s = (d[0]-c[0], d[1]-c[1]); den = r[0]*s[1] - r[1]*s[0]
     if abs(den) < 1e-9: return None
     t = ((c[0]-a[0])*s[1] - (c[1]-a[1])*s[0]) / den; u = ((c[0]-a[0])*r[1] - (c[1]-a[1])*r[0]) / den
@@ -39,10 +39,10 @@ def stage(name):
     if not os.path.exists(D + '/features.json'): fetch(route, D + '/features.json'); time.sleep(2)
     feat = json.load(open(D + '/features.json'))['elements']
     LAT0, LON0 = route[0]['lat'], route[0]['lon']; KX = 111320 * math.cos(math.radians(LAT0)); KY = 110540
-    m = lambda g: ((g['lon'] - LON0) * KX, (g['lat'] - LAT0) * KY)  # öster, norr
+    m = lambda g: ((g['lon'] - LON0) * KX, (g['lat'] - LAT0) * KY)  # east, north
     P = [m(p) for p in route]; S = [0.0]
     for a, b in zip(P, P[1:]): S.append(S[-1] + math.hypot(b[0]-a[0], b[1]-a[1]))
-    # Rutten var 10:e meter med normalen åt vänster i färdriktningen.
+    # The route every 10 m with the normal pointing left in the direction of travel.
     R = []; i = 0
     for d in range(0, int(S[-1]), 10):
         while S[i+1] < d: i += 1
@@ -72,7 +72,7 @@ def stage(name):
                 for off in OFFSETS[k]:
                     px, pz = x + nx * off * side, z + nz * off * side
                     if x0 <= px <= x1 and z0 <= pz <= z1 and inside(px, pz, pts): hits.setdefault((k, side), []).append(d); break
-    # Hus nära vägen blir gårdar även där OSM saknar bostadsområde (som byn i Valsfäboda).
+    # Houses near the road become farms even where OSM has no residential area (like the village in Valsfäboda).
     grid = {}
     for d, x, z, nx, nz in R: grid.setdefault((int(x // 50), int(z // 50)), []).append((d, x, z, nx, nz))
     for e in feat:
@@ -95,7 +95,7 @@ def stage(name):
                 cur = [d, d]
         if cur: spans.append((k, side, *cur))
     spans = [sp for sp in spans if sp[3] - sp[2] >= (40 if sp[0] == 'lake' else 50)]
-    # Punkter där rutten korsar en kraftledning eller en å, och namngivna krön.
+    # Points where the route crosses a power line or a stream, and named crests.
     points = []
     for e in feat:
         t = e.get('tags', {}); g = e.get('geometry')
@@ -109,7 +109,7 @@ def stage(name):
         if t.get('place') and 'Crest' in t.get('name', '') and 'lat' in e:
             x, z = m(e); d = min(R, key=lambda r: math.hypot(r[1]-x, r[2]-z))
             if math.hypot(d[1]-x, d[2]-z) < 40: points.append(('crest', d[0]))
-    # En ledning med flera parallella linor, eller en å som slingrar, ger flera korsningar tätt.
+    # A power line with several parallel wires, or a meandering stream, gives several crossings close together.
     points.sort(key=lambda p: p[1]); merged = []
     for k, s in points:
         if not any(k == k2 and abs(s - s2) < 60 for k2, s2 in merged): merged.append((k, s))
@@ -125,11 +125,11 @@ def stage(name):
 all_ = {}
 for n in STAGES: all_.update(stage(n))
 print('''/**
- * Landmärken längs etapperna ur OpenStreetMap: åkrar, gårdar, sjöar, myrar, kalhyggen, kraftledningar,
- * broar och krön, som sträckor längs vägen (m från etappens start). side 1 = vänster i färdriktningen, -1 = höger,
- * 0 = tvärs över. Genererad av tools/stages/landmarks.py.
+ * Landmarks along the stages from OpenStreetMap: fields, farms, lakes, bogs, clear-cuts, power lines,
+ * bridges and crests, as stretches along the road (m from the stage start). side 1 = left in the driving
+ * direction, -1 = right, 0 = across. Generated by tools/stages/landmarks.py.
  *
- * Kartdata © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
+ * Map data © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
  */
 
 import type { Landmark } from '../stage';

@@ -42,14 +42,14 @@ import { rollWeather, WEATHER_NAMES, type Weather } from './physics/weather';
 
 const DT = 1 / 240;
 const CAMERAS = ['bakifrån nära', 'bakifrån långt', 'motorhuv', 'förarvy', 'uppifrån', 'sidovy (skador)'] as const;
-/** Jaktkamerorna: avstånd bakom bilen och höjd över den (m). */
-/** tight: kameran följer med bilen innan utjämningen, så den inte släpar efter i fart. */
+/** The chase cameras: distance behind the car and height above it (m). */
+/** tight: the camera moves with the car before smoothing, so it doesn't lag behind at speed. */
 const CHASE: Record<string, { back: number; up: number; tight?: boolean }> = {
   'bakifrån nära': { back: 4.7, up: 1.6, tight: true },
   'bakifrån långt': { back: 7.0, up: 2.5 },
 };
 const CAMERA_KEY = 'rally.camera';
-/** Sätts vid bygget i vite.config.ts. */
+/** Set at build time in vite.config.ts. */
 const VERSION = `version ${import.meta.env.VITE_COMMIT} · byggd ${new Date(import.meta.env.VITE_BUILT_AT).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' })}`;
 
 function readCamera() {
@@ -61,7 +61,7 @@ function readCamera() {
 }
 
 async function main() {
-  // ?webgl är bara till för felsökning i miljöer utan riktig WebGPU.
+  // ?webgl is only for debugging in environments without real WebGPU.
   const query = new URLSearchParams(location.search);
   const forceWebGL = query.has('webgl');
   if (!forceWebGL && !('gpu' in navigator)) {
@@ -86,9 +86,9 @@ async function main() {
   scene.background = new THREE.Color(0xcfe3ee);
   scene.fog = new THREE.Fog(0xcfe3ee, 120, 520);
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1500);
-  // Cel-shading: toon-material plus mörka konturer runt allt med toon-material.
+  // Cel shading: toon materials plus dark outlines around everything with a toon material.
   const outlinePass = toonOutlinePass(scene, camera, undefined, 0.003);
-  // En uniform, så konturfärgen kan följa etappens ljus (svart på natten).
+  // A uniform, so the outline colour can follow the stage's light (black at night).
   const outlineColor = uniform(new THREE.Color(0x1c1c24));
   outlinePass.colorNode = outlineColor;
   const pipeline = new THREE.RenderPipeline(renderer, outlinePass);
@@ -106,11 +106,11 @@ async function main() {
   sc.near = 1;
   sc.far = 160;
   sun.shadow.bias = -0.0004;
-  // Skuggtestet flyttas ut längs ytans normal, så täta oregelbundna nät (Blenderbilarna) inte skuggar sig själva i fläckar.
+  // The shadow test is offset along the surface normal, so dense irregular meshes (the Blender cars) don't self-shadow in blotches.
   sun.shadow.normalBias = 0.04;
   scene.add(sun, sun.target);
 
-  // Kontot skapas vid första besöket; rekord synkas om en synkserver är inställd.
+  // The account is created on the first visit; records sync if a sync server is configured.
   startSync();
 
   const showAccount = async () => {
@@ -172,18 +172,18 @@ async function main() {
   const showControls = (solid: boolean) =>
     showMenu({ title: 'Kontroller', body: CONTROLS_TABLE, items: [{ label: '← Tillbaka', value: 0 }], cancel: 0, solid });
 
-  // Världen byggs först när spelaren valt i huvudmenyn. ?testbana hoppar direkt till lekplatsen.
+  // The world is only built once the player has chosen in the main menu. ?testbana jumps straight to the playground.
   type MainChoice = 'stage' | 'test' | 'settings' | 'controls' | 'account' | 'career';
   let choice: MainChoice = query.has('testbana') ? 'test' : query.has('karriar') ? 'career' : 'controls';
-  /** ?karriar=<kr>: tillbaka från ett mästerskap; kassan räknar upp med prispengarna. */
+  /** ?karriar=<kr>: back from a championship; the cash counts up with the prize money. */
   let gained = Number(query.get('karriar')) || 0;
-  // Ladda man om sidan ska kassan inte räkna upp igen.
+  // If you reload the page the cash shouldn't count up again.
   if (query.has('karriar')) history.replaceState(null, '', location.pathname + (forceWebGL ? '?webgl' : ''));
   let model = CARS[0]!;
   let stageDef: StageDef = STAGE_GRINSBOL;
-  /** Karriärlopp ger prispengar; fri körning gör det inte. */
+  /** Career runs give prize money; free driving doesn't. */
   let careerMode = false;
-  /** Pågående mästerskap; ?mastarskap=<däck> laddar dess nästa etapp direkt med däcken valda före omladdningen. */
+  /** Ongoing championship; ?mastarskap=<tyre> loads its next stage directly with the tyres chosen before the reload. */
   let champ: ChampionshipProgress | null = null;
   let weather: Weather = 'clear';
   let tyre: TyreType | null = null;
@@ -191,18 +191,18 @@ async function main() {
   const resumed = isTyre(resumedTyre) ? resumeChampionship() : null;
   if (resumed && isTyre(resumedTyre)) {
     ({ model, stage: stageDef, championship: champ } = resumed);
-    // Vädret slumpas per etapp; i mästerskap från dess frö, så en omladdning inte ger nytt väder.
+    // The weather is randomised per stage; in a championship from its seed, so a reload doesn't give new weather.
     weather = forcedWeather() ?? legWeather(champ!);
     tyre = resumedTyre;
     choice = 'stage';
   } else if (query.has('mastarskap')) choice = 'career';
-  /** Bilen på vridbordet, t.ex. på mästerskapets service. */
+  /** The car on the turntable, e.g. at the championship's service. */
   const showCar = (m: CarModel, d: CarDamage) => {
     const room = showroom(renderer);
     room.show(m, d);
     return room;
   };
-  /** Bilarna man äger i karriären går att köra fritt; utan bil bara Kvarn 240 GL. */
+  /** The cars you own in the career can be driven freely; without a car only the Kvarn 240 GL. */
   const freeCars = () => {
     const owned = Object.keys(loadCareer().career.garage);
     return owned.length ? owned : ['Kvarn 240 GL'];
@@ -213,25 +213,25 @@ async function main() {
     const cars = freeCars().length;
     return `${stages} av ${STAGES.length} etapper, ${cars === 1 ? '1 bil' : `${cars} bilar`}`;
   };
-  /** Kurvan med bilarna bakom menyerna, en för sommar och en för vinter; byggs första gången de visas. */
+  /** The corner with the cars behind the menus, one for summer and one for winter; built the first time they are shown. */
   const backdrops = new Map<boolean, MenuScene>();
   const backdropFor = (winter: boolean) => {
     if (!backdrops.has(winter)) backdrops.set(winter, menuScene(renderer, winter ? STAGE_ASJON : STAGE_GRINSBOL));
     return backdrops.get(winter)!;
   };
-  /** Scenen som spelas bakom menyn just nu. */
+  /** The scene playing behind the menu right now. */
   let shown: MenuScene | null = null;
   const hideScenery = () => {
     shown?.stop();
     shown = null;
   };
-  /** Bakgrund i etappens tema (årstid, ljus och väder), eller huvudmenyns kurva i klockans ljus med null. */
+  /** Background in the stage's theme (season, light and weather), or the main menu's corner in the clock's light with null. */
   const scenery = (s: StageDef | null, weather?: Weather) => {
     shown?.stop();
     shown = backdropFor(!!s?.winter);
     shown.play(s ? (s.light ?? 'day') : undefined, weather);
   };
-  // I karriärens menyer går kurvan i bakgrunden; bilväljaren och vridbordet tar över renderaren medan de visas.
+  // In the career menus the corner runs in the background; the car selector and turntable take over the renderer while shown.
   const careerPick = async (models: CarModel[], opts?: PickOptions) => {
     hideScenery();
     const picked = await pickCar(renderer, models, opts);
@@ -272,7 +272,7 @@ async function main() {
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
     }
-    // Fri körning väljer etapp med huvudmenyns kurva bakom sig.
+    // Free driving picks a stage with the main menu's corner behind it.
     if (choice !== 'career' && choice !== 'stage') hideScenery();
     if (choice === 'career') {
       const launch = await careerMenu(careerPick, careerShowCar, scenery, gained);
@@ -297,7 +297,7 @@ async function main() {
       stageDef = picked;
       weather = forcedWeather() ?? rollWeather(stageDef, Math.random());
     }
-    // Bilväljaren före varje start och däcken efter den; Tillbaka går till huvudmenyn respektive bilväljaren.
+    // The car selector before every start and the tyres after it; Tillbaka goes to the main menu and the car selector respectively.
     let picked: CarModel | null;
     while ((picked = query.has('testbana') ? model : await pickCar(renderer, CARS, { locked: (m) => !freeCars().includes(m.make().name) }))) {
       model = picked;
@@ -307,8 +307,8 @@ async function main() {
     choice = 'controls';
   }
   backdrops.forEach((b) => b.dispose());
-  // Tas bort efter första renderade bildrutan, när terrängen är byggd och shaders kompilerade.
-  // Etappkortet står kvar under laddningen, med vad som görs just nu vid snurren.
+  // Removed after the first rendered frame, once the terrain is built and shaders compiled.
+  // The stage card stays during loading, with what is being done right now by the spinner.
   const loading = choice === 'test'
     ? showLoading('Laddar: Testbana')
     : showLoading(
@@ -347,7 +347,7 @@ async function main() {
   scene.add(dust.mesh);
   const debug = new DebugVectors();
   scene.add(debug.lines);
-  let showVectors = true; // F3/GUI-valet; syns bara när F1-debugläget är på
+  let showVectors = true; // the F3/GUI toggle; only visible when F1 debug mode is on
 
   const controls = new Controls();
   const hud = new Hud();
@@ -387,12 +387,12 @@ async function main() {
   let spawn = Object.values(spawns)[0]!;
   const timer = stage ? new StageTimer(START_S, stage.finish) : null;
   let best: StageRecord | null = stage ? loadRecord(stage.def) : null;
-  /** Förarna som startar före dig i mästerskapet, och deras tider på etappen. */
+  /** The drivers starting before you in the championship, and their times on the stage. */
   const field = champ ? aheadOnRoad(champ) : [];
-  /** Bästa tiden före det senaste åket, för att visa skillnaden i mål. */
+  /** The best time before the latest run, to show the difference at the finish. */
   let previousBest: StageRecord | null = null;
   let resultSaved = false;
-  /** Skadorna vid målgång; det som händer därefter räknas inte. */
+  /** The damage at the finish; whatever happens afterwards doesn't count. */
   let damageAtFinish: CarDamage | null = null;
   const caller = stage ? new NoteCaller(generateNotes(stage, START_S, stage.finish)) : null;
   const codriver = new CoDriver();
@@ -400,12 +400,12 @@ async function main() {
   const ghostMesh = buildGhostMesh(car.params);
   scene.add(ghostMesh);
   let showGhost = true;
-  /** false = kameran hoppar direkt till bilen nästa bildruta i stället för att glida dit. */
+  /** false = the camera jumps straight to the car next frame instead of gliding there. */
   let camInit = false;
-  /** Tid sedan målgång och om målskärmen visas; bilen körs av autopiloten under tiden. */
+  /** Time since the finish and whether the finish screen is shown; the autopilot drives the car meanwhile. */
   let finishedFor = 0;
   let finishShown = false;
-  /** Vinkeln runt bilen när kameran cirklar efter målgång; null = vanlig kamera. */
+  /** The angle around the car when the camera circles after the finish; null = normal camera. */
   let orbit: number | null = null;
   const place = (s: Spawn, keepDamage: boolean) => {
     camInit = false;
@@ -422,7 +422,7 @@ async function main() {
     resultSaved = false;
     damageAtFinish = null;
   };
-  // På etappen ställer R tillbaka bilen på vägen där den är, och klockan fortsätter.
+  // On the stage R puts the car back on the road where it is, and the clock keeps running.
   const recover = () => {
     if (!stage) return place(spawn, true);
     const p = stage.poseAt(stage.project(car.pos.x, car.pos.z).s);
@@ -439,7 +439,7 @@ async function main() {
     carMesh.repair();
   };
   place(spawn, false);
-  // Mästerskapets skador följer med från förra etappen; bucklorna ritas från siffrorna.
+  // The championship's damage carries over from the previous stage; the dents are drawn from the numbers.
   const readDamage = (): CarDamage => ({ body: { ...car.damage }, wheels: car.wheels.map((w) => w.damage), powerFactor: car.drivetrain.powerFactor, lamps: [...car.lamps] });
   if (champ?.damage) {
     Object.assign(car.damage, champ.damage.body);
@@ -457,11 +457,11 @@ async function main() {
   let camMode = Math.max(0, CAMERAS.indexOf(readCamera() as (typeof CAMERAS)[number]));
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
-  /** Bilens position förra bildrutan, för det täta kameraläget. */
+  /** The car's position last frame, for the tight camera mode. */
   const camCar = new THREE.Vector3();
   const tmpDir = new THREE.Vector3();
   const tmpV = new THREE.Vector3();
-  /** Hur långt till höger om bilen målkameran tittar; glider in från 0 så bilden inte hoppar. */
+  /** How far to the right of the car the finish camera looks; glides in from 0 so the image doesn't jump. */
   let lookShift = 0;
 
   const updateCamera = (dt: number) => {
@@ -471,9 +471,9 @@ async function main() {
     fwd.y = 0;
     fwd.normalize();
     if (finishShown) {
-      // Börja där kameran är (oavsett kameraläge), glid ut på cirkeln och snurra långsamt.
+      // Start where the camera is (whatever the camera mode), glide out onto the circle and spin slowly.
       if (orbit === null) {
-        // Fortsätt från exakt samma bild: blickpunkten längs kamerans nuvarande siktlinje.
+        // Continue from exactly the same image: the look-at point along the camera's current line of sight.
         camPos.copy(camera.position);
         camLook.copy(camPos).addScaledVector(camera.getWorldDirection(tmpV), camPos.distanceTo(car.pos));
         orbit = Math.atan2(camPos.x - car.pos.x, camPos.z - car.pos.z);
@@ -485,23 +485,23 @@ async function main() {
       camLook.lerp(car.pos, 1 - Math.exp(-dt * 3));
       camera.position.copy(camPos);
       camera.up.set(0, 1, 0);
-      // Titta lite till höger om bilen så den hamnar vänster om resultatpanelen.
+      // Look a little to the right of the car so it ends up left of the result panel.
       lookShift += (2.2 - lookShift) * (1 - Math.exp(-dt * 2));
       const right = tmpDir.subVectors(camLook, camPos).cross(camera.up).normalize();
       camera.lookAt(tmpV.copy(camLook).addScaledVector(right, lookShift));
       camera.fov += (50 - camera.fov) * (1 - Math.exp(-dt * 2));
     } else if (chase) {
-      // Blanda bilens riktning med färdriktningen så sladdar syns tydligt.
+      // Blend the car's heading with the direction of travel so slides show clearly.
       if (car.speed > 6) {
         tmpV.copy(car.vel);
         tmpV.y = 0;
         tmpV.normalize();
         fwd.lerp(tmpV, 0.45).normalize();
       }
-      // I fart vidgas bilden och kameran skakar lite; den drar sig inte bakåt, för då krymper farten.
+      // At speed the view widens and the camera shakes a little; it doesn't pull back, since that shrinks the sense of speed.
       const fast = Math.min(1, car.speed / 40);
       const wantPos = tmpV.copy(car.pos).addScaledVector(fwd, -chase.back);
-      // Aldrig under marken bakom bilen, t.ex. i en svacka eller på väg upp mot ett krön.
+      // Never below the ground behind the car, e.g. in a dip or heading up towards a crest.
       wantPos.y = Math.max(car.pos.y + chase.up, world.heightAt(wantPos.x, wantPos.z) + 0.9);
       const lookX = car.pos.x + fwd.x * 5;
       const lookZ = car.pos.z + fwd.z * 5;
@@ -557,18 +557,18 @@ async function main() {
 
   const restart = () => {
     if (!stage) return;
-    // Ett bättre rekord kan ha kommit från en annan enhet sedan förra åket.
+    // A better record may have come from another device since the last run.
     best = loadRecord(stage.def);
     repair();
     place(spawns.start!, true);
   };
 
-  // Byte av värld under körning finns inte; huvudmenyn laddar om sidan.
+  // Changing world while driving isn't supported; the main menu reloads the page.
   const goToMainMenu = () => void (location.href = location.pathname + (forceWebGL ? '?webgl' : ''));
   const goToCareer = (prize = 0) => void (location.href = `${location.pathname}?karriar=${prize}${forceWebGL ? '&webgl' : ''}`);
   const goToNextLeg = (t: TyreType) => void (location.href = `${location.pathname}?mastarskap=${t}${forceWebGL ? '&webgl' : ''}`);
 
-  /** Prispengarna från senaste åket, för målskärmen. */
+  /** The prize money from the latest run, for the finish screen. */
   let prizeHtml = '';
   const showFinish = async () => {
     if (!stage || !timer) return;
@@ -595,7 +595,7 @@ async function main() {
     codriver.stop();
     sound.setPaused(true);
     for (;;) {
-      // I mästerskapet finns ingen omstart; att lämna det är att avbryta.
+      // There's no restart in the championship; leaving it means retiring.
       const c = await showMenu<'resume' | 'restart' | 'settings' | 'controls' | 'menu' | 'abort'>({
         title: 'Paus',
         items: [
@@ -630,19 +630,19 @@ async function main() {
     paused = false;
   };
 
-  // Första bildrutan kompilerar shaders, vilket kan ta en stund.
+  // The first frame compiles shaders, which can take a while.
   await loading.status('Förbereder grafiken…');
   let acc = 0;
   let last = performance.now();
   renderer.setAnimationLoop((now: number) => {
-    // rAF:s tidsstämpel kan ligga före performance.now() från när loopen skapades.
+    // rAF's timestamp can be earlier than performance.now() from when the loop was created.
     const frameDt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
     if (paused) {
       pipeline.render();
       return;
     }
-    // Efter mål styr autopiloten; målskärmen tar över tangenterna när den visas.
+    // After the finish the autopilot steers; the finish screen takes over the keys when shown.
     const finished = !!stage && timer?.state === 'finished';
     if (controls.wasPressed('Escape') && !finishShown) void pause();
 
@@ -654,7 +654,7 @@ async function main() {
       try {
         localStorage.setItem(CAMERA_KEY, CAMERAS[camMode]!);
       } catch {
-        // Privat läge: valet gäller bara den här sessionen.
+        // Private mode: the choice only applies to this session.
       }
     }
     if (controls.wasPressed('F1')) document.body.classList.toggle('debug');
@@ -711,7 +711,7 @@ async function main() {
       sound.impact(car.damageEvents);
       car.damageEvents.length = 0;
     }
-    // Hamnar bilen i ett omöjligt läge (ner genom världen) startar vi om. Mot marken, eftersom verkliga etapper ligger under y = 0.
+    // If the car ends up in an impossible state (down through the world) we restart. Towards the ground, since real stages lie below y = 0.
     if (!Number.isFinite(car.pos.y) || car.pos.y < world.heightAt(car.pos.x, car.pos.z) - 20) place(spawn, true);
 
     sound.update(car, input.throttle);
@@ -719,7 +719,7 @@ async function main() {
     dust.update(car, world, frameDt, carMesh);
     precipitation?.update(frameDt, camera.position, now / 1000);
     barrierMeshes?.update();
-    // Ghosten väntar vid startlinjen före start och försvinner när du gått i mål.
+    // The ghost waits at the start line before the start and disappears once you've finished.
     ghostMesh.visible =
       showGhost &&
       !!timer &&

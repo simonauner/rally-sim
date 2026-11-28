@@ -10,7 +10,7 @@ import type { World } from './world';
 export interface Input {
   throttle: number;
   brake: number;
-  /** -1..1, vänster positiv. */
+  /** -1..1, left positive. */
   steer: number;
   handbrake: number;
 }
@@ -18,7 +18,7 @@ export interface Input {
 export interface Assists {
   abs: boolean;
   tc: boolean;
-  /** 0..1 motstyrningshjälp. */
+  /** 0..1 counter-steer assist. */
   steerAssist: number;
 }
 
@@ -26,7 +26,7 @@ export class WheelState {
   omega = 0;
   spin = 0;
   steer = 0;
-  /** Fjäderlängd (fäste till hjulcentrum). */
+  /** Spring length (mount to wheel centre). */
   length = 0.13;
   contact = false;
   fz = 0;
@@ -70,7 +70,7 @@ const _vMount = new Vector3();
 const _force = new Vector3();
 const _qInv = new Quaternion();
 
-/** Från den här skadan lyser en strålkastare inte alls. */
+/** From this damage level a headlight is fully out. */
 export const LAMP_BROKEN = 0.5;
 
 export class Car {
@@ -83,12 +83,12 @@ export class Car {
   drivetrain: Drivetrain;
   assists: Assists = { abs: true, tc: true, steerAssist: 1 };
   damage: DamageState = { front: 0, rear: 0, left: 0, right: 0, roof: 0 };
-  /** Strålkastarnas skada [vänster, höger], 0..1. Från LAMP_BROKEN lyser lyktan inte alls. */
+  /** Headlight damage [left, right], 0..1. From LAMP_BROKEN the lamp is fully out. */
   lamps = [0, 0];
   damageEvents: DamageEvent[] = [];
   collisionPoints: Vector3[] = [];
 
-  // Avlästa värden för HUD och tester.
+  // Read-out values for the HUD and tests.
   forwardSpeed = 0;
   lateralSpeed = 0;
   speed = 0;
@@ -98,7 +98,7 @@ export class Car {
   tcActive = false;
   absActive = false;
   time = 0;
-  /** Ackumulerad kraft och moment under ett steg. */
+  /** Accumulated force and torque during a step. */
   private force = new Vector3();
   private torque = new Vector3();
   private lastVel = new Vector3();
@@ -120,7 +120,7 @@ export class Car {
     this.reset(0, 0, 0, 0);
   }
 
-  /** Placerar bilen på marken. Heading i radianer (0 = +Z, positiv mot vänster). */
+  /** Places the car on the ground. Heading in radians (0 = +Z, positive towards the left). */
   reset(x: number, z: number, heading: number, speed: number, keepDamage = false) {
     const p = this.params;
     this.quat.setFromAxisAngle(_tmp.set(0, 1, 0), heading);
@@ -137,7 +137,7 @@ export class Car {
     }
     this.steerAngle = 0;
     this.drivetrain.reset();
-    // Välj en växel som passar farten, så teleport i fart inte börjar i ettan.
+    // Pick a gear that suits the speed, so a teleport at speed doesn't start in first.
     const gb = p.gearbox;
     let gear = 1;
     while (gear < gb.ratios.length) {
@@ -191,7 +191,7 @@ export class Car {
     else if (local.y > b.topY * 0.8) d.roof = Math.min(1, d.roof + scale);
     else if (local.x > 0) d.left = Math.min(1, d.left + scale);
     else d.right = Math.min(1, d.right + scale);
-    // Hörnskador som påverkar hjulen: närmaste hjul tar skada.
+    // Corner damage that affects the wheels: the nearest wheel takes damage.
     let best = 0;
     let bd = Infinity;
     this.params.wheels.forEach((w, i) => {
@@ -203,7 +203,7 @@ export class Car {
     });
     const wheel = this.wheels[best]!;
     wheel.damage = Math.min(1, wheel.damage + scale * 0.8);
-    // Träffar framifrån tar strålkastaren på den sidan, och lite av den andra.
+    // Hits from the front take out the headlight on that side, and a little of the other.
     if (lz > b.halfZ * 0.6) {
       const side = local.x > 0 ? 0 : 1;
       this.lamps[side] = Math.min(1, this.lamps[side]! + scale * 3);
@@ -243,7 +243,7 @@ export class Car {
 
     const dtn = this.drivetrain;
 
-    // --- Backväxel och pedaler -------------------------------------------------
+    // --- Reverse and pedals ----------------------------------------------------
     if (dtn.autoShift && Math.abs(this.forwardSpeed) < 1.2) {
       if (input.brake > 0.2 && input.throttle < 0.05 && dtn.gear >= 0) dtn.gear = -1;
       else if (input.throttle > 0.2 && input.brake < 0.05 && dtn.gear <= 0) dtn.gear = 1;
@@ -252,16 +252,16 @@ export class Car {
     let gas = reversing ? input.brake : input.throttle;
     const brakePedal = reversing ? input.throttle : input.brake;
 
-    // --- Styrning ---------------------------------------------------------------
+    // --- Steering --------------------------------------------------------------
     const v = Math.abs(this.forwardSpeed);
     const maxAngle = p.steer.maxAngle / (1 + (v / p.steer.speedRef) ** 2);
     const driverAngle = input.steer * maxAngle;
     let target = driverAngle;
     if (this.assists.steerAssist > 0 && v > 4) {
-      // Peka framhjulen mot färdriktningen: hjälper vid sladd.
+      // Point the front wheels in the direction of travel: helps in a slide.
       const beta = Math.atan2(this.lateralSpeed, Math.abs(this.forwardSpeed)) * (this.forwardSpeed >= 0 ? 1 : -1);
       target += clamp(beta, 0.3) * this.assists.steerAssist;
-      // Girdämpare: motstyr när bilen roterar fortare än föraren styr (eller greppet tillåter).
+      // Yaw damper: counter-steers when the car rotates faster than the driver steers (or grip allows).
       const yaw = this.angVel.dot(_up);
       const mu = TYRE_GRIP[p.tyre][wheels[0]!.surface] * p.gripScale * (WEATHER_GRIP[this.world.weather][wheels[0]!.surface] ?? 1);
       const wanted = clamp((this.forwardSpeed * Math.tan(driverAngle)) / p.wheelbase, (mu * G) / v);
@@ -291,7 +291,7 @@ export class Car {
       w.steer = ang + (def.left ? 1 : -1) * w.damage * 0.1;
     }
 
-    // --- Fjädring: geometri och krafter ----------------------------------------
+    // --- Suspension: geometry and forces ---------------------------------------
     const s = p.susp;
     const comp: number[] = [];
     const tDist: number[] = [];
@@ -335,7 +335,7 @@ export class Car {
       let F = k * Math.min(x, travel) + s.bumpStopK * Math.max(0, x - travel);
       const vc = vComp[i]!;
       F += (vc > 0 ? s.bump : s.rebound) * vc;
-      // Krängningshämmare mellan vänster och höger på samma axel
+      // Anti-roll bar between left and right on the same axle
       const other = i ^ 1;
       const arb = def.front ? s.arbFront : s.arbRear;
       F += arb * (x - comp[other]!);
@@ -344,7 +344,7 @@ export class Car {
       this.addForceAt(_force.copy(_up).multiplyScalar(F), w.mountW);
     }
 
-    // --- Drivlina ---------------------------------------------------------------
+    // --- Drivetrain ------------------------------------------------------------
     const driven: number[] = [];
     p.wheels.forEach((def, i) => {
       if (p.frontShare > 0 && def.front) driven.push(i);
@@ -354,8 +354,8 @@ export class Car {
     for (const i of driven) shaftOmega += wheels[i]!.omega;
     shaftOmega /= Math.max(1, driven.length);
 
-    // Traction control: begränsa gasen när drivhjulens kombinerade slip (längs + sid) når greppets topp,
-    // annars äter hjulspinnet upp sidgreppet och bakvagnen går ut.
+    // Traction control: limit the throttle when the driven wheels' combined slip (longitudinal + lateral) reaches peak grip,
+    // otherwise wheelspin eats up the lateral grip and the rear steps out.
     this.tcActive = false;
     if (this.assists.tc && v > 1) {
       let worst = 0;
@@ -371,13 +371,13 @@ export class Car {
       }
     }
 
-    // Handbromsen låser bakhjulen; med drivna bakhjul trampar föraren ur, annars drar motorn ner farten och lådan växlar ner till ettan.
+    // The handbrake locks the rear wheels; with driven rear wheels the driver declutches, otherwise the engine drags the speed down and the gearbox shifts down to first.
     const declutch = p.frontShare < 1 && input.handbrake > 0.1;
     const shaftTorque = dtn.update(dt, gas, shaftOmega, input.throttle, declutch);
     const iRef = p.engine.inertia * dtn.ratio * dtn.ratio * dtn.engage * dtn.engage;
 
     const axleTorque = [0, 0, 0, 0];
-    // Fyrhjulsdrift: mittdiffen låser mot den axel som spinner, så ett hjul i luften inte tar allt.
+    // Four-wheel drive: the centre diff locks against the spinning axle, so a wheel in the air doesn't take everything.
     const [frontT, rearT] = p.centerDiff
       ? splitDiff(shaftTorque, (wheels[0]!.omega + wheels[1]!.omega) / 2, (wheels[2]!.omega + wheels[3]!.omega) / 2, p.centerDiff, p.frontShare)
       : [shaftTorque * p.frontShare, shaftTorque * (1 - p.frontShare)];
@@ -392,7 +392,7 @@ export class Car {
       axleTorque[3] = r;
     }
 
-    // --- Däck och hjul ----------------------------------------------------------
+    // --- Tyres and wheels ------------------------------------------------------
     const out: TyreOut = { fx: 0, fy: 0, usage: 0 };
     this.absActive = false;
     for (let i = 0; i < wheels.length; i++) {
@@ -418,7 +418,7 @@ export class Car {
       }
 
       if (!w.contact) {
-        // Hjul i luften: bara drivning, broms och lite lagerfriktion.
+        // Wheel in the air: only drive, brake and a little bearing friction.
         const resist = brake + 2;
         let om = w.omega + (dt * axleTorque[i]!) / Iw;
         const dec = (dt * resist) / Iw;
@@ -435,13 +435,13 @@ export class Car {
         continue;
       }
 
-      // Kontaktpunkt och markplan
+      // Contact point and ground plane
       w.contactW.copy(w.mountW).addScaledVector(_up, -(w.length + R));
       const gy = this.world.heightAt(w.contactW.x, w.contactW.z);
       const surf = this.world.surfaceAt(w.contactW.x, w.contactW.z);
       w.surface = surf;
       this.world.normalAt(w.contactW.x, w.contactW.z, _n);
-      // Hjulets riktning projicerad på markplanet
+      // The wheel's direction projected onto the ground plane
       const sa = w.steer;
       _fw.copy(_fwd).multiplyScalar(Math.cos(sa)).addScaledVector(_left, Math.sin(sa));
       _fw.addScaledVector(_n, -_fw.dot(_n)).normalize();
@@ -485,7 +485,7 @@ export class Car {
       w.tyreForceW.copy(_fw).multiplyScalar(out.fx).addScaledVector(_lw, fy);
       this.addForceAt(w.tyreForceW, w.contactW);
       if (sp.sink) {
-        // Hjulet plöjer i djup snö: motstånd mot kontaktpunktens fart längs marken.
+        // The wheel ploughs through deep snow: resistance to the contact point's speed along the ground.
         _vP.addScaledVector(_n, -_vP.dot(_n)).multiplyScalar(-sp.sink * fz);
         this.addForceAt(_vP, w.contactW);
       }
@@ -493,12 +493,12 @@ export class Car {
       void def;
     }
 
-    // --- Luftmotstånd, tyngdkraft, integrering ----------------------------------
+    // --- Aerodynamic drag, gravity, integration --------------------------------
     const vl = this.speed;
     if (vl > 0.01) this.force.addScaledVector(this.vel, -0.5 * p.aero.rho * p.aero.cdA * vl);
     this.force.y -= p.mass * G;
 
-    // Gyroskopiskt bidrag
+    // Gyroscopic contribution
     _tmp.copy(this.angVel).applyQuaternion(this.quatInv);
     const [ix, iy, iz] = p.inertia;
     _tmp2.set(ix * _tmp.x, iy * _tmp.y, iz * _tmp.z);
@@ -508,7 +508,7 @@ export class Car {
     this.vel.addScaledVector(this.force, dt / p.mass);
     this.invInertiaWorld(this.torque, _tmp);
     this.angVel.addScaledVector(_tmp, dt);
-    // Vinkelhastighetsdämpning mot numeriskt brus
+    // Angular velocity damping against numerical noise
     this.angVel.multiplyScalar(1 - 0.02 * dt);
 
     this.pos.addScaledVector(this.vel, dt);
@@ -519,7 +519,7 @@ export class Car {
 
     collide(this, this.world, dt);
 
-    // g-krafter (lågpass)
+    // g-forces (low-pass)
     _tmp.copy(this.vel).sub(this.lastVel).multiplyScalar(1 / (dt * G));
     this.lastVel.copy(this.vel);
     _fwd.set(0, 0, 1).applyQuaternion(this.quat);

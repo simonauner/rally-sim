@@ -8,7 +8,7 @@ export interface GuiActions {
   toggleDebug: (on: boolean) => void;
 }
 
-/** Trimningspanel: allt går att ändra under körning. */
+/** Tuning panel: everything can be changed while driving. */
 export function createGui(car: Car, places: [label: string, key: string][], actions: GuiActions) {
   const gui = new GUI({ title: 'Trimning', width: 290 });
   const p = car.params;

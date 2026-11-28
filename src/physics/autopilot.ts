@@ -5,8 +5,8 @@ import type { Stage } from './stage';
 const _fwd = new Vector3();
 
 /**
- * Bromsar in bilen längs vägen efter mål: styr mot en punkt framför bilen på mittlinjen,
- * bromsar fullt (ABS håller den på vägen) och drar handbromsen när den står still (annars lägger automatlådan i backen).
+ * Brings the car to a stop along the road after the finish: steers towards a point ahead of the car on the centre line,
+ * brakes fully (ABS keeps it on the road) and pulls the handbrake once stopped (otherwise the automatic gearbox selects reverse).
  */
 export function brakeAlongRoad(stage: Stage, car: Car): Input {
   const s = stage.project(car.pos.x, car.pos.z).s;
@@ -14,7 +14,7 @@ export function brakeAlongRoad(stage: Stage, car: Car): Input {
   return { throttle: 0, brake: rolling ? 1 : 0, handbrake: rolling ? 0 : 1, steer: steerAlongRoad(stage, car, s) };
 }
 
-/** Styr mot en punkt framför bilen på mittlinjen. */
+/** Steers towards a point ahead of the car on the centre line. */
 function steerAlongRoad(stage: Stage, car: Car, s: number) {
   const look = stage.poseAt(s + 8 + car.speed * 0.5);
   _fwd.set(0, 0, 1).applyQuaternion(car.quat);
@@ -22,15 +22,15 @@ function steerAlongRoad(stage: Stage, car: Car, s: number) {
   return Math.max(-1, Math.min(1, Math.atan2(Math.sin(err), Math.cos(err)) * 4));
 }
 
-/** Hur mycket vägen svänger (rad) över 20 m kring s. */
+/** How much the road turns (rad) over 20 m around s. */
 export function turnAt(stage: Stage, s: number) {
   const d = stage.poseAt(s + 10).heading - stage.poseAt(s - 10).heading;
   return Math.atan2(Math.sin(d), Math.cos(d));
 }
 
 /**
- * Kör längs vägen i lagom fart, för huvudmenyns bakgrund: den skarpaste kurvan de närmaste
- * 70 m bestämmer farten, med sidacceleration `grip` (m/s²).
+ * Drives along the road at a moderate pace, for the main menu background: the sharpest corner in the
+ * next 70 m sets the speed, with lateral acceleration `grip` (m/s²).
  */
 export function driveAlongRoad(stage: Stage, car: Car, grip = 7): Input {
   const s = stage.project(car.pos.x, car.pos.z).s;

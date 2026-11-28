@@ -1,9 +1,9 @@
 import type { BodyShape } from './shape';
 
 /**
- * Ljung 1600 S: liten tredörrars halvkombi: kort sluttande huv, lång dörr, bred C-stolpe och nästan lodrät
- * baklucka. Karossen ritas av Blendermodellen (blender/ljung1600/), så formen här används bara till
- * skadezonerna, dekalerna, lyktornas sken och följer modellens mått.
+ * Ljung 1600 S: small three-door hatchback: short sloping hood, long door, wide C-pillar and nearly vertical
+ * tailgate. The body is drawn by the Blender model (blender/ljung1600/), so the shape here is only used for
+ * the damage zones, the decals, the lamp glow, and follows the model's dimensions.
  */
 export const ljung1600: BodyShape = {
   halfX: 0.805,

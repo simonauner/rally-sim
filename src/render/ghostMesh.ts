@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { CarParams } from '../physics/params';
 
-/** Genomskinlig förenklad kaross för ghosten: syns men skymmer inte vägen. */
+/** Translucent simplified body for the ghost: visible but doesn't hide the road. */
 export function buildGhostMesh(p: CarParams): THREE.Group {
   const { halfX, halfZ, bottomY, centerZ = 0 } = p.body;
   const mat = new THREE.MeshBasicMaterial({ color: 0x9fd3ff, transparent: true, opacity: 0.35, depthWrite: false });

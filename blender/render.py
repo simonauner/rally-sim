@@ -1,7 +1,7 @@
 """
-Renderar en bilmodell från några vinklar, för att jämföra med foton utan att starta spelet.
+Renders a car model from a few angles, to compare with photos without starting the game.
 
-    blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- <utmapp>
+    blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- <outdir>
 """
 
 import math
@@ -28,8 +28,8 @@ cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam'))
 cam.data.lens = 70
 scene.collection.objects.link(cam)
 scene.camera = cam
-# Vyer: namn, vinkel runt bilen i grader (0 = rakt framifrån, bilen pekar mot -Y; 90 = vänster sida),
-# höjdvinkel, avstånd och punkt att titta på i bilens koordinater (x vänster, y upp, z fram).
+# Views: name, angle around the car in degrees (0 = straight from the front, the car points towards -Y;
+# 90 = left side), elevation, distance and point to look at in car coordinates (x left, y up, z forward).
 VIEWS = [
     ('front34', 35, 8, 11, (0, 0.1, 0)),
     ('side', 90, 1, 11, (0, 0.1, 0)),
@@ -37,7 +37,7 @@ VIEWS = [
     ('front', 0, 4, 11, (0, 0.1, 0)),
     ('rear', 180, 4, 11, (0, 0.1, 0)),
     ('top', 90, 89, 11, (0, 0.1, 0)),
-    # Närbilder av delarna.
+    # Close-ups of the parts.
     ('wheel', 80, 4, 2.6, (0.74, -0.17, 1.11)),
     ('wing', 140, 18, 3.4, (0, 0.72, -2.1)),
     ('headlight', 30, 6, 2.4, (0.45, 0.05, 1.9)),

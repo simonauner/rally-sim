@@ -1,10 +1,10 @@
 /**
- * Bästa tid per etapp i webbläsaren. Kontot (account/sync.ts) synkar dem mellan enheter.
+ * Best time per stage in the browser. The account (account/sync.ts) syncs them between devices.
  */
 import { isStageRecord, type StageRecord } from './account/protocol';
 import type { StageDef } from './physics/stage';
 
-/** Gäller ett rekord satt på `version` för banan i dess nuvarande version? */
+/** Does a record set on `version` apply to the track in its current version? */
 export function recordValid(version: string | undefined, stage: StageDef): boolean {
   if (!version) return false;
   const [major, minor, patch] = version.split('.').map(Number);
@@ -17,7 +17,7 @@ export function recordValid(version: string | undefined, stage: StageDef): boole
 export function loadRecord(stage: StageDef): StageRecord | null {
   try {
     const r: unknown = JSON.parse(localStorage.getItem(`rally.best.${stage.name}`) ?? 'null');
-    // Rekord från en äldre banversion skrivs över av nästa åk i mål.
+    // Records from an older track version are overwritten by the next finished run.
     return isStageRecord(r) && recordValid(r.version, stage) ? r : null;
   } catch {
     return null;
@@ -28,6 +28,6 @@ export function saveRecord(stage: StageDef, record: StageRecord) {
   try {
     localStorage.setItem(`rally.best.${stage.name}`, JSON.stringify({ ...record, version: stage.version }));
   } catch {
-    // Privat läge eller full lagring: rekordet gäller bara den här sessionen.
+    // Private mode or full storage: the record only applies to this session.
   }
 }

@@ -5,7 +5,7 @@ import { rng } from '../physics/rng';
 const FALU_RED = 0x8b2b1f;
 const WHITE = 0xf2efe6;
 
-/** Prisma med triangulär gavel: bredd 1 i x, höjd 1, längd 1 i z, botten i y = 0. */
+/** Prism with a triangular gable: width 1 in x, height 1, length 1 in z, bottom at y = 0. */
 function gable(): THREE.BufferGeometry {
   const v = [-0.5, 0, -0.5, 0.5, 0, -0.5, 0, 1, -0.5, -0.5, 0, 0.5, 0, 1, 0.5, 0.5, 0, 0.5];
   const f = [0, 2, 1, 3, 5, 4, 0, 3, 4, 0, 4, 2, 1, 2, 4, 1, 4, 5, 0, 1, 5, 0, 5, 3];
@@ -17,7 +17,7 @@ function gable(): THREE.BufferGeometry {
   return out;
 }
 
-/** Instanser av en geometri, en per matris. */
+/** Instances of a geometry, one per matrix. */
 function instances(geo: THREE.BufferGeometry, color: number, mats: THREE.Matrix4[], shadow = true): THREE.InstancedMesh {
   const mesh = new THREE.InstancedMesh(geo, new THREE.MeshToonMaterial({ color }), Math.max(1, mats.length));
   mats.forEach((m, i) => mesh.setMatrixAt(i, m));
@@ -31,7 +31,7 @@ const up = new THREE.Vector3(0, 1, 0);
 const q = new THREE.Quaternion();
 const pos = new THREE.Vector3();
 const scl = new THREE.Vector3();
-/** Matris för en del i propens ram: förskjuten (x, y, z) lokalt, roterad med yaw och ev. extra rotation. */
+/** Matrix for a part in the prop's frame: offset (x, y, z) locally, rotated by yaw and an optional extra rotation. */
 function part(p: Prop, x: number, y: number, z: number, sx: number, sy: number, sz: number, extra?: THREE.Quaternion) {
   q.setFromAxisAngle(up, p.yaw);
   pos.set(x, y, z).applyQuaternion(q).add(new THREE.Vector3(p.x, p.y, p.z));
@@ -40,15 +40,15 @@ function part(p: Prop, x: number, y: number, z: number, sx: number, sy: number, 
 }
 
 /**
- * Landmärkena ur kartdatan: sjöar och åar, röda gårdar med vita knutar, gärdsgårdar och
- * ensilagebalar på åkrarna, myrar med låga tallar, kalhyggen med stubbar, kraftledningar och
- * broräcken, och publik vid krönet.
+ * The landmarks from the map data: lakes and rivers, red farmhouses with white corners, roundpole fences and
+ * silage bales in the fields, bogs with low pines, clear-cuts with stumps, power lines and
+ * bridge railings, and spectators at the crest.
  */
 export function buildLandmarks(stage: Stage): THREE.Group {
   const group = new THREE.Group();
   const winter = !!stage.def.winter;
   const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
-  // Isen är blågrå, så de frusna sjöarna syns mot snön.
+  // The ice is blue-grey, so the frozen lakes stand out against the snow.
   const waterMat = new THREE.MeshToonMaterial({ color: winter ? 0xa9c2d2 : 0x47809b, side: THREE.DoubleSide });
   const hwAt = (s: number) => stage.widths[Math.min(stage.xs.length - 1, Math.max(0, Math.round(s)))]! / 2;
   const beside = (s: number, off: number) => {
@@ -56,7 +56,7 @@ export function buildLandmarks(stage: Stage): THREE.Group {
     return { x: p.x + Math.cos(p.heading) * off, z: p.z - Math.sin(p.heading) * off, heading: p.heading };
   };
 
-  // Sjöar: ett band av vatten längs vägen ut till horisonten; terrängen ovanför vattnet skymmer kanten.
+  // Lakes: a band of water along the road out to the horizon; the terrain above the water hides the edge.
   for (const lm of stage.landmarks) {
     if (lm.kind !== 'lake') continue;
     const y = stage.lakeLevel.get(lm)!;
@@ -79,7 +79,7 @@ export function buildLandmarks(stage: Stage): THREE.Group {
     group.add(mesh);
   }
 
-  // Åar under broarna: vattnet ligger i fåran tvärs över vägen.
+  // Rivers under the bridges: the water lies in the channel across the road.
   for (const lm of stage.landmarks) {
     if (lm.kind !== 'bridge') continue;
     const p = stage.poseAt(lm.from);
@@ -93,7 +93,7 @@ export function buildLandmarks(stage: Stage): THREE.Group {
   const mats: Record<string, THREE.Matrix4[]> = {};
   const add = (key: string, m: THREE.Matrix4) => (mats[key] ??= []).push(m);
 
-  // Myrar med glesa, låga tallar och kalhyggen med stubbar (bara grafik, ingen kollision).
+  // Bogs with sparse, low pines and clear-cuts with stumps (graphics only, no collision).
   const scatter = rng(83);
   for (const lm of stage.landmarks) {
     if (lm.kind !== 'bog' && lm.kind !== 'clearcut') continue;
@@ -122,11 +122,11 @@ export function buildLandmarks(stage: Stage): THREE.Group {
     if (p.kind === 'house' || p.kind === 'barn') {
       const [hx, hz, wall] = HOUSE_SIZE[p.kind];
       add('wall', part(p, 0, -1, 0, hx * 2, wall + 1, hz * 2));
-      // Taknocken längs husets långsida (x), med takfoten lite utanför väggarna.
+      // The roof ridge along the house's long side (x), with the eaves slightly outside the walls.
       add(p.kind === 'barn' ? 'barnRoof' : 'roof', part(p, 0, wall, 0, hz * 2 + 0.6, p.kind === 'barn' ? 3.2 : 2.4, hx * 2 + 0.6, new THREE.Quaternion().setFromAxisAngle(up, Math.PI / 2)));
       for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) add('trim', part(p, cx * (hx - 0.1), -1, cz * (hz - 0.1), 0.3, wall + 1.05, 0.3));
       if (p.kind === 'house') {
-        // Vita fönster på långsidorna och en dörr.
+        // White windows on the long sides and a door.
         for (const side of [-1, 1]) for (const wx of [-2.6, 0, 2.6]) add('trim', part(p, wx, 1.1, side * (hz + 0.01), 0.9, 1.0, 0.06));
         add('door', part(p, 1.3, 0, -(hz + 0.02), 0.9, 2.0, 0.06));
       } else {
@@ -134,7 +134,7 @@ export function buildLandmarks(stage: Stage): THREE.Group {
         add('wall', part(p, 0, 0.15, -(hz + 0.05), 2.8, 3.1, 0.08));
       }
     } else if (p.kind === 'fence') {
-      // Gärdsgård: lutande slanor mellan par av stör.
+      // Roundpole fence: slanted rails between pairs of stakes.
       add('fencePost', part(p, 0, 0, 0, 0.09, 1.3, 0.09));
       add('fenceSlat', part(p, 0, 0.55, 0, 0.07, 0.07, 2.9, tilt(-0.5)));
     } else if (p.kind === 'bale') {
@@ -171,7 +171,7 @@ export function buildLandmarks(stage: Stage): THREE.Group {
   };
   for (const [key, list] of Object.entries(mats)) group.add(instances(look[key]![0], look[key]![1], list, key !== 'fenceSlat'));
 
-  // Ledningarna: tre linor från tvärslån, tvärs över vägen och ut i skogen.
+  // The power lines: three wires from the crossarm, across the road and out into the forest.
   const wireMat = new THREE.MeshToonMaterial({ color: 0x2f3134 });
   const wireGeo = new THREE.CylinderGeometry(0.025, 0.025, 1, 4).rotateX(Math.PI / 2);
   for (const w of wires) {
@@ -186,7 +186,7 @@ export function buildLandmarks(stage: Stage): THREE.Group {
     }
   }
 
-  // Publiken vid krönet: bakom avspärrningsband på båda sidor, mest före krönet där bilarna hoppar.
+  // Spectators at the crest: behind barrier tape on both sides, mostly before the crest where the cars jump.
   const r = rng(73);
   const jackets = [0xc62828, 0x1565c0, 0xf9a825, 0x2e7d32, 0x37474f, 0xef6c00, 0xffffff, 0x6a1b9a];
   for (const lm of stage.landmarks) {
@@ -218,7 +218,7 @@ export function buildLandmarks(stage: Stage): THREE.Group {
     }
     jackets.forEach((c, i) => group.add(instances(box, c, people[i]!)));
     group.add(instances(new THREE.SphereGeometry(0.15, 8, 6), 0xe0b899, heads));
-    // Avspärrningsband i rött och vitt.
+    // Red and white barrier tape.
     group.add(instances(box, 0xd32f2f, tape.filter((_, i) => i % 4 < 2), false));
     group.add(instances(box, WHITE, tape.filter((_, i) => i % 4 >= 2), false));
     group.add(instances(new THREE.BoxGeometry(0.08, 5, 0.08).translate(0, 2.5, 0), 0x3b3b3b, flags));

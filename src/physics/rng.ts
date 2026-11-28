@@ -1,4 +1,4 @@
-/** Enkel deterministisk slumpgenerator (LCG), värden i [0, 1). */
+/** Simple deterministic random generator (LCG), values in [0, 1). */
 export function rng(seed: number) {
   let s = seed >>> 0;
   return () => {

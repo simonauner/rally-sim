@@ -3,9 +3,9 @@ import type { Car } from './car';
 import type { World } from './world';
 
 export interface DamageEvent {
-  /** Träffpunkt i kroppens lokala koordinater. */
+  /** Hit point in the body's local coordinates. */
   local: Vector3;
-  /** Riktningen kroppen trycks undan, lokalt. */
+  /** Direction the body is pushed away, local. */
   normal: Vector3;
   /** Impuls (Ns). */
   impulse: number;
@@ -41,7 +41,7 @@ function invMassTerm(car: Car, r: Vector3, n: Vector3): number {
   return 1 / car.params.mass + n.dot(tmpC);
 }
 
-/** Sekventiell-impuls-lösare mot marken (underrede, tak) och statiska boxar. */
+/** Sequential impulse solver against the ground (underbody, roof) and static boxes. */
 export function collide(car: Car, world: World, dt: number) {
   const contacts: Contact[] = [];
   const pw = new Vector3();
@@ -58,7 +58,7 @@ export function collide(car: Car, world: World, dt: number) {
 
     for (const b of world.boxes) {
       if (pw.x < b.minX || pw.x > b.maxX || pw.y < b.minY || pw.y > b.maxY || pw.z < b.minZ || pw.z > b.maxZ) continue;
-      // Minsta penetrationen avgör ytnormalen.
+      // The smallest penetration decides the surface normal.
       const d = [pw.x - b.minX, b.maxX - pw.x, pw.y - b.minY, b.maxY - pw.y, pw.z - b.minZ, b.maxZ - pw.z];
       let k = 0;
       for (let i = 1; i < 6; i++) if (d[i]! < d[k]!) k = i;
@@ -95,7 +95,7 @@ export function collide(car: Car, world: World, dt: number) {
       c.lambda = next;
       if (d !== 0) car.applyImpulse(tmpW.copy(c.n).multiplyScalar(d), c.r);
 
-      // Friktion
+      // Friction
       const vt = car.pointVelocity(c.r, tmpV);
       vt.addScaledVector(c.n, -vt.dot(c.n));
       const len = vt.length();
@@ -117,7 +117,7 @@ export function collide(car: Car, world: World, dt: number) {
     }
   }
 
-  // Tryck ut kroppen ur djupa penetrationer.
+  // Push the body out of deep penetrations.
   let deepest: Contact | null = null;
   for (const c of contacts) if (!deepest || c.depth > deepest.depth) deepest = c;
   if (deepest && deepest.depth > 0.04) car.pos.addScaledVector(deepest.n, (deepest.depth - 0.02) * 0.6);
@@ -131,8 +131,8 @@ export function collide(car: Car, world: World, dt: number) {
 }
 
 /**
- * Trädstammar mot karossen sedd uppifrån som en rektangel. Stammarna är smalare än avståndet
- * mellan kollisionspunkterna, så punkterna räcker inte.
+ * Tree trunks against the body seen from above as a rectangle. The trunks are narrower than the spacing
+ * between the collision points, so the points alone are not enough.
  */
 function collideTrunks(car: Car, world: World, contacts: Contact[]) {
   const b = car.params.body;
@@ -141,7 +141,7 @@ function collideTrunks(car: Car, world: World, contacts: Contact[]) {
   const inv = tmpQ.copy(car.quat).invert();
   for (const t of world.trunks) {
     if (Math.abs(t.x - car.pos.x) > reach || Math.abs(t.z - car.pos.z) > reach) continue;
-    // Stammens mitt i bilens ram (lutningen ignoreras; stammen är lodrät och hög).
+    // The trunk centre in the car's frame (tilt is ignored; the trunk is vertical and tall).
     // Relative to the box centre, which may sit offset along the car.
     const c = tmpL.set(t.x - car.pos.x, 0, t.z - car.pos.z).applyQuaternion(inv);
     c.z -= cz;
@@ -158,7 +158,7 @@ function collideTrunks(car: Car, world: World, contacts: Contact[]) {
       depth = t.r - dist;
       n.set(dx / dist, 0, dz / dist);
     } else if (b.halfX - Math.abs(c.x) < b.halfZ - Math.abs(c.z)) {
-      // Stammens mitt är inne i karossen: ut genom närmaste sida.
+      // The trunk centre is inside the body: out through the nearest side.
       const sx = Math.sign(c.x) || 1;
       depth = b.halfX - Math.abs(c.x) + t.r;
       n.set(-sx, 0, 0);

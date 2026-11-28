@@ -1,36 +1,36 @@
-/** Motor, koppling, växellåda och differential. */
+/** Engine, clutch, gearbox and differential. */
 
 export interface EngineParams {
   idleRpm: number;
   limiterRpm: number;
-  /** Rpm och moment (Nm), linjärt interpolerad. */
+  /** Rpm and torque (Nm), linearly interpolated. */
   curveRpm: number[];
   curveNm: number[];
-  /** Motorbroms vid släppt gas (Nm vid begränsarvarvet). */
+  /** Engine braking off throttle (Nm at the limiter rpm). */
   engineBrakeNm: number;
-  /** Roterande tröghet motor + svänghjul (kg m²). */
+  /** Rotational inertia of engine + flywheel (kg m²). */
   inertia: number;
-  /** Rpm där kopplingen har tagit helt. */
+  /** Rpm at which the clutch is fully engaged. */
   clutchLockRpm: number;
-  /** Rpm vid gaspådrag från stillastående. */
+  /** Rpm when applying throttle from a standstill. */
   launchRpm: number;
-  /** Turbo: kurvan är momentet med fullt laddtryck, som byggs upp med fördröjning. Saknas för sugmotorer. */
+  /** Turbo: the curve is the torque at full boost, which builds up with a delay. Absent for naturally aspirated engines. */
   turbo?: TurboParams;
 }
 
 export interface TurboParams {
-  /** Tidskonstant (s) för laddtrycket att byggas upp efter gaspådrag. */
+  /** Time constant (s) for boost to build after applying throttle. */
   spool: number;
-  /** Andel av kurvans moment utan laddtryck (0..1). */
+  /** Fraction of the curve's torque without boost (0..1). */
   offBoost: number;
-  /** Laddtryck som antilag håller kvar utan gas (0..1); 0 utan antilag. */
+  /** Boost that anti-lag keeps off throttle (0..1); 0 without anti-lag. */
   antilag: number;
-  /** Fullt laddtryck i bar, för mätaren; påverkar inte momentet. */
+  /** Full boost in bar, for the gauge; does not affect torque. */
   bar: number;
 }
 
 export interface GearboxParams {
-  /** Utväxling per växel 1..n. */
+  /** Ratio per gear 1..n. */
   ratios: number[];
   reverse: number;
   final: number;
@@ -40,7 +40,7 @@ export interface GearboxParams {
   shiftTime: number;
 }
 
-/** Hur långt under uppväxlingsvarvet kickdown får landa, så att lådan inte pendlar mellan växlar. */
+/** How far below the upshift rpm a kickdown must land, so the gearbox doesn't hunt between gears. */
 const KICKDOWN_MARGIN_RPM = 700;
 
 export function interp(xs: number[], ys: number[], x: number): number {
@@ -55,23 +55,23 @@ export function interp(xs: number[], ys: number[], x: number): number {
 }
 
 export class Drivetrain {
-  gear = 1; // -1 back, 0 neutral, 1..n
+  gear = 1; // -1 reverse, 0 neutral, 1..n
   rpm = 1000;
   autoShift = true;
   shiftTimer = 0;
-  /** Gasen efter hjälpmedel, för HUD. */
+  /** Throttle after assists, for the HUD. */
   limiterCut = false;
-  /** Moment vid drivaxeln (Nm), för HUD/debug. */
+  /** Torque at the drive shaft (Nm), for HUD/debugging. */
   shaftTorque = 0;
-  /** Ratio inklusive slututväxling med tecken. */
+  /** Signed ratio including the final drive. */
   ratio = 0;
-  /** Kopplingsgrad 0..1. */
+  /** Clutch engagement 0..1. */
   engage = 0;
-  /** Skadefaktor för effekt (1 = hel). */
+  /** Damage factor for power (1 = intact). */
   powerFactor = 1;
-  /** Laddtryck 0..1, för turbomotorer. */
+  /** Boost 0..1, for turbo engines. */
   boost = 0;
-  /** Kickdown kräver att föraren lättat på gasen sedan senaste uppväxlingen, annars pendlar lådan när hjulspinn släpper. */
+  /** Kickdown requires the driver to have lifted since the last upshift, otherwise the gearbox hunts when wheelspin stops. */
   kickdownArmed = false;
 
   constructor(
@@ -109,11 +109,11 @@ export class Drivetrain {
   }
 
   /**
-   * Räknar ut moment vid drivaxeln.
-   * @param throttle gaspedalen 0..1 (efter hjälpmedel)
-   * @param shaftOmega drivaxelns vinkelhastighet (rad/s), medel av drivhjulen
-   * @param pedal förarens gaspedal 0..1 före hjälpmedel, för kickdown
-   * @param declutch kopplingen ur (handbromsen på bakhjulsdriven bil), växeln ligger kvar
+   * Computes the torque at the drive shaft.
+   * @param throttle throttle pedal 0..1 (after assists)
+   * @param shaftOmega angular velocity of the drive shaft (rad/s), average of the driven wheels
+   * @param pedal the driver's throttle pedal 0..1 before assists, for kickdown
+   * @param declutch clutch disengaged (handbrake on a rear-wheel-drive car), the gear stays in
    */
   update(dt: number, throttle: number, shaftOmega: number, pedal: number, declutch = false): number {
     const { engine, gearbox } = this;
@@ -126,11 +126,11 @@ export class Drivetrain {
 
     if (this.autoShift && !declutch && this.gear >= 1 && this.shiftTimer <= 0) {
       if (this.rpm > gearbox.upshiftRpm && throttle > 0.1 && this.gear < gearbox.ratios.length) this.shiftUp();
-      // Nedväxling även när kopplingen slirar och håller motorvarvet uppe men hjulen nästan står,
-      // t.ex. efter hjulspinn i en brant snöbacke; annars fastnar bilen på en hög växel.
+      // Downshift even when the clutch slips and holds the revs up while the wheels have nearly stopped,
+      // e.g. after wheelspin on a steep snowy hill; otherwise the car gets stuck in a high gear.
       else if (Math.min(this.rpm, shaftRpmIn) < gearbox.downshiftRpm && this.gear > 1) this.shiftDown();
-      // Kickdown: när föraren trampar ner gasen växlar lådan ner om varvet på växeln under hamnar en bra bit
-      // under uppväxlingsvarvet, så att den inte direkt växlar upp igen.
+      // Kickdown: when the driver floors the throttle the gearbox shifts down if the rpm in the gear below lands well
+      // under the upshift rpm, so it doesn't immediately shift up again.
       else if (
         this.kickdownArmed &&
         pedal > 0.8 &&
@@ -141,7 +141,7 @@ export class Drivetrain {
     }
     this.ratio = this.totalRatio(this.gear);
 
-    // Motorvarv: följer axeln, eller kopplingsslirning vid start.
+    // Engine rpm: follows the shaft, or clutch slip at launch.
     const launch = engine.idleRpm + (engine.launchRpm - engine.idleRpm) * throttle;
     const free = this.gear === 0 || declutch;
     const target = free ? engine.idleRpm + throttle * 3500 : Math.max(shaftRpmIn, launch, engine.idleRpm);
@@ -149,7 +149,7 @@ export class Drivetrain {
     this.rpm += (target - this.rpm) * follow;
     this.rpm = Math.min(this.rpm, engine.limiterRpm * 1.02);
 
-    // Kopplingen tar med fart. Vid start slirar den och för över ett begränsat moment.
+    // The clutch engages with speed. At launch it slips and transfers a limited torque.
     const speedEngage = clamp01((shaftRpmIn - engine.idleRpm * 0.7) / (engine.clutchLockRpm - engine.idleRpm * 0.7));
     const slipEngage = 0.75 * Math.min(1, throttle * 4);
     this.engage = free ? 0 : speedEngage + (1 - speedEngage) * slipEngage;
@@ -160,7 +160,7 @@ export class Drivetrain {
     let full = interp(engine.curveRpm, engine.curveNm, this.rpm) * this.powerFactor;
     const turbo = engine.turbo;
     if (turbo) {
-      // Trycket byggs upp långsamt och släpps snabbt när gasen lyfts, om inte antilag håller det.
+      // Boost builds slowly and drops quickly when lifting off, unless anti-lag holds it.
       const want = Math.max(thr, turbo.antilag);
       this.boost += (want - this.boost) * Math.min(1, dt / (want > this.boost ? turbo.spool : 0.15));
       full *= turbo.offBoost + (1 - turbo.offBoost) * this.boost;
@@ -178,15 +178,15 @@ export class Drivetrain {
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export interface DiffParams {
-  /** 0 = öppet, 1 = låst. */
+  /** 0 = open, 1 = locked. */
   lock: number;
-  /** Förspänning (Nm). */
+  /** Preload (Nm). */
   preload: number;
 }
 
 /**
- * Fördelar moment på två utgångar: hjulen på en axel, eller (som mittdiff) fram- och bakaxeln.
- * `share` är grundandelen till den första. Returnerar [första, andra].
+ * Splits torque between two outputs: the wheels on an axle, or (as a centre diff) the front and rear axles.
+ * `share` is the base share to the first. Returns [first, second].
  */
 export function splitDiff(torque: number, wA: number, wB: number, d: DiffParams, share = 0.5): [number, number] {
   const a = torque * share;
@@ -194,6 +194,6 @@ export function splitDiff(torque: number, wA: number, wB: number, d: DiffParams,
   const dw = wA - wB;
   const ramp = Math.min(1, Math.abs(dw) / 3);
   const bias = (d.lock * Math.min(Math.abs(a), Math.abs(b)) + d.preload) * ramp * Math.sign(dw);
-  // Snabbare utgång får mindre moment, långsammare mer.
+  // The faster output gets less torque, the slower more.
   return [a - bias, b + bias];
 }

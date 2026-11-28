@@ -1,16 +1,16 @@
 /**
- * Synkserver för rally-sim. En Durable Object per konto håller kontots data i SQLite och slår
- * ihop ändringar från enheter enligt `replaces` i src/account/protocol.ts: för rekord vinner
- * lägsta tiden, för karriären senaste ändringen. Kontot lagras under SHA-256 av hemligheten, så servern ser aldrig hemligheten.
- * Upplägget kommer från season-o-meter (sync/ där).
+ * Sync server for rally-sim. One Durable Object per account holds the account's data in SQLite and merges
+ * changes from devices according to `replaces` in src/account/protocol.ts: for records the lowest
+ * time wins, for the career the latest change. The account is stored under the SHA-256 of the secret, so the server never sees the secret.
+ * The design comes from season-o-meter (sync/ there).
  */
 
 import { DurableObject } from 'cloudflare:workers';
 import { accountIdFor, isSecret, replaces, sanitize, type AccountData, type Stamped, type SyncResponse } from '../../src/account/protocol';
 
-/** Långt fler banor än spelet har, men hindrar ett konto från att växa utan gräns. */
+/** Far more tracks than the game has, but stops an account from growing without bound. */
 const MAX_ENTRIES = 1000;
-/** Några rekord med ghost får plats; ett åk på 90 s är cirka 90 kB. */
+/** Room for a few records with ghosts; a 90 s run is about 90 kB. */
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 class HttpError extends Error {
@@ -36,16 +36,16 @@ export class Account extends DurableObject<Env> {
     return last ?? 0;
   }
 
-  /** Slår ihop enhetens data och returnerar det som ändrats sedan `since`. */
+  /** Merges the device's data and returns what has changed since `since`. */
   sync(since: number, changes: AccountData): SyncResponse {
     return this.ctx.storage.transactionSync(() => {
-      // Tabellen skapas först vid första synken, så en läsning av ett okänt konto lagrar inget.
+      // The table is created only on the first sync, so a read of an unknown account stores nothing.
       this.sql.exec(`
         CREATE TABLE IF NOT EXISTS entries (
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL,
           updated_at INTEGER NOT NULL,
-          -- Ökas vid varje skrivning, så enheter kan fråga efter det som är nytt.
+          -- Incremented on every write, so devices can ask for what is new.
           seq INTEGER NOT NULL
         );
         CREATE INDEX IF NOT EXISTS entries_seq ON entries (seq);
@@ -65,7 +65,7 @@ export class Account extends DurableObject<Env> {
         );
       }
       const [{ count }] = this.sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM entries').toArray();
-      // Ett kast rullar tillbaka transaktionen.
+      // A throw rolls back the transaction.
       if (count > MAX_ENTRIES) throw new HttpError(413, 'Too many entries');
       return {
         cursor: this.lastSeq(),
@@ -127,7 +127,7 @@ export default {
     try {
       return Response.json(await handle(request, env), { headers: { ...cors, 'Cache-Control': 'no-store' } });
     } catch (error) {
-      // Fel som kastas i en Durable Object tappar sin klass på vägen.
+      // Errors thrown in a Durable Object lose their class on the way.
       const status = error instanceof HttpError ? error.status : /Too many entries/.test(String(error)) ? 413 : 500;
       if (status === 500) console.error(error);
       return Response.json({ error: status === 500 ? 'Server error' : (error as Error).message }, { status, headers: cors });

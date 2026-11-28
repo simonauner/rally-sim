@@ -16,7 +16,7 @@ const DRIVE = (p: CarParams) =>
 interface Row {
   k: string;
   full: string;
-  /** Jämförbart tal och om högre är bättre; utan v färgas raden inte. */
+  /** Comparable number and whether higher is better; without v the row is not coloured. */
   v?: number;
   more?: boolean;
 }
@@ -24,7 +24,7 @@ interface Row {
 function specRows(p: CarParams, s: CarSpecs): Row[] {
   const hp = s.powerKw * 1.36;
   const z = s.zeroTo100;
-  // Rallydäcken byter inte däcktyp utan höjer greppet, så det måste synas här.
+  // Rally tyres don't change the tyre type but raise grip, so it has to show here.
   const grip = Math.round((p.gripScale - 1) * 100);
   const gripText = grip ? `, ${grip > 0 ? '+' : '−'}${Math.abs(grip)} % grepp` : '';
   return [
@@ -39,7 +39,7 @@ function specRows(p: CarParams, s: CarSpecs): Row[] {
   ];
 }
 
-/** Grönt om bilen är bättre än den jämförda, rött om sämre; små skillnader räknas inte. */
+/** Green if the car is better than the compared one, red if worse; small differences don't count. */
 function verdict(a: Row, b: Row): string {
   if (a.v === undefined || b.v === undefined || Math.abs(a.v - b.v) <= Math.abs(b.v) * 0.005) return '';
   return a.v > b.v === a.more ? 'ahead' : 'behind';
@@ -47,33 +47,33 @@ function verdict(a: Row, b: Row): string {
 
 export interface PickOptions {
   title?: string;
-  /** Läses om varje gång menyn visas, t.ex. kassan som ändras efter ett köp. */
+  /** Re-read every time the menu is shown, e.g. the cash that changes after a purchase. */
   subtitle?: () => string;
   /**
-   * Ersätter Kör: run öppnar en undermeny medan bilen står kvar på vridbordet, och sedan
-   * visas bilväljaren igen med bilen byggd på nytt (t.ex. med nya uppgraderingar).
-   * Returnerar run true stängs väljaren och bilen returneras.
+   * Replaces Kör: run opens a submenu while the car stays on the turntable, and then
+   * the car selector is shown again with the car rebuilt (e.g. with new upgrades).
+   * If run returns true the selector closes and the car is returned.
    */
   action?: { label: string; denied?: (m: CarModel) => boolean; confirm?: (m: CarModel) => string; run: (m: CarModel) => Promise<boolean | void> };
-  /** Liten text bredvid bilnamnet, t.ex. priset. */
+  /** Small text next to the car name, e.g. the price. */
   detail?: (m: CarModel) => string;
-  /** Låsta bilar går att bläddra till men inte köra; Kör blir då en hänvisning till karriären. */
+  /** Locked cars can be browsed to but not driven; Kör then becomes a pointer to the career. */
   locked?: (m: CarModel) => boolean;
-  /** Knapptexten för en låst bil. */
+  /** The button text for a locked car. */
   lockedLabel?: string | ((m: CarModel) => string);
-  /** Bilar att jämföra med (t.ex. de man äger); ger knappen Jämför som visar dem sida vid sida. */
+  /** Cars to compare with (e.g. the ones you own); adds a Jämför button that shows them side by side. */
   compare?: CarModel[];
 }
 
 export interface Showroom {
-  /** Ställer bilen på vridbordet, med bucklor och snedställda hjul om den är skadad. */
+  /** Puts the car on the turntable, with dents and bent wheels if it is damaged. */
   show(m: CarModel, damage?: CarDamage | null): void;
-  /** Lagar bilen på vridbordet: hjulen rätas och/eller bucklorna slätas ut. */
+  /** Repairs the car on the turntable: the wheels are straightened and/or the dents smoothed out. */
   repair(body: boolean, wheels: boolean): void;
   close(): void;
 }
 
-/** Vridbordet bakom menyn: bilen snurrar sakta och går att vrida med musen. */
+/** The turntable behind the menu: the car spins slowly and can be turned with the mouse. */
 export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcfe3ee);
@@ -83,7 +83,7 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.normalBias = 0.02; // annars skuggar Blenderbilarnas täta nät sig själva i fläckar
+  sun.shadow.normalBias = 0.02; // otherwise the Blender cars' dense meshes self-shadow in blotches
   scene.add(sun, sun.target);
   const turntable = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.1, 64), new THREE.MeshToonMaterial({ color: 0x8f9396 }));
   turntable.receiveShadow = true;
@@ -91,7 +91,7 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   const holder = new THREE.Group();
   scene.add(holder);
 
-  // Kameran står till vänster om panelen, som ligger till höger.
+  // The camera is to the left of the panel, which sits on the right.
   const resize = () => {
     const w = innerWidth;
     const h = innerHeight;
@@ -104,17 +104,17 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   let center = new THREE.Vector3();
   let car: Car | null = null;
   let mesh: CarMesh | null = null;
-  /** Sekunder kvar av en pågående lagning. */
+  /** Seconds left of an ongoing repair. */
   let healing = 0;
-  // Låt bilen sätta sig på fjädringen så hjulen hamnar rätt. Bara handbroms: broms vid stillastående lägger i backen,
-  // och en framhjulsdriven bil backar då iväg från vridbordet.
+  // Let the car settle on its suspension so the wheels end up right. Handbrake only: braking at standstill engages reverse,
+  // and a front-wheel-drive car then reverses off the turntable.
   const settle = (c: Car) => {
     for (let i = 0; i < 480; i++) c.step(1 / 240, { throttle: 0, brake: 0, steer: 0, handbrake: 1 });
   };
   let wanted: CarModel | null = null;
   const show = (m: CarModel, damage?: CarDamage | null) => {
     wanted = m;
-    // Bläddrar man vidare under hämtningen visas bara den sista bilen.
+    // If you browse on during loading, only the last car is shown.
     if (!carModelReady(m)) return void loadCarModel(m).then(() => wanted === m && show(m, damage));
     car = new Car(m.make(), new FlatWorld('asphalt'));
     if (damage) {
@@ -143,7 +143,7 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
     if (body) healing = 0.9;
   };
 
-  // Vridbordet: snurrar av sig själv och följer musen när man drar.
+  // The turntable: spins on its own and follows the mouse while dragging.
   let yaw = 0.7;
   let pitch = 0.18;
   let dragging = false;
@@ -175,7 +175,7 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
       if (healing > 0) mesh.heal(Math.exp(-dt * 5));
       else mesh.repair();
     }
-    // Börja snurra igen en stund efter att man släppt.
+    // Start spinning again a while after release.
     if (!dragging && idle > 2) yaw += dt * 0.35;
     const d = 14;
     camera.position.set(
@@ -202,8 +202,8 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
 }
 
 /**
- * Bilväljaren: bilen står på vridbordet bakom menyn. Returnerar vald bil, eller null om
- * spelaren backar.
+ * The car selector: the car stands on the turntable behind the menu. Returns the chosen car, or null if
+ * the player backs out.
  */
 export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], opts: PickOptions = {}): Promise<CarModel | null> {
   const room = showroom(renderer);
@@ -211,13 +211,13 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   const locked = (m: CarModel) => opts.locked?.(m) ?? false;
   let current = Math.max(0, cars.findIndex((m) => !locked(m)));
   let compared = 0;
-  // Bilnamnet med pilar; inga <button> eftersom showMenu gör alla knappar i menyn till menyval.
+  // The car name with arrows; no <button> since showMenu turns every button in the menu into a menu item.
   const navHtml = (list: CarModel[], m: CarModel, attr: string, detail = '') => {
     const extra = [list.length > 1 ? `${list.indexOf(m) + 1}/${list.length}` : '', detail].filter(Boolean).join(' · ');
     const name = `<b>${m.make().name}${locked(m) ? LOCK_ICON : ''}</b>`;
     return `<div class="car-nav">${list.length > 1 ? `<span ${attr}="-1">‹</span>${name}<span ${attr}="1">›</span>` : name}</div>${extra ? `<div class="car-extra">${extra}</div>` : ''}`;
   };
-  // carSpecs kör en accelerationssimulering, så värdena sparas per bil.
+  // carSpecs runs an acceleration simulation, so the values are cached per car.
   const data = new Map<CarModel, Row[]>();
   const rowsOf = (m: CarModel) => {
     if (!data.has(m)) {
@@ -226,7 +226,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     }
     return data.get(m)!;
   };
-  /** Bilens text och värden, färgade mot vs om den finns. */
+  /** The car's text and values, coloured against vs if given. */
   const specsHtml = (m: CarModel, vs?: CarModel) =>
     `<div>${m.blurb}</div><table class="specs">${rowsOf(m)
       .map((r, i) => `<tr><th>${r.k}</th><td class="${vs ? verdict(r, rowsOf(vs)[i]!) : ''}">${r.full}</td></tr>`)
@@ -235,7 +235,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     const hints = [cars.length > 1 ? '← → byter bil.' : '', 'Dra för att snurra bilen.'];
     return `${navHtml(cars, m, 'data-step', opts.detail?.(m))}${specsHtml(m)}<div class="hint">${hints.filter(Boolean).join(' ')}</div>`;
   };
-  // Jämförelsen: bilen man tittar på till vänster, den valda jämförelsebilen till höger.
+  // The comparison: the car you're looking at on the left, the chosen comparison car on the right.
   const leftHtml = () => {
     const m = cars[current]!;
     return `${navHtml([m], m, '', opts.detail?.(m))}${specsHtml(m, cmp[compared])}`;
@@ -244,12 +244,12 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     const o = cmp[compared]!;
     return `<h1>I garaget</h1><div class="subtitle">${cmp.length > 1 ? '← → byter bil.' : '&nbsp;'}</div><div class="body">${navHtml(cmp, o, 'data-cmp')}${specsHtml(o, cars[current])}</div>`;
   };
-  /** Skriver om panelens text med en mjuk övergång till den nya höjden. */
+  /** Rewrites the panel's text with a smooth transition to the new height. */
   const render = () => {
     const body = document.querySelector('#menu .body');
     const panel = body?.closest<HTMLElement>('.panel');
     if (!body || !panel) return;
-    // Mäts mitt i en pågående animation om man bläddrar snabbt.
+    // Measured mid-animation if you browse quickly.
     const from = panel.offsetHeight;
     panel.getAnimations().forEach((a) => a.cancel());
     body.innerHTML = bodyHtml(cars[current]!);
@@ -263,7 +263,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     shown = m;
     room.show(m);
     render();
-    // Kör-knappen följer bilen man bläddrat till.
+    // The Kör button follows the car you browsed to.
     const btn = document.querySelector('#menu .items button[data-i="0"]');
     btn?.classList.toggle('locked', locked(m));
     if (btn?.firstElementChild) btn.firstElementChild.innerHTML = pickLabel(m) + (locked(m) ? LOCK_ICON : '');
@@ -271,10 +271,10 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
   show(cars[current]!);
 
   const menu = document.getElementById('menu')!;
-  /** Vad ← → styr; null medan en undermeny visas. */
+  /** What ← → controls; null while a submenu is shown. */
   let view: 'browse' | 'compare' | null = 'browse';
   const step = (d: number) => {
-    // Medan köpraden är vänd för att bekräftas står bilen still: ← → väljer Ja/Nej.
+    // While the buy row is flipped for confirmation the car stays still: ← → chooses Ja/Nej.
     if (menu.querySelector('button.flipped')) return;
     current = (current + d + cars.length) % cars.length;
     show(cars[current]!);
@@ -289,7 +289,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     if (el?.dataset.step) step(Number(el.dataset.step));
     if (el?.dataset.cmp) stepCompare(Number(el.dataset.cmp));
   };
-  // Registreras före showMenu så att den hinner före menyns lyssnare, som stoppar tangenttrycket.
+  // Registered before showMenu so it runs before the menu's listener, which stops the key press.
   const key = (e: KeyboardEvent) => {
     const d = e.code === 'ArrowLeft' || e.code === 'KeyA' ? -1 : e.code === 'ArrowRight' || e.code === 'KeyD' ? 1 : 0;
     if (!d) return;
@@ -328,7 +328,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     }
     if (pick === 'pick' && locked(cars[current]!)) continue;
     if (pick === 'back' || !opts.action) break;
-    // Bilen man har bläddrat fram, inte den som visades när menyn öppnades.
+    // The car you browsed to, not the one shown when the menu opened.
     const m = cars[current]!;
     view = null;
     const close = await opts.action.run(m);

@@ -1,4 +1,4 @@
-"""Andersvattnet, den första etappen: rutten (route.json) togs fram före pipeline.py. Användning: python3 -I parts.py"""
+"""Andersvattnet, the first stage: the route (route.json) was made before pipeline.py. Usage: python3 -I parts.py"""
 import json, math, sys, urllib.request, time, os
 import xml.etree.ElementTree as ET
 SP = os.path.dirname(os.path.abspath(__file__))
@@ -6,7 +6,7 @@ PARTS = [('Storberget', 0, 5100), ('Hösjöälven', 5000, 10300), ('Röjmyrberge
 route = json.load(open(SP + '/route.json'))
 LAT0, LON0 = route[0]['lat'], route[0]['lon']
 KX = 111320 * math.cos(math.radians(LAT0)); KY = 110540
-def en(lat, lon): return ((lon - LON0) * KX, (lat - LAT0) * KY)  # öster, norr
+def en(lat, lon): return ((lon - LON0) * KX, (lat - LAT0) * KY)  # east, north
 P = [en(p['lat'], p['lon']) for p in route]
 s = [0.0]
 for a, b in zip(P, P[1:]): s.append(s[-1] + math.hypot(b[0]-a[0], b[1]-a[1]))
@@ -42,7 +42,7 @@ out = []
 for name, a, b in PARTS:
     i0, i1 = a // STEP, min(len(sm) - 1, b // STEP)
     ox, oz = sm[i0]
-    loc = lambda e, n: (-(e - ox), n - oz)  # x = väster, z = norr, origo i startpunkten
+    loc = lambda e, n: (-(e - ox), n - oz)  # x = west, z = north, origin at the start point
     pts = [(*loc(*sm[i]), ys[i] - ys[i0]) for i in range(i0, i1 + 1)]
     spurs = []
     for refs in roadways:
@@ -59,8 +59,8 @@ for name, a, b in PARTS:
                         t = (80 - L) / d; ps.append((pa[0] + (pb[0]-pa[0])*t, pa[1] + (pb[1]-pa[1])*t)); L = 80; break
                     L += d; ps.append(pb)
                 if L < 40: continue
-                # Vägar som följer etappen (gafflar och parallella stickvägar) blir inga korsningar:
-                # efter de första 15 m ska den korsande vägen vara minst 12 m från etappen.
+                # Roads that follow the stage (forks and parallel side roads) do not become junctions:
+                # after the first 15 m the crossing road must be at least 12 m from the stage.
                 def segd(q, A, B):
                     vx, vy = B[0]-A[0], B[1]-A[1]; L2 = vx*vx + vy*vy or 1e-9
                     t = max(0, min(1, ((q[0]-A[0])*vx + (q[1]-A[1])*vy) / L2)); return math.hypot(A[0]+vx*t-q[0], A[1]+vy*t-q[1])
@@ -75,6 +75,6 @@ for name, a, b in PARTS:
                 if any(math.hypot(ps[-1][0]-o[-1][0], ps[-1][1]-o[-1][1]) < 40 for o in spurs): continue
                 spurs.append(ps)
     sep = min((math.hypot(pts[i][0]-pts[j][0], pts[i][1]-pts[j][1]), i*STEP, j*STEP) for i in range(len(pts)) for j in range(i+8, len(pts)))
-    print(name, f'{(b-a)/1000:.1f} km', 'höjd', round(min(p[2] for p in pts)), round(max(p[2] for p in pts)), 'spurs', len(spurs), 'närmast', [round(v) for v in sep], file=sys.stderr)
+    print(name, f'{(b-a)/1000:.1f} km', 'elev', round(min(p[2] for p in pts)), round(max(p[2] for p in pts)), 'spurs', len(spurs), 'closest', [round(v) for v in sep], file=sys.stderr)
     out.append({'name': name, 'road': [[round(x, 1), round(z, 1), round(y, 1)] for x, z, y in pts], 'spurs': [[{'x': round(loc(*q)[0]), 'z': round(loc(*q)[1])} for q in sp] for sp in spurs]})
 json.dump(out, open(SP + '/parts.json', 'w'))

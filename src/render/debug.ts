@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { Car } from '../physics/car';
 
-/** Kraftvektorer i 3D: röd = däckkraft, blå = hjullast, grön = färdriktning. */
+/** Force vectors in 3D: red = tyre force, blue = wheel load, green = direction of travel. */
 export class DebugVectors {
   readonly lines: THREE.LineSegments;
   private pos = new Float32Array(9 * 2 * 3);

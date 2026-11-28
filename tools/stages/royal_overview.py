@@ -1,6 +1,6 @@
-"""Royal Rally: rallyts översiktskarta (utan GPS-punkter) -> orange/gröna pixlar och en global transform
-pixel -> meter från ortsnamnen på kartan. Användning: python3 -I royal_overview.py (kör före overview_local.py).
-Kartan ska ligga i ../maps/royal/overview2025.jpg (se README.md)."""
+"""Royal Rally: the rally's overview map (without GPS points) -> orange/green pixels and a global transform
+pixel -> metres from the place names on the map. Usage: python3 -I royal_overview.py (run before overview_local.py).
+The map should be in ../maps/royal/overview2025.jpg (see README.md)."""
 import json, math, os, struct, subprocess, sys, urllib.parse, urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__)); M = os.path.join(HERE, 'maps/royal'); G = os.path.join(HERE, 'royal')
 bmp = M + '/overview.bmp'; subprocess.run(['sips', '-s', 'format', 'bmp', M + '/overview2025.jpg', '--out', bmp], check=True, capture_output=True)
@@ -18,7 +18,7 @@ if not os.path.exists(G + '/towns.json'):
     q = '[out:json][timeout:60];node["place"~"town|village"]["name"~"^(Karlstad|Sunne|Kil|Forshaga|Kristinehamn|Munkfors|Storfors|Säffle|Deje|Hagfors|Filipstad|Väse|Grums|Vålberg|Skattkärr|Molkom|Torsby|Slottsbron)$"](59.0,12.3,60.3,14.8);out;'
     req = urllib.request.Request('https://maps.mail.ru/osm/tools/overpass/api/interpreter', data=urllib.parse.urlencode({'data': q}).encode(), headers={'User-Agent': 'rally-sim-research/0.1'})
     open(G + '/towns.json', 'wb').write(urllib.request.urlopen(req, timeout=120).read())
-# Ortsnamnens läge på kartan, avlästa i en nedskalad bild (1131 px bred) och skalade till originalet.
+# The place names' positions on the map, read off a downscaled image (1131 px wide) and scaled to the original.
 k = 3052 / 1131
 towns = {t['tags']['name']: (t['lat'], t['lon']) for t in json.load(open(G + '/towns.json'))['elements']}
 labels = {'Sunne': (222, 481), 'Kil': (342, 1023), 'Forshaga': (490, 965), 'Deje': (465, 868), 'Munkfors': (530, 500), 'Hagfors': (622, 183),

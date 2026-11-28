@@ -14,11 +14,11 @@ import type { Weather } from './physics/weather';
 import { settings } from './settings';
 
 const DT = 1 / 240;
-/** Bilen startar så här långt före kurvan och byts ut så här långt efter den (m). */
+/** The car starts this far before the corner and is swapped this far after it (m). */
 const RUN_IN = 150;
 const RUN_OUT = 220;
 
-// Lucides volume-2 och volume-x (lucide-static 1.81.0, ISC).
+// Lucide's volume-2 and volume-x (lucide-static 1.81.0, ISC).
 const icon = (paths: string) =>
   `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 const VOLUME_ON = icon(
@@ -29,16 +29,16 @@ const VOLUME_OFF = icon(
 );
 
 export interface MenuScene {
-  /** Visar scenen bakom menyerna och kör loopen, i givet ljus och väder eller spelarens klocka och klart väder. */
+  /** Shows the scene behind the menus and runs the loop, in the given light and weather or the player's clock and clear weather. */
   play(light?: Light, weather?: Weather): void;
-  /** Stoppar loopen; scenen finns kvar till nästa play(). */
+  /** Stops the loop; the scene stays until the next play(). */
   stop(): void;
   dispose(): void;
 }
 
 /**
- * Bakgrunden till menyerna: en fast kamera ovanför etappens skarpaste kurva på grus (snö på
- * vinteretapper), där autopiloten kör förbi med en bil i taget, en ny modell varje varv.
+ * The menu background: a fixed camera above the stage's sharpest gravel corner (snow on
+ * winter stages), where the autopilot drives past with one car at a time, a new model each lap.
  */
 export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuScene {
   const stage = new Stage(def);
@@ -59,7 +59,7 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   const headlights = new Headlights();
   scene.add(headlights.group);
 
-  // Skarpaste kurvan på grus/snö (surfaces har en post per meter), och kameran högt upp på utsidan av den så bilen kommer mot kameran.
+  // Sharpest gravel/snow corner (surfaces has one entry per metre), with the camera high up on its outside so the car comes towards the camera.
   let corner = 0;
   for (let s = START_S + RUN_IN; s < stage.length - RUN_OUT; s += 5) {
     const gravel = stage.surfaces.slice(s - 60, s + 60).every((x) => x === surface);
@@ -74,12 +74,12 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   camera.position.set(apex.x + out.x * 42, 0, apex.z + out.y * 42);
   camera.position.y = Math.max(apexY, stage.heightAt(camera.position.x, camera.position.z)) + 22;
   sun.target.position.copy(look);
-  // Ljuset följer spelarens klocka om inget annat ges; läses om varje gång menyn visas.
+  // The light follows the player's clock unless given otherwise; re-read every time the menu is shown.
   let precipitation: Precipitation | null = null;
   const setLight = (time = lightAt(new Date()), weather: Weather = 'clear') => {
     const light = LIGHTS[time];
     applyLight(scene, hemi, sun, light);
-    // Svagt månljus på natten så att banan syns mellan bilarna; etappens natt förblir becksvart.
+    // Faint moonlight at night so the track shows between cars; the stage's night stays pitch black.
     if (time === 'night') {
       hemi.intensity = 0.08;
       sun.intensity = 0.12;
@@ -109,7 +109,7 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   let lapTime = 0;
   let throttle = 0;
   let sound: Sound | null = null;
-  // Högtalaren stänger av bara bilarna; döljs när allt ljud redan är av.
+  // The speaker mutes only the cars; hidden when all sound is already off.
   const mute = document.createElement('button');
   mute.id = 'menu-cars-mute';
   const showMute = () => {
@@ -123,7 +123,7 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   showMute();
   const nextCar = () => {
     const model = CARS[lap % CARS.length]!;
-    // Bilen som kör nu fortsätter tills nästa modell är hämtad.
+    // The current car keeps driving until the next model is loaded.
     if (!carModelReady(model)) return void loadCarModel(model).catch(() => {});
     lap++;
     void loadCarModel(CARS[lap % CARS.length]!).catch(() => {});
@@ -137,7 +137,7 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   };
   nextCar();
 
-  // Kurvan hamnar till vänster om huvudmenyn, som ligger till höger (som i bilväljaren).
+  // The corner ends up to the left of the main menu, which sits on the right (as in the car selector).
   const resize = () => {
     const w = innerWidth;
     const h = innerHeight;
@@ -150,7 +150,7 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
   const frame = (now: number) => {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
-    // Första bilens modell hämtas fortfarande; visa banan tom så länge.
+    // The first car's model is still loading; show the empty track meanwhile.
     if (!car) nextCar();
     if (!car) return void pipeline.render();
     for (acc += dt; acc >= DT; acc -= DT) {
@@ -159,14 +159,14 @@ export function menuScene(renderer: THREE.WebGPURenderer, def: StageDef): MenuSc
       car.step(DT, input);
     }
     lapTime += dt;
-    // Ny bil när den här kört ut ur bild, eller fastnat någonstans.
+    // New car once this one has driven out of view, or got stuck somewhere.
     if (stage.project(car.pos.x, car.pos.z).s > corner + RUN_OUT || lapTime > 40) nextCar();
     car.damageEvents.length = 0;
     mesh.update();
     headlights.update(car);
     dust.update(car, stage, dt);
     precipitation?.update(dt, camera.position, now / 1000);
-    // Motorljudet tonar in när bilen närmar sig kameran och följer den från sida till sida.
+    // The engine sound fades in as the car approaches the camera and follows it from side to side.
     toCar.subVectors(car.pos, camera.position);
     const dist = toCar.length();
     sound?.setVolume(settings.menuCars ? Math.min(1, (30 / dist) ** 2) : 0, toCar.dot(right) / dist);

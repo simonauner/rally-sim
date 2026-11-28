@@ -1,7 +1,7 @@
 /**
- * Kontot i webbläsaren: skapas automatiskt vid första besöket och synkar bästa tider och ghosts
- * med synkservern (sync/) när VITE_SYNC_URL är satt. Utan server finns kontot ändå lokalt,
- * så återställningsnyckeln går att spara från start. Upplägget kommer från season-o-meter.
+ * The account in the browser: created automatically on the first visit, it syncs best times and ghosts
+ * with the sync server (sync/) when VITE_SYNC_URL is set. Without a server the account still exists locally,
+ * so the recovery key can be saved from the start. The design comes from season-o-meter.
  */
 
 import { STAGES } from '../physics/stage';
@@ -9,22 +9,22 @@ import { loadRecord, saveRecord } from '../records';
 import { loadCareer, saveCareer } from '../career/store';
 import { CAREER_KEY, careerOf, isSecret, newSecret, recordKey, recordOf, replaces, sanitize, type AccountData, type SyncRequest, type SyncResponse } from './protocol';
 
-/** Synkserverns adress. Utan den synkas inget. */
+/** The sync server's address. Without it nothing is synced. */
 const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? '';
 export const syncAvailable = SYNC_URL !== '';
 
 const STATE_KEY = 'rally.account';
-/** Hämta andra enheters ändringar så här ofta medan spelet syns. */
+/** Fetch other devices' changes this often while the game is visible. */
 const PULL_INTERVAL_MS = 60_000;
 
 interface AccountState {
   secret: string;
-  /** Var förra synken slutade på servern. */
+  /** Where the previous sync ended on the server. */
   cursor: number;
-  /** När den här enheten senast ändrade något, och vilken ändring senaste lyckade synk skickade. */
+  /** When this device last changed something, and which change the last successful sync sent. */
   changedAt: number;
   pushedAt: number;
-  /** När senaste lyckade synk blev klar, enligt den här enhetens klocka. */
+  /** When the last successful sync finished, by this device's clock. */
   syncedAt?: number;
 }
 
@@ -44,11 +44,11 @@ function writeState(state: AccountState) {
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch {
-    // Privat läge eller full lagring: kontot gäller bara den här sessionen.
+    // Private mode or full storage: the account only lasts this session.
   }
 }
 
-/** Kontot för den här webbläsaren; skapas första gången. Lokala rekord följer med vid första synken. */
+/** The account for this browser; created the first time. Local records are included in the first sync. */
 export function account(): AccountState {
   const existing = readState();
   if (existing) return existing;
@@ -59,7 +59,7 @@ export function account(): AccountState {
 
 export const syncStatus = () => ({ phase, syncedAt: readState()?.syncedAt ?? null });
 
-/** Det enheten har: bästa tiden per bana (under nyckeln för banans versionsepok) och karriären. */
+/** What the device has: the best time per stage (under the key for the stage's version epoch) and the career. */
 function localData(): AccountData {
   const data: AccountData = {};
   const { career, updatedAt } = loadCareer();
@@ -71,7 +71,7 @@ function localData(): AccountData {
   return data;
 }
 
-/** Tar in rekord från servern som är bättre än de lokala, och karriären om den är nyare. */
+/** Takes in records from the server that beat the local ones, and the career if it is newer. */
 function importData(changes: AccountData) {
   const incomingCareer = changes[CAREER_KEY];
   const career = careerOf(incomingCareer);
@@ -88,7 +88,7 @@ function importData(changes: AccountData) {
 let running: Promise<void> | null = null;
 let runAgain = false;
 
-/** Skickar enhetens rekord (om något ändrats) och hämtar andra enheters. */
+/** Sends the device's records (if anything changed) and fetches other devices'. */
 export function syncNow(): Promise<void> {
   if (running) {
     runAgain = true;
@@ -111,7 +111,7 @@ async function run() {
   try {
     const request: SyncRequest = {
       since: state.cursor,
-      // Allt, inte bara det som ändrats, så inget kan missas; servern behåller bara bättre tider.
+      // Everything, not just what changed, so nothing can be missed; the server keeps only better times.
       changes: state.changedAt > state.pushedAt ? localData() : {},
     };
     const res = await fetch(`${SYNC_URL}/v1/sync`, {
@@ -121,7 +121,7 @@ async function run() {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const response = (await res.json()) as SyncResponse;
-    // Kontot kan ha bytts (återställning) under tiden.
+    // The account may have been switched (restore) in the meantime.
     const latest = readState();
     if (latest?.secret !== state.secret) return;
     importData(sanitize(response.changes));
@@ -132,15 +132,15 @@ async function run() {
   }
 }
 
-/** Anropas när ett nytt rekord eller karriären har sparats lokalt. */
+/** Called when a new record or the career has been saved locally. */
 export function localChanged() {
   writeState({ ...account(), changedAt: Date.now() });
   void syncNow();
 }
 
 /**
- * Byter till kontot med den här hemligheten. Lokala rekord slås ihop med kontots, medan
- * kontots karriär ersätter den här enhetens.
+ * Switches to the account with this secret. Local records are merged with the account's, while
+ * the account's career replaces this device's.
  */
 export function restore(secret: string) {
   saveCareer(loadCareer().career, 0);
@@ -148,7 +148,7 @@ export function restore(secret: string) {
   return syncNow();
 }
 
-/** Håller enheten synkad medan spelet är öppet. */
+/** Keeps the device synced while the game is open. */
 export function startSync() {
   account();
   if (!syncAvailable) return;

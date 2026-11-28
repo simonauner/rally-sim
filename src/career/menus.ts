@@ -1,4 +1,4 @@
-/** Karriärens menyer: översikt med dagsbonus, garage med uppgraderingar och bilhandlare. */
+/** The career menus: overview with daily bonus, garage with upgrades, and car dealer. */
 
 import type { CareerState, HistoryEntry } from "../account/protocol";
 import { localChanged } from "../account/sync";
@@ -71,13 +71,13 @@ import {
 
 const nameOf = (m: CarModel) => m.make().name;
 
-/** Sparar en ändrad karriär och synkar den med kontot. */
+/** Saves a changed career and syncs it with the account. */
 export function commit(career: CareerState) {
   saveCareer(career);
   localChanged();
 }
 
-/** Ägda bilar. Uppgraderingarna läses när bilen byggs, så köp i garaget syns direkt. */
+/** Owned cars. The upgrades are read when the car is built, so garage purchases show up immediately. */
 function ownedModels(career: CareerState): CarModel[] {
   return CARS.filter((m) => career.garage[nameOf(m)]).map((m) => ({
     ...m,
@@ -91,9 +91,9 @@ type Pick = (
   models: CarModel[],
   opts?: PickOptions,
 ) => Promise<CarModel | null>;
-/** Öppnar vridbordet med bilen och dess skador. */
+/** Opens the turntable with the car and its damage. */
 export type ShowCar = (model: CarModel, damage: CarDamage) => Showroom;
-/** Visar en bakgrund i etappens tema bakom menyn; null går tillbaka till huvudmenyns kurva. */
+/** Shows a backdrop in the stage's theme behind the menu; null goes back to the main menu's bend. */
 export type Scenery = (stage: StageDef | null, weather?: Weather) => void;
 
 const buyMessage = (
@@ -107,7 +107,7 @@ const buyMessage = (
       ? done
       : "";
 
-/** Vad som ska köras: bil, etapp, (för mästerskap) framsteget, och vädret och däcken. */
+/** What to drive: car, stage, (for championships) the progress, and the weather and tyres. */
 export interface Launch {
   model: CarModel;
   stage: StageDef;
@@ -116,7 +116,7 @@ export interface Launch {
   tyre: TyreType;
 }
 
-/** Nästa etapp i ett pågående mästerskap, med bilen och dess uppgraderingar, eller null. */
+/** The next stage of a championship in progress, with the car and its upgrades, or null. */
 export function resumeChampionship(): Omit<Launch, "weather" | "tyre"> | null {
   const p = loadChampionship();
   const def = p && championshipById(p.id);
@@ -126,7 +126,7 @@ export function resumeChampionship(): Omit<Launch, "weather" | "tyre"> | null {
   return p && stage && model ? { model, stage, championship: p } : null;
 }
 
-/** Bekräftar att mästerskapet avbryts. Bilen lagas gratis, men det blir inga prispengar. */
+/** Confirms retiring from the championship. The car is repaired for free, but there is no prize money. */
 export async function confirmAbort(): Promise<boolean> {
   const c = await showMenu<"abort" | "stay">({
     title: "Avbryta mästerskapet?",
@@ -142,9 +142,9 @@ export async function confirmAbort(): Promise<boolean> {
 }
 
 /**
- * Karriärens huvudmeny. Delar ut dagsbonusen första gången per dag. Returnerar vad som ska
- * köras, eller null om spelaren backar. Med `gained` (t.ex. prispengar från ett avslutat mästerskap)
- * och dagsbonusen räknar kassan upp från det gamla beloppet, med pengaljud, första gången menyn visas.
+ * The career main menu. Hands out the daily bonus the first time each day. Returns what to
+ * drive, or null if the player backs out. With `gained` (e.g. prize money from a finished championship)
+ * and the daily bonus, the cash counts up from the old amount, with a coin sound, the first time the menu is shown.
  */
 export async function careerMenu(
   pick: Pick,
@@ -162,10 +162,10 @@ export async function careerMenu(
   }
   let countFrom = career.money - gained - bonus.bonus;
   for (;;) {
-    // Köp har redan räknat ner och klirrat; här räknas bara intäkter upp.
+    // Purchases have already counted down and jingled; here only income counts up.
     countFrom = Math.min(countFrom, career.money);
     const ongoing = loadChampionship();
-    // En ny karriär börjar utan bil: då finns bara bilhandlaren.
+    // A new career starts without a car: then there is only the dealer.
     const firstCar = Object.keys(career.garage).length === 0;
     const menu = showMenu<string>({
       title: "Karriär",
@@ -235,7 +235,7 @@ export async function careerMenu(
           : "";
       });
       if (stage) {
-        // Däcken efter bilen; Tillbaka från däcken går till bilväljaren.
+        // Tyres after the car; Back from the tyres goes to the car picker.
         const weather = forcedWeather() ?? rollWeather(stage, Math.random());
         for (let model; (model = await pick(ownedModels(career))); ) {
           const tyre = await pickTyre(stage, weather);
@@ -256,7 +256,7 @@ export async function careerMenu(
   }
 }
 
-/** Mästerskapen: först klassen, sedan mästerskapet i den. */
+/** The championships: first the class, then the championship within it. */
 async function championshipMenu(
   career: CareerState,
   pick: Pick,
@@ -307,7 +307,7 @@ async function championshipMenu(
   }
 }
 
-/** Mästerskapen i en klass. Null = tillbaka till klasserna. */
+/** The championships in a class. Null = back to the classes. */
 async function tierMenu(
   tier: Tier,
   career: CareerState,
@@ -337,7 +337,7 @@ async function tierMenu(
   }
 }
 
-/** Fakta bredvid mästerskapets bild: etapper, längd, prispengar och bästa placering (eller vad som låser upp det). */
+/** Facts beside the championship's image: stages, length, prize money and best position (or what unlocks it). */
 function championshipNote(career: CareerState, def: ChampionshipDef) {
   const place = bestPlace(career, def);
   const km = championshipKm(def).toFixed(1).replace(".", ",");
@@ -352,7 +352,7 @@ function championshipNote(career: CareerState, def: ChampionshipDef) {
     .join("");
 }
 
-/** En historikrad som [vad, detaljer]. */
+/** A history row as [what, details]. */
 function describe(e: HistoryEntry): [string, string] {
   const money =
     e.amount > 0
@@ -386,7 +386,7 @@ function describe(e: HistoryEntry): [string, string] {
   return [`Köpte ${e.name}`, money];
 }
 
-/** En pokal per mästerskap där bästa placeringen är på pallen, för karriärens översikt. */
+/** One trophy per championship where the best position is on the podium, for the career overview. */
 function trophyShelf(career: CareerState) {
   const won = CHAMPIONSHIPS.flatMap((ch) => {
     const place = bestPlace(career, ch);
@@ -398,7 +398,7 @@ function trophyShelf(career: CareerState) {
 const dateOf = (at: number) =>
   new Date(at).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
 
-/** Allt spelaren gjort i karriären, nyast först. */
+/** Everything the player has done in the career, newest first. */
 async function history(career: CareerState) {
   const list = [...(career.history ?? [])].reverse();
   const rows = list.map((e) => {
@@ -417,7 +417,7 @@ async function history(career: CareerState) {
   });
 }
 
-/** Räknar kassan i menyns underrubrik upp eller ner under 1,5 s, snabbt först och långsamt mot slutet. */
+/** Counts the cash in the menu subtitle up or down over 1.5 s, fast at first and slowing towards the end. */
 function countUp(
   from: number,
   to: number,
@@ -436,7 +436,7 @@ function countUp(
   requestAnimationFrame(tick);
 }
 
-/** Garaget: samma vridbord som bilväljaren, med uppgraderingarna som undermeny. */
+/** The garage: the same turntable as the car picker, with the upgrades as a submenu. */
 async function garage(pick: Pick) {
   await pick(ownedModels(loadCareer().career), {
     title: "Garage",
@@ -521,7 +521,7 @@ async function parts(car: string, group: string) {
   }
 }
 
-/** Bilhandlaren: samma vridbord som bilväljaren, med ägda bilar att jämföra med. */
+/** The dealer: the same turntable as the car picker, with owned cars to compare against. */
 async function dealer(pick: Pick) {
   for (;;) {
     const career = loadCareer().career;
@@ -576,12 +576,12 @@ async function dealer(pick: Pick) {
         },
       },
     });
-    // Efter ett köp visas handlaren igen utan den köpta bilen; efter den första tillbaka till karriären.
+    // After a purchase the dealer is shown again without the bought car; after the first one, back to the career.
     if (!bought || first) return;
   }
 }
 
-/** Delar ut prispengar för ett enstaka åk och returnerar en rad till målskärmen. */
+/** Pays out prize money for a single run and returns a line for the finish screen. */
 export function awardPrize(
   stageName: string,
   time: number,
@@ -598,7 +598,7 @@ export function awardPrize(
   return `<div class="prize">Prispengar: <span class="ahead">+${formatMoney(prize)}</span>${medal ? ` (${medal})` : ""}</div><div>Bilen lagas gratis efter enstaka lopp.</div>`;
 }
 
-/** Pågående mästerskap: förhandsvisning och service före nästa etapp, som mellan etapperna. */
+/** Championship in progress: preview and service before the next stage, as between stages. */
 async function ongoingMenu(showCar: ShowCar): Promise<Launch | null> {
   const launch = resumeChampionship();
   if (!launch) {
@@ -620,11 +620,11 @@ async function ongoingMenu(showCar: ShowCar): Promise<Launch | null> {
   return left.later ? null : { ...launch, championship, weather: left.weather, tyre: left.tyre };
 }
 
-/** Bläddrar genom mästerskapets etapper med samma förhandsvisning som före varje etapp, men utan väder (det slumpas vid start). */
+/** Browses the championship's stages with the same preview as before each stage, but without weather (it is rolled at start). */
 async function browseLegs(def: ChampionshipDef, scenery: Scenery) {
   const n = def.legs.length;
   let leg = 0;
-  // Pilar som i bilväljaren; inga <button> eftersom showMenu gör alla knappar i menyn till menyval.
+  // Arrows as in the car picker; no <button> since showMenu turns every button in the menu into a menu item.
   const bodyHtml = () => {
     const name = def.legs[leg]!;
     const stage = STAGES.find((s) => s.name === name);
@@ -640,7 +640,7 @@ async function browseLegs(def: ChampionshipDef, scenery: Scenery) {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-leg]");
     if (el) step(Number(el.dataset.leg));
   };
-  // Fångas före menyns egen lyssnare, som stoppar tangenttrycket.
+  // Captured before the menu's own listener, which stops the key press.
   const key = (e: KeyboardEvent) => {
     const d =
       e.code === "ArrowLeft" || e.code === "KeyA"
@@ -704,8 +704,8 @@ async function startChampionship(
   });
   const stage = STAGES.find((s) => s.name === def.legs[0]);
   if (!model || !stage) return null;
-  // Samma förhandsvisning och service som mellan etapperna, med hel bil.
-  // Framsteget skapas före förhandsvisningen, så första etappens väder går att visa; det sparas först vid start.
+  // The same preview and service as between stages, with an intact car.
+  // The progress is created before the preview, so the first stage's weather can be shown; it is only saved at start.
   const progress = newProgress(
     def,
     nameOf(model),
@@ -713,7 +713,7 @@ async function startChampionship(
     settings.difficulty,
   );
   const weather = legWeather(progress, 0);
-  // Bilväljaren lämnar huvudmenyns kurva bakom sig; förhandsvisningen visar etappens ljus och väder.
+  // The car picker leaves the main menu's bend behind it; the preview shows the stage's light and weather.
   scenery(stage, weather);
   const left = await beforeLeg(def, 0, WHOLE, (d) => showCar(model, d), weather);
   if (!left || left.later) {
@@ -752,10 +752,10 @@ function damageHtml(d: CarDamage) {
 }
 
 /**
- * Efter en etapp i mästerskapet. Mellan etapperna: förhandsvisning av nästa etapp och sedan service där spelaren lagar för egna pengar,
- * kör vidare skadad eller avbryter. Efter sista: totaltid och prispengar. Returnerar däcken när
- * nästa etapp ska laddas, annars prispengarna (0 om spelaren avbryter) på väg till karriären. På servicen står bilen med sina skador på
- * vridbordet från showCar.
+ * After a championship stage. Between stages: a preview of the next stage and then service where the player repairs with their own money,
+ * drives on damaged or retires. After the last: total time and prize money. Returns the tyres when
+ * the next stage is to be loaded, otherwise the prize money (0 if the player retires) on the way to the career. At service the car stands with its damage on
+ * the turntable from showCar.
  */
 const MEDAL_COLORS = [
   ["#fff6b0", "#f2c200", "#a87b00"],
@@ -763,7 +763,7 @@ const MEDAL_COLORS = [
   ["#ffd9b0", "#d4884a", "#8a4f1f"],
 ];
 
-/** Glänsande pokal i guld, silver eller brons för plats 1–3, annars bara siffran. */
+/** Shiny trophy in gold, silver or bronze for places 1–3, otherwise just the number. */
 function trophy(place: number) {
   const c = MEDAL_COLORS[place - 1];
   if (!c) return `<span class="trophy">${place}.</span>`;
@@ -771,14 +771,14 @@ function trophy(place: number) {
   return `<svg class="trophy" viewBox="0 0 24 24" role="img" aria-label="${place}:a"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c[0]}"/><stop offset=".45" stop-color="${c[1]}"/><stop offset="1" stop-color="${c[2]}"/></linearGradient></defs><path d="M6 5H3.5v1.5A3.5 3.5 0 0 0 7 10M18 5h2.5v1.5A3.5 3.5 0 0 1 17 10" fill="none" stroke="url(#${id})" stroke-width="1.6"/><path d="M6 3h12v4a6 6 0 0 1-4.5 5.8V16h2.5v2.5H8V16h2.5v-3.2A6 6 0 0 1 6 7zM6.5 19.5h11v2h-11z" fill="url(#${id})" stroke="${c[2]}" stroke-width=".6"/><path d="M8.3 4.5v2.5a4 4 0 0 0 1.6 3.2" fill="none" stroke="#fff" stroke-opacity=".8" stroke-linecap="round"/></svg>`;
 }
 
-/** Placering på en etapp som en rund bricka, i guld, silver och brons för 1–3. */
+/** Position on a stage as a round badge, in gold, silver and bronze for 1–3. */
 const posBadge = (place: number) =>
   `<span class="pos p${place}">${place}</span>`;
-/** Placeringen för tiden `t` bland `all` (som inkluderar t). */
+/** The position of time `t` among `all` (which includes t). */
 const rankOf = (t: number, all: number[]) =>
   1 + all.filter((x) => x < t).length;
 
-/** Ställningen i mästerskapet: placering, namn och totaltid, lucka till ledaren. */
+/** The championship standings: position, name and total time, gap to the leader. */
 function standingsHtml(table: Standing[]) {
   const lead = table[0]!.total;
   const rows = table
@@ -792,7 +792,7 @@ function standingsHtml(table: Standing[]) {
   return `<table class="specs standings"><tr><th></th><td>totalt</td></tr>${rows}</table>`;
 }
 
-/** Resultatet på senaste etappen: placering, namn, tid och lucka till etappsegraren. */
+/** The result of the latest stage: position, name, time and gap to the stage winner. */
 function legResultHtml(table: Standing[]) {
   const byLeg = [...table].sort((a, b) => a.last - b.last);
   const best = byLeg[0]!.last;
@@ -853,7 +853,7 @@ export async function championshipLegDone(
       body: `${resultBody}${legResultHtml(table)}`,
       items: [{ label: "Se slutresultat", value: 0 }],
     });
-    // Egen skärm: bara bilen och slutresultatet, inget annat gränssnitt.
+    // A screen of its own: just the car and the final result, no other UI.
     document.body.classList.add("final-results");
     applause();
     if (place === 1) confetti();
@@ -868,14 +868,14 @@ export async function championshipLegDone(
     return { prize };
   }
 
-  // Sparas direkt, så etappen räknas även om fliken stängs före servicen.
+  // Saved right away, so the stage counts even if the tab is closed before service.
   saveChampionship(afterLeg(p, time, damage, false));
   await showMenu({
     title: `Etapp ${times.length} av ${def.legs.length}`,
     side: true,
     subtitle: def.legs[times.length - 1],
     body: `${resultBody}${legResultHtml(table)}`,
-    // Mästerskapsställningen i ett eget kort, så den inte blandas ihop med etappens resultat.
+    // The championship standings in a card of their own, so they are not mixed up with the stage result.
     aside: `<h1>Ställning</h1><div class="subtitle">${def.name}</div><div class="body"><div>Du ligger <b>${place}:a</b> av ${table.length} efter ${times.length} av ${def.legs.length} etapper.</div>${standingsHtml(table)}</div>`,
     items: [{ label: "Fortsätt", value: 0 }],
   });
@@ -893,10 +893,10 @@ export async function championshipLegDone(
 }
 
 /**
- * Före etapp `leg` (0-baserad): förhandsvisning av etappen och service där spelaren lagar för egna pengar,
- * kör vidare skadad, sparar till senare (`pausable`) eller avbryter. Returnerar skadan bilen har och om
- * spelaren valde att fortsätta senare, eller null om mästerskapet avbröts. Start går via däckvalet, vars
- * Tillbaka leder till skärmen där man valde start (förhandsvisningen eller servicen).
+ * Before stage `leg` (0-based): a preview of the stage and service where the player repairs with their own money,
+ * drives on damaged, saves for later (`pausable`) or retires. Returns the car's damage and whether
+ * the player chose to continue later, or null if the championship was abandoned. Start goes via the tyre choice, whose
+ * Back leads to the screen where start was chosen (the preview or service).
  */
 async function beforeLeg(
   def: ChampionshipDef,
@@ -913,11 +913,11 @@ async function beforeLeg(
   const nextName = def.legs[leg]!;
   const nextStage = STAGES.find((s) => s.name === nextName);
   weather = forcedWeather() ?? weather;
-  // Vridbordet öppnas vid första besöket på servicen och står kvar bakom förhandsvisningen.
+  // The turntable opens on the first visit to service and stays behind the preview.
   let room: Showroom | null = null;
   let message = "";
   let atService = false;
-  // Raden som valdes senast i servicen, så att markeringen står kvar efter en lagning.
+  // The row last chosen at service, so the highlight stays after a repair.
   let chosen: RepairPart | "all" | "go" | "back" | undefined;
   let countFrom = loadCareer().career.money;
   const start = async () => {
@@ -935,7 +935,7 @@ async function beforeLeg(
         side: true,
         body: `<div>Väder: ${WEATHER_NAMES[weather]}.</div>${nextStage ? stagePreviewHtml(nextStage) : ""}`,
         items: [
-          // Före första etappen är bilen ny, så ingen service.
+          // Before the first stage the car is new, so no service.
           ...(leg > 0
             ? [{ label: "Till service", value: "service" as const }]
             : []),

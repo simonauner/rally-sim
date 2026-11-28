@@ -2,12 +2,12 @@ import json, sys
 parts, const, desc = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3]
 print(f'''/**
  * {desc}
- * Vägen följer OpenStreetMap och höjden EU-DEM, samplad var 20:e meter med lätt utjämning. Varje
- * del har origo i sin startpunkt: x väster, z norr, y höjd över starten, i meter.
+ * The road follows OpenStreetMap and the elevation EU-DEM, sampled every 20 m with light smoothing.
+ * Each part has its origin at its start point: x west, z north, y height above the start, in metres.
  *
- * Vägdata © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
- * Höjd: EU-DEM v1.1 via OpenTopoData, framställd med Copernicus-data finansierad av EU.
- * Datan i den här filen är härledd från OpenStreetMap och delas under ODbL 1.0.
+ * Road data © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
+ * Elevation: EU-DEM v1.1 via OpenTopoData, produced using Copernicus data funded by the EU.
+ * The data in this file is derived from OpenStreetMap and shared under ODbL 1.0.
  */
 
 import type {{ RealStagePart }} from '../stage';

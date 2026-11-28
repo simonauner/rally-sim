@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { buildInfo } from './vite.config';
 
-// En enda HTML-fil som går att öppna direkt eller hosta var som helst.
+// A single HTML file that can be opened directly or hosted anywhere.
 export default defineConfig({
   plugins: [viteSingleFile()],
   build: { target: 'es2022', outDir: 'dist-single', emptyOutDir: true },

@@ -7,8 +7,8 @@ import ljunghedsrallytImg from './assets/champ-ljunghedsrallyt.webp';
 import israllytImg from './assets/champ-israllyt.webp';
 
 /**
- * Mästerskapens bilder, samma i karriären och i fri körning: vyn från motorhuven vid starten av en
- * etapp i varje mästerskap, tagen i spelet i uppehållsväder.
+ * The championships' images, the same in career and free driving: the view from the bonnet at the start of a
+ * stage in each championship, captured in game in dry weather.
  */
 export const CHAMPIONSHIP_IMAGES: Record<string, string> = {
   skogsrallyt: skogsrallytImg,
@@ -23,8 +23,8 @@ export const CHAMPIONSHIP_IMAGES: Record<string, string> = {
 const stageFiles = import.meta.glob<string>('./assets/stage-*.webp', { eager: true, import: 'default' });
 
 /**
- * Etappens bild: motorhuvsvyn i uppehållsväder strax före det som utmärker den (gård, sjö,
- * kraftledning, krön …), i src/assets/stage-<namn utan å, ä, ö>.webp.
+ * The stage's image: the bonnet view in dry weather just before what makes it distinctive (farm, lake,
+ * power line, crest …), in src/assets/stage-<name without å, ä, ö>.webp.
  */
 export function stageImage(name: string): string | undefined {
   const slug = name.toLowerCase().replace(/[åä]/g, 'a').replace(/ö/g, 'o').replace(/ /g, '-');

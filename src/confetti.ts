@@ -1,10 +1,10 @@
-/** Konfetti som regnar över skärmen i några sekunder, t.ex. när man vunnit ett mästerskap. */
+/** Confetti raining over the screen for a few seconds, e.g. when you've won a championship. */
 
 const COLORS = ['#f2c200', '#e4572e', '#29a3d6', '#4caf50', '#e94f9c', '#ffffff'];
 
 export function confetti(seconds = 6) {
   const canvas = document.createElement('canvas');
-  // Ovanför menyn (z-index 2000), men klick går igenom.
+  // Above the menu (z-index 2000), but clicks pass through.
   canvas.style.cssText = 'position:fixed;inset:0;z-index:2002;pointer-events:none';
   document.body.append(canvas);
   const ctx = canvas.getContext('2d')!;
@@ -28,7 +28,7 @@ export function confetti(seconds = 6) {
     last = now;
     left -= dt;
     ctx.clearRect(0, 0, w, h);
-    // Tona ut den sista sekunden.
+    // Fade out during the last second.
     ctx.globalAlpha = Math.max(0, Math.min(1, left));
     for (const p of pieces) {
       p.x += (p.vx + Math.sin(now / 300 + p.a) * 40 * dpr) * dt;
@@ -37,7 +37,7 @@ export function confetti(seconds = 6) {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.a);
-      // Bitarna snurrar runt sin längdaxel: bredden pulserar.
+      // The pieces spin around their long axis: the width pulses.
       ctx.scale(Math.cos(p.a * 1.7), 1);
       ctx.fillStyle = p.color;
       ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);

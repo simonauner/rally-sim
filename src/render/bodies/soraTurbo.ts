@@ -1,9 +1,9 @@
 import type { BodyShape } from './shape';
 
 /**
- * Sora 2.0 Turbo: rundad tvådörrars coupé från sent 90-tal. Karossen ritas av Blendermodellen
- * (blender/soraTurbo/), så formen här används bara till skadezonerna, dekalerna och baklyktornas sken,
- * och följer modellens mått.
+ * Sora 2.0 Turbo: rounded two-door coupé from the late 90s. The body is drawn by the Blender model
+ * (blender/soraTurbo/), so the shape here is only used for the damage zones, the decals and the tail-light glow,
+ * and follows the model's dimensions.
  */
 export const soraTurbo: BodyShape = {
   halfX: 0.845,
@@ -33,5 +33,5 @@ export const soraTurbo: BodyShape = {
   tailX: 0.4,
   bumperY: [-0.13, -0.12],
   rearBumperDepth: 0.36,
-  hoodScoopZ: [0.88, 1.2], // objektet 'scoop' i Blendermodellen
+  hoodScoopZ: [0.88, 1.2], // the 'scoop' object in the Blender model
 };

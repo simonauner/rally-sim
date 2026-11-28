@@ -13,21 +13,21 @@ import { LANDMARKS } from './real/landmarks';
 import { rng } from './rng';
 import { World } from './world';
 
-/** En stödpunkt på etappen. Underlaget gäller från punkten fram till nästa. */
+/** A control point on the stage. The surface applies from this point up to the next. */
 export interface StagePoint {
   x: number;
   z: number;
-  /** Vägens höjd. */
+  /** Road height. */
   y: number;
-  /** Vägbredd i meter. */
+  /** Road width in metres. */
   width: number;
   surface: SurfaceId;
 }
 
 /**
- * Något längs vägen ur kartdatan, som sträcka längs etappen (m från start). Ytor (åker, gård, sjö, myr, kalhygge)
- * ligger på en sida: 1 = vänster i färdriktningen, -1 = höger. Punkter (kraftledning, bro, krön)
- * har from = to och side 0.
+ * Something along the road from the map data, as a stretch along the stage (m from the start). Areas (field, farm, lake, bog, clear-cut)
+ * lie on one side: 1 = left in the driving direction, -1 = right. Points (power line, bridge, crest)
+ * have from = to and side 0.
  */
 export interface Landmark {
   kind: 'field' | 'farm' | 'lake' | 'bog' | 'clearcut' | 'power' | 'bridge' | 'crest';
@@ -36,22 +36,22 @@ export interface Landmark {
   to: number;
 }
 
-/** Hus, ladugårdar, stolpar, räcken och balar längs etappen. Kolliderar; ritas av renderaren. */
+/** Houses, barns, posts, rails and bales along the stage. They collide; drawn by the renderer. */
 export interface Prop {
   kind: 'house' | 'barn' | 'pylon' | 'rail' | 'bale' | 'fence';
   x: number;
   z: number;
   y: number;
-  /** Rotation runt y (rad). Hus står i 0 eller 90°, så kollisionslådan är axelparallell. */
+  /** Rotation about y (rad). Houses stand at 0 or 90°, so the collision box is axis-aligned. */
   yaw: number;
 }
 
-/** Husens mått (halva bredden i x, halva djupet i z, vägghöjd), före rotation. */
+/** House dimensions (half width in x, half depth in z, wall height), before rotation. */
 export const HOUSE_SIZE = { house: [4.5, 3, 3.2], barn: [7, 4, 4.5] } as const;
 
 /**
- * En korsande väg som etappen inte kör på, avspärrad vid etappen. Följer höjden från etappens
- * närmaste punkt, så terrängen runt den hänger ihop med etappens, och tar slut i skogen.
+ * A crossing road the stage doesn't use, closed off at the stage. Follows the height of the stage's
+ * nearest point, so the terrain around it joins up with the stage's, and ends in the forest.
  */
 export interface Spur {
   points: { x: number; z: number }[];
@@ -62,21 +62,21 @@ export interface Spur {
 export interface StageDef {
   name: string;
   /**
-   * Banans version, major.minor.patch. Major: rekord och ghost nollställs alltid.
-   * Minor: nollställs bara om recordsSince flyttas fram. Patch: bara kosmetiskt.
+   * The stage version, major.minor.patch. Major: records and ghost are always reset.
+   * Minor: reset only if recordsSince is moved forward. Patch: cosmetic only.
    */
   version: string;
-  /** Äldsta versionen (inom samma major) vars rekord och ghost fortfarande gäller. */
+  /** Oldest version (within the same major) whose records and ghost still apply. */
   recordsSince: string;
   points: StagePoint[];
   spurs?: Spur[];
-  /** Vinteretapp: snö utanför vägen och i skogen, även där vägen är plogad till grus. */
+  /** Winter stage: snow off the road and in the forest, even where the road is ploughed down to gravel. */
   winter?: boolean;
-  /** Tid på dygnet; dag om inget anges. Påverkar bara grafiken. */
+  /** Time of day; day if not given. Only affects the graphics. */
   light?: Light;
-  /** Källa för verklig kartdata, visas i etappens förhandsvisning. */
+  /** Source of the real map data, shown in the stage preview. */
   credit?: string;
-  /** Väg efter mål att stanna på (m); FINISH_MARGIN om inget anges. */
+  /** Road after the finish to stop on (m); FINISH_MARGIN if not given. */
   runout?: number;
   landmarks?: Landmark[];
 }
@@ -84,9 +84,9 @@ export interface StageDef {
 export type Light = 'day' | 'dawn' | 'dusk' | 'night';
 
 /**
- * Ljuset vid en viss tidpunkt, från solens höjd över horisonten: skymning/gryning när solen är
- * mellan 6° under och 6° över horisonten.
- * shortcut: platsen gissas (59° N, längdgrad från tidszonens normaltid), byt mot riktig position om det behövs.
+ * The light at a given time, from the sun's elevation above the horizon: dusk/dawn when the sun is
+ * between 6° below and 6° above the horizon.
+ * shortcut: the location is guessed (59° N, longitude from the time zone's standard time), replace with a real position if needed.
  */
 export function lightAt(date: Date): Light {
   const rad = Math.PI / 180;
@@ -104,31 +104,31 @@ export function lightAt(date: Date): Light {
   return solarHour < 12 ? 'dawn' : 'dusk';
 }
 
-/** Resultat av att projicera en punkt på vägens mittlinje. */
+/** Result of projecting a point onto the road's centre line. */
 export interface StageHit {
-  /** Sträcka längs etappen från start (m). */
+  /** Distance along the stage from the start (m). */
   s: number;
-  /** Avstånd från mittlinjen (m), alltid >= 0. */
+  /** Distance from the centre line (m), always >= 0. */
   d: number;
-  /** Vägens höjd vid projektionen. */
+  /** Road height at the projection. */
   roadY: number;
   width: number;
   surface: SurfaceId;
-  /** Sida om etappens mittlinje: 1 = vänster i färdriktningen, -1 = höger. */
+  /** Side of the stage's centre line: 1 = left in the driving direction, -1 = right. */
   side: number;
 }
 
 const SAMPLE_STEP = 1;
-/** Start- och mållinjen ligger en bit in från splinens ändar; efter mål finns minst 80 m att stanna på. */
+/** The start and finish lines sit a little in from the spline's ends; after the finish there are at least 80 m to stop on. */
 export const START_S = 20;
 const FINISH_MARGIN = 80;
 const CELL = 20;
-/** Träd per etapp, och fler på långa etapper så skogen blir lika tät. */
+/** Trees per stage, and more on long stages so the forest is equally dense. */
 const TREES = 2500;
 const TREES_PER_M = 0.9;
-/** Bortom detta avstånd från vägen är terrängen bara utfyllnad. */
+/** Beyond this distance from the road the terrain is just filler. */
 export const STAGE_CORRIDOR = 45;
-/** Snövallarnas höjd över vägen på vinteretapper (m). */
+/** Height of the snowbanks above the road on winter stages (m). */
 export const SNOWBANK_HEIGHT = 0.7;
 
 const smooth = (a: number, b: number, x: number) => {
@@ -137,29 +137,29 @@ const smooth = (a: number, b: number, x: number) => {
 };
 
 /**
- * Etapp längs en spline (centripetal Catmull-Rom) genom stödpunkterna.
- * Vägen är plan i sidled; utanför den kommer ett dike och sedan kuperad terräng.
+ * Stage along a spline (centripetal Catmull-Rom) through the control points.
+ * The road is flat across; beyond it comes a ditch and then hilly terrain.
  */
 export class Stage extends World {
   readonly def: StageDef;
-  /** Samplad mittlinje, en punkt per meter. */
+  /** Sampled centre line, one point per metre. */
   readonly xs: Float64Array;
   readonly zs: Float64Array;
   readonly ys: Float64Array;
   readonly widths: Float64Array;
   readonly surfaces: SurfaceId[];
   readonly length: number;
-  /** Mållinjen längs etappen (m). */
+  /** The finish line along the stage (m). */
   readonly finish: number;
   readonly spurs: Spur[];
-  /** Avspärrningar tvärs över de korsande vägarna, en per väg. Lokalt x går tvärs över vägen. */
+  /** Barriers across the crossing roads, one per road. Local x runs across the road. */
   readonly barriers: { x: number; z: number; y: number; yaw: number; halfWidth: number }[];
   private grid = new Map<number, number[]>();
   private hit: StageHit = { s: 0, d: 0, roadY: 0, width: 0, surface: 'gravel', side: 1 };
   readonly landmarks: Landmark[];
-  /** Ytan per meter och sida (index i landmarks, -1 = skog): [vänster, höger]. */
+  /** The area per metre and side (index into landmarks, -1 = forest): [left, right]. */
   private area: [Int16Array, Int16Array];
-  /** Sjöarnas vattennivå, per landmärke. */
+  /** Lake water level, per landmark. */
   readonly lakeLevel = new Map<Landmark, number>();
   readonly props: Prop[] = [];
 
@@ -173,8 +173,8 @@ export class Stage extends World {
       false,
       'centripetal',
     );
-    // Parametern t i getPoint är inte proportionell mot sträckan, så vi samplar tätt per segment
-    // och fördelar om till jämna metersteg.
+    // The parameter t in getPoint is not proportional to distance, so we sample densely per segment
+    // and redistribute into even metre steps.
     const dense: { x: number; y: number; z: number; seg: number; f: number }[] = [];
     const segs = pts.length - 1;
     const v = new Vector3();
@@ -247,7 +247,7 @@ export class Stage extends World {
       const len = Math.hypot(b.x - a.x, b.z - a.z);
       const dx = (b.x - a.x) / len;
       const dz = (b.z - a.z) / len;
-      // Så nära etappen som möjligt utan att stå på den.
+      // As close to the stage as possible without standing on it.
       const clear = this.project(a.x, a.z).width / 2 + 2;
       let t = 0;
       while (t < len && this.project(a.x + dx * t, a.z + dz * t).d < clear) t += 0.5;
@@ -258,8 +258,8 @@ export class Stage extends World {
   }
 
   /**
-   * Vägens höjd i snitt runt (x, z): var fjärde meter av vägen inom ca 35 m bortom den närmaste,
-   * viktad så att de närmaste väger mest. `d` är avståndet till närmaste punkten.
+   * Average road height around (x, z): every fourth metre of road within about 35 m beyond the nearest,
+   * weighted so the nearest count most. `d` is the distance to the nearest point.
    */
   private nearbyRoadY(x: number, z: number, d: number): number {
     const sigma = 12;
@@ -284,7 +284,7 @@ export class Stage extends World {
     return weight > 0 ? sum / weight : this.hit.roadY;
   }
 
-  /** Skog i korridoren längs vägarna, minst 7 m från vägkanten. */
+  /** Forest in the corridor along the roads, at least 7 m from the road edge. */
   private placeTrees() {
     let minX = Infinity;
     let maxX = -Infinity;
@@ -308,7 +308,7 @@ export class Stage extends World {
     }
   }
 
-  /** Ytan (åker, gård, sjö, myr, kalhygge) vid sträckan s på en sida, och hur långt in i den (0–1, mjukt i ändarna). */
+  /** The area (field, farm, lake, bog, clear-cut) at distance s on one side, and how far into it (0–1, soft at the ends). */
   areaAt(s: number, side: number): { lm: Landmark; t: number } | null {
     const k = this.area[side > 0 ? 0 : 1][Math.min(this.xs.length - 1, Math.max(0, Math.round(s)))]!;
     if (k < 0) return null;
@@ -317,25 +317,25 @@ export class Stage extends World {
     return { lm, t: smooth(lm.from, lm.from + ramp, s) * (1 - smooth(lm.to - ramp, lm.to, s)) };
   }
 
-  /** Växer det skog här? `edge` är avståndet från vägkanten. */
+  /** Does forest grow here? `edge` is the distance from the road edge. */
   private wooded(s: number, side: number, edge: number): boolean {
     if (this.areaAt(s, side)) return false;
     for (const lm of this.landmarks) {
       const ds = Math.abs(s - lm.from);
-      if (lm.kind === 'power' && ds < 16) return false; // ledningsgatan
+      if (lm.kind === 'power' && ds < 16) return false; // the power line corridor
       if (lm.kind === 'bridge' && ds < 10) return false;
-      if (lm.kind === 'crest' && ds < 50 && edge < 18) return false; // plats för publiken
+      if (lm.kind === 'crest' && ds < 50 && edge < 18) return false; // room for the spectators
     }
     return true;
   }
 
-  /** Punkt `off` m till vänster (negativt = höger) om vägen vid s. */
+  /** Point `off` m to the left (negative = right) of the road at s. */
   private beside(s: number, off: number) {
     const p = this.poseAt(s);
     return { x: p.x + Math.cos(p.heading) * off, z: p.z - Math.sin(p.heading) * off, heading: p.heading };
   }
 
-  /** Hus på gårdarna, balar och gärdsgård på åkrarna, kraftledningsstolpar och broräcken. */
+  /** Houses on the farms, bales and fences on the fields, power line poles and bridge rails. */
   private placeProps() {
     const r = rng(61);
     const hidden = (x: number, z: number, rad: number) => this.trunks.push({ x, z, y: this.heightAt(x, z), r: rad, scale: 0, hidden: true });
@@ -356,7 +356,7 @@ export class Stage extends World {
           const ax = yaw ? hz : hx;
           const az = yaw ? hx : hz;
           if (!free(p.x, p.z, Math.hypot(ax, az) + 3)) continue;
-          // Huset står på den lägsta hörnpunkten, så det aldrig svävar; grunden går ner i marken.
+          // The house stands on its lowest corner so it never floats; the foundation goes into the ground.
           let y = Infinity;
           for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) y = Math.min(y, this.heightAt(p.x + cx * ax, p.z + cz * az));
           this.props.push({ kind, x: p.x, z: p.z, y, yaw });
@@ -403,7 +403,7 @@ export class Stage extends World {
     return (cx + 32768) * 65536 + (cz + 32768);
   }
 
-  /** Position och riktning (heading enligt Car.reset) vid sträckan s. */
+  /** Position and direction (heading as in Car.reset) at distance s. */
   poseAt(s: number) {
     const i = Math.min(this.xs.length - 2, Math.max(0, Math.round(s / SAMPLE_STEP)));
     const j = Math.min(this.xs.length - 1, i + 2);
@@ -411,16 +411,16 @@ export class Stage extends World {
   }
 
   /**
-   * Närmaste punkt på mittlinjen. Resultatobjektet återanvänds mellan anrop.
-   * Med maxD ger punkter längre bort än så d = Infinity (övriga fält gäller då inte), utan att
-   * söka igenom hela etappen; det gör terrängbygget många gånger snabbare.
+   * Nearest point on the centre line. The result object is reused between calls.
+   * With maxD, points further away than that give d = Infinity (the other fields don't apply then), without
+   * searching the whole stage; that makes building the terrain many times faster.
    */
   project(x: number, z: number, maxD = Infinity): StageHit {
     const cx = Math.floor(x / CELL);
     const cz = Math.floor(z / CELL);
     let best = -1;
     let bestD2 = Infinity;
-    // Sök i växande ringar tills träffen garanterat är närmast.
+    // Search in growing rings until the hit is guaranteed to be the nearest.
     for (let r = 1; r < 64; r++) {
       for (let i = cx - r; i <= cx + r; i++) {
         for (let j = cz - r; j <= cz + r; j++) {
@@ -446,7 +446,7 @@ export class Stage extends World {
     }
     if (best < 0) best = 0;
 
-    // Förfina mot segmenten på båda sidor om närmaste sampel.
+    // Refine against the segments on both sides of the nearest sample.
     const h = this.hit;
     h.d = Math.sqrt(bestD2);
     h.s = best * SAMPLE_STEP;
@@ -478,14 +478,14 @@ export class Stage extends World {
   }
 
   /**
-   * Som project, men närmaste väg av etappen och de korsande vägarna. För en korsande väg
-   * gäller d, width och surface; s och roadY är fortfarande etappens.
+   * Like project, but the nearest road of the stage and the crossing roads. For a crossing road
+   * d, width and surface apply; s and roadY are still the stage's.
    */
   roadAt(x: number, z: number, maxD = Infinity): StageHit {
     return this.withSpurs(this.project(x, z, maxD), x, z);
   }
 
-  /** Byter träffen mot en korsande väg om någon ligger närmare än etappen. */
+  /** Replaces the hit with a crossing road if one is closer than the stage. */
   private withSpurs(h: StageHit, x: number, z: number): StageHit {
     for (const sp of this.spurs) {
       const p = sp.points;
@@ -515,33 +515,33 @@ export class Stage extends World {
     const nearY = stage.roadY;
     const { d, width } = this.withSpurs(stage, x, z);
     const hw = width / 2;
-    // Utanför etappens vägkant följer terrängen ett medel av vägen runt omkring, inte bara närmaste
-    // punkten: annars blir det en kant på insidan av snäva kurvor och hårnålar, där närmaste
-    // punkt hoppar till en annan del av vägen. Avståndet räknas till etappen även intill en korsande
-    // väg, som då följer samma medel. Vägen och vägkanten har vägens egen höjd.
+    // Beyond the stage's road edge the terrain follows an average of the surrounding road, not just the nearest
+    // point: otherwise there is a ridge on the inside of tight corners and hairpins, where the nearest
+    // point jumps to another part of the road. The distance is measured to the stage even next to a crossing
+    // road, which then follows the same average. The road and the road edge have the road's own height.
     const blend = smooth(stageHw + 2, stageHw + 12, stageD);
     const roadY = blend > 0 ? nearY + (this.nearbyRoadY(x, z, stageD) - nearY) * blend : nearY;
-    // Vinterväg har plogade snövallar där andra vägar har dike.
+    // Winter roads have ploughed snowbanks where other roads have a ditch.
     const edge = this.def.winter ? SNOWBANK_HEIGHT * smooth(hw + 0.3, hw + 1.4, d) * (1 - smooth(hw + 2.4, hw + 4.5, d)) : -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
     const bank = smooth(hw + 2.5, hw + 8, d) * 0.12 * (d - hw - 2.5);
     const hills = smooth(hw + 4, hw + 30, d) * (1.8 * Math.sin(x * 0.021 + 1) * Math.cos(z * 0.017) + 0.9 * Math.sin(z * 0.043 + x * 0.029));
     let h = roadY + edge + bank + hills;
     if (area) {
-      // Åkrar, gårdstomter och myrar är flackare än skogen (kalhygget behåller sina kullar); sjöns botten ligger under vattenytan ut till
-      // horisonten, med en lång strand så att det inte blir någon brant kant.
+      // Fields, farmyards and bogs are flatter than the forest (clear-cuts keep their hills); the lake bed lies below the water surface out to
+      // the horizon, with a long shore so there is no steep edge.
       if (area.lm.kind === 'lake') h -= Math.max(h - (this.lakeLevel.get(area.lm)! - 1.6), 0) * area.t * smooth(stageHw + 3, stageHw + 16, stageD);
       else if (area.lm.kind !== 'clearcut') h -= hills * 0.75 * area.t * smooth(stageHw + 3, stageHw + 12, stageD);
     }
     for (const lm of this.landmarks) {
       if (lm.kind !== 'bridge' || Math.abs(stageS - lm.from) > 10) continue;
-      // Ån under bron: en fåra tvärs över, högst 2,2 m djup, med vägen som brobana (bortom snövallen på vintern).
+      // The stream under the bridge: a channel across, at most 2.2 m deep, with the road as the bridge deck (beyond the snowbank in winter).
       const t = (1 - smooth(4, 10, Math.abs(stageS - lm.from))) * smooth(stageHw + (this.def.winter ? 3 : 1), stageHw + 8, stageD);
       h -= Math.min(Math.max(h - (this.ys[Math.round(lm.from)]! - 2.4), 0), 2.2) * t;
     }
     return h;
   }
 
-  /** Vattenytan i en sjö eller å vid (x, z), eller null. */
+  /** The water surface of a lake or stream at (x, z), or null. */
   waterAt(x: number, z: number): number | null {
     const h = this.project(x, z);
     const area = this.areaAt(h.s, h.side);
@@ -552,18 +552,18 @@ export class Stage extends World {
   override surfaceAt(x: number, z: number): SurfaceId {
     const { d, width, surface } = this.roadAt(x, z);
     if (d <= width / 2 + 0.3) return surface;
-    // Utanför vinterväg är det vallar och sedan djup snö: hjulen gräver ner sig.
+    // Beside a winter road there are banks and then deep snow: the wheels dig in.
     if (this.def.winter) return 'snowbank';
     if (this.landmarks.length && this.waterAt(x, z) !== null) return 'water';
-    // Vägkanten: lös jord, eller snö om vägen är snöig.
+    // The road edge: loose soil, or snow if the road is snowy.
     return surface === 'snow' ? 'snow' : 'mud';
   }
 }
 
-/** Extra raksträcka efter den verkliga vägens slut (m): på snö och grus behövs mer än 80 m för att stanna. */
+/** Extra straight after the real road ends (m): on snow and gravel more than 80 m is needed to stop. */
 const RUNOUT_EXTRA = 160;
 
-/** Förlänger vägen rakt fram från sista punkten, så mållinjen ligger kvar men utrullningen blir längre. */
+/** Extends the road straight ahead from the last point, so the finish line stays put but the run-off gets longer. */
 function withRunout(road: RealStagePart['road']): RealStagePart['road'] {
   const [x1, z1, y1, w = 6] = road[road.length - 1]!;
   const [x0, z0] = road[road.length - 2]!;
@@ -573,20 +573,20 @@ function withRunout(road: RealStagePart['road']): RealStagePart['road'] {
   return [...road, ...extra];
 }
 
-/** En del av en verklig sträcka, från öppen kartdata. */
+/** One part of a real stage, from open map data. */
 export interface RealStagePart {
   name: string;
-  /** Mittlinjen: [x väster, z norr, y höjd över starten, bredd (6 m om den saknas)], i meter från startpunkten. */
+  /** The centre line: [x west, z north, y height above the start, width (6 m if absent)], in metres from the start point. */
   road: ([number, number, number] | [number, number, number, number])[];
-  /** Korsande skogsvägar, kapade 80 m från etappen. */
+  /** Crossing forest roads, cut off 80 m from the stage. */
   spurs: { x: number; z: number }[][];
 }
 
 /**
- * Etapper från en verklig sträcka i delar, med källan angiven: snöig vinterväg eller sommargrus.
- * `light` ger ljuset per del (dag om inget anges); `version` och `recordsSince` gäller alla delar.
- * 1.1.0: landmärken ur kartdatan (åkrar, gårdar, sjöar, kraftledningar, broar); rekorden gäller.
- * 1.2.0: myrar och kalhyggen.
+ * Stages from a real road in parts, with the source credited: snowy winter road or summer gravel.
+ * `light` gives the light per part (day if not given); `version` and `recordsSince` apply to all parts.
+ * 1.1.0: landmarks from the map data (fields, farms, lakes, power lines, bridges); records still apply.
+ * 1.2.0: bogs and clear-cuts.
  */
 function realStages(
   source: string,
@@ -612,9 +612,9 @@ function realStages(
 }
 
 /**
- * Andersvattnet ur Rally Sweden i fyra delar (se andersvattnet.ts). Sista delen körs i skymning,
- * som eftermiddagens omgång i rallyt. 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte.
- * 1.2.0: landmärken. 1.3.0: myrar och kalhyggen.
+ * Andersvattnet from Rally Sweden in four parts (see andersvattnet.ts). The last part is run at dusk,
+ * like the afternoon loop in the rally. 1.1.0: gradient capped at 12 %, so older records don't apply.
+ * 1.2.0: landmarks. 1.3.0: bogs and clear-cuts.
  */
 export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLARKAN] = realStages(
   'Andersvattnet i Rally Sweden',
@@ -626,9 +626,9 @@ export const [STAGE_STORBERGET, STAGE_HOSJOALVEN, STAGE_ROJMYRBERGET, STAGE_FLAR
 ) as [StageDef, StageDef, StageDef, StageDef];
 
 /**
- * Bygdsiljum ur Rally Sweden i fem delar (se bygdsiljum.ts). Sista delen körs på natten.
- * 1.1.0: lutningen begränsad till 12 %, så äldre rekord gäller inte. 1.2.0: landmärken.
- * 1.3.0: myrar och kalhyggen.
+ * Bygdsiljum from Rally Sweden in five parts (see bygdsiljum.ts). The last part is run at night.
+ * 1.1.0: gradient capped at 12 %, so older records don't apply. 1.2.0: landmarks.
+ * 1.3.0: bogs and clear-cuts.
  */
 export const [STAGE_ASJON, STAGE_ALTARLIDEN, STAGE_BERGTJARNEN, STAGE_TORPET, STAGE_TROLLBERGET] = realStages(
   'Bygdsiljum i Rally Sweden',
@@ -639,7 +639,7 @@ export const [STAGE_ASJON, STAGE_ALTARLIDEN, STAGE_BERGTJARNEN, STAGE_TORPET, ST
   '1.1.0',
 ) as [StageDef, StageDef, StageDef, StageDef, StageDef];
 
-/** Bäck ur Rally Sweden i tre delar (se back.ts). Sista delen körs i skymning, som eftermiddagens omgång. */
+/** Bäck from Rally Sweden in three parts (see back.ts). The last part is run at dusk, like the afternoon loop. */
 export const [STAGE_NAS, STAGE_RICKLEAN, STAGE_VALSFABODA] = realStages('Bäck i Rally Sweden', BACK, true, [undefined, undefined, 'dusk']) as [
   StageDef,
   StageDef,
@@ -648,27 +648,27 @@ export const [STAGE_NAS, STAGE_RICKLEAN, STAGE_VALSFABODA] = realStages('Bäck i
 
 const ROYAL = 'i Royal Rally of Scandinavia';
 
-/** Värmskog i tre delar (se real/varmskog.ts). Sista delen körs i skymning. */
+/** Värmskog in three parts (see real/varmskog.ts). The last part is run at dusk. */
 export const [STAGE_GRINSBOL, STAGE_TOLLESRUD, STAGE_ASTERUD] = realStages(`Värmskog ${ROYAL}`, VARMSKOG, false, [undefined, undefined, 'dusk']) as [
   StageDef,
   StageDef,
   StageDef,
 ];
-/** Gårdsjö och Colins i två delar vardera (se real/gardsjo.ts, real/colins.ts). Första delen körs i gryning. */
+/** Gårdsjö and Colins in two parts each (see real/gardsjo.ts, real/colins.ts). The first part is run at dawn. */
 export const [STAGE_BOTTEN, STAGE_RANNSJON] = realStages(`Gårdsjö ${ROYAL}`, GARDSJO, false, ['dawn']) as [StageDef, StageDef];
 export const [STAGE_LARSSATER, STAGE_STOR_JANGEN] = realStages(`Colins ${ROYAL}`, COLINS, false) as [StageDef, StageDef];
-/** Royal Forest i fyra delar (se real/royalForest.ts). */
+/** Royal Forest in four parts (see real/royalForest.ts). */
 export const [STAGE_SODRA_HULTEBY, STAGE_AMTEN, STAGE_LINDAS, STAGE_LUNGSUND] = realStages(`Royal Forest ${ROYAL}`, ROYAL_FOREST, false) as [
   StageDef,
   StageDef,
   StageDef,
   StageDef,
 ];
-/** Ängebäckstorp och Ölme i två delar vardera (se real/angebackstorp.ts, real/olme.ts). Sista delen körs i skymning. */
+/** Ängebäckstorp and Ölme in two parts each (see real/angebackstorp.ts, real/olme.ts). The last part is run at dusk. */
 export const [STAGE_SUNDSTORP, STAGE_BACKELID] = realStages(`Ängebäckstorp ${ROYAL}`, ANGEBACKSTORP, false) as [StageDef, StageDef];
 export const [STAGE_NIKLASDAMM, STAGE_BROBY] = realStages(`Ölme ${ROYAL}`, OLME, false, [undefined, 'dusk']) as [StageDef, StageDef];
 
-/** Alla etapper, i den ordning menyerna visar dem. */
+/** All stages, in the order the menus show them. */
 export const STAGES: StageDef[] = [
   STAGE_GRINSBOL,
   STAGE_TOLLESRUD,
@@ -699,7 +699,7 @@ export const STAGES: StageDef[] = [
   STAGE_BROBY,
 ];
 
-/** Andel av etappen per underlag, mätt längs raka linjer mellan stödpunkterna. */
+/** Fraction of the stage per surface, measured along straight lines between the control points. */
 export function surfaceShares(def: StageDef): Partial<Record<SurfaceId, number>> {
   const len: Partial<Record<SurfaceId, number>> = {};
   let total = 0;
@@ -714,7 +714,7 @@ export function surfaceShares(def: StageDef): Partial<Record<SurfaceId, number>>
   return len;
 }
 
-/** Däcket med bäst grepp i snitt över etappens underlag. */
+/** The tyre with the best average grip over the stage's surfaces. */
 export function bestTyre(def: StageDef): TyreType {
   const shares = Object.entries(surfaceShares(def)) as [SurfaceId, number][];
   const grip = (t: TyreType) => shares.reduce((sum, [surf, share]) => sum + share * TYRE_GRIP[t][surf], 0);

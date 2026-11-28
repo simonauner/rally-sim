@@ -1,9 +1,9 @@
 import type { BodyShape } from './shape';
 
 /**
- * Volpe 2.0 Turbo 16V: kantig femdörrars halvkombi med lådformade hjulhus, fyra runda strålkastare och takspoiler.
- * Karossen ritas av Blendermodellen (blender/volpeTurbo/), så formen här används bara till skadezonerna,
- * dekalerna, lyktornas sken och följer modellens mått.
+ * Volpe 2.0 Turbo 16V: boxy five-door hatchback with box-flared wheel arches, four round headlights and a roof spoiler.
+ * The body is drawn by the Blender model (blender/volpeTurbo/), so the shape here is only used for the damage zones,
+ * the decals, the lamp glow, and follows the model's dimensions.
  */
 export const volpeTurbo: BodyShape = {
   halfX: 0.885,
@@ -43,6 +43,6 @@ export const volpeTurbo: BodyShape = {
   paintedBumpers: true,
   spoiler: 'roof',
   rallyRims: true,
-  // Tätt i en rad framför grillen, så de egna runda lyktorna syns utanför.
+  // Tight in a row in front of the grille, so the car's own round lamps show outside them.
   podX: [0.285, 0.095, -0.095, -0.285],
 };

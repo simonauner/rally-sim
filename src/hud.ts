@@ -7,7 +7,7 @@ import type { StageRecord } from './account/protocol';
 
 const WHEEL_NAMES = ['VF', 'HF', 'VB', 'HB'];
 
-/** Tangenterna, en per rad i menyns Kontroller. */
+/** The keys, one per row in the menu's Kontroller. */
 const CONTROLS: [string, string][] = [
   ['W', 'gas'],
   ['S', 'broms, bakåt vid stopp'],
@@ -26,10 +26,10 @@ const CONTROLS: [string, string][] = [
   ['Esc', 'meny'],
 ];
 export const CONTROLS_TABLE = `<table class="specs">${CONTROLS.map(([k, a]) => `<tr><th>${k}</th><td>${a}</td></tr>`).join('')}</table>`;
-/** Samma tangenter i hjälprutan, i följd så att rutan förblir låg. */
+/** The same keys in the help box, in sequence so the box stays short. */
 const CONTROLS_HTML = CONTROLS.map(([k, a]) => `<b>${k}</b> ${a}`).join(' · ');
 
-/** Strålkastarnas skick i ord, för skadepanelen och servicen. */
+/** The headlights' condition in words, for the damage panel and the service. */
 export function lampStatus(lamps: number[]): string {
   const broken = lamps.map((l) => l >= LAMP_BROKEN);
   if (broken[0] && broken[1]) return 'båda trasiga';
@@ -48,9 +48,9 @@ export class Hud {
   private ctx = this.gg.getContext('2d')!;
   private gauges = document.getElementById('gauges') as HTMLCanvasElement;
   private gctx = this.gauges.getContext('2d')!;
-  /** Urtavlorna ritas en gång per bil, bara nålarna varje bildruta. */
+  /** The dials are drawn once per car, only the needles every frame. */
   private faces: { params: CarParams; canvas: HTMLCanvasElement } | null = null;
-  /** Var växelspakens kula är ritad just nu; glider mot vald växel. */
+  /** Where the gear lever's knob is drawn right now; slides towards the selected gear. */
   private lever: { x: number; y: number } | null = null;
   private trail: [number, number][] = [];
   private frame = 0;
@@ -63,7 +63,7 @@ export class Hud {
     this.help.style.display = this.help.style.display === 'none' ? '' : 'none';
   }
 
-  /** Döljer hastighetsmätaren, varvräknaren och tidtagaruret, t.ex. på målskärmen. */
+  /** Hides the speedometer, rev counter and stopwatch, e.g. on the finish screen. */
   showGauges(on: boolean) {
     this.gauges.style.visibility = on ? '' : 'hidden';
     this.timer.style.visibility = on ? '' : 'hidden';
@@ -106,13 +106,13 @@ export class Hud {
     const g = params.gauges;
     const s = g.style ?? DEFAULT_STYLE;
     const turbo = params.engine.turbo;
-    // Mätarna står under varandra: varvräknare, hastighetsmätare, växelspak. Kolumnen är 300 px bred;
-    // laddtrycksmätaren står till höger om varvräknaren.
+    // The gauges stack vertically: rev counter, speedometer, gear lever. The column is 300 px wide;
+    // the boost gauge sits to the right of the rev counter.
     const w = 300;
     const r = w * 0.47;
     const tacho = { x: w / 2, y: w / 2, r, min: 0, max: g.rpmMax, a0: s.tachoArc[0], a1: s.tachoArc[1] };
     const speedo = { x: w / 2, y: w * 1.5, r, min: g.speedMin, max: g.speedMax, a0: s.speedoArc[0], a1: s.speedoArc[1] };
-    // Skalan i tiondels bar, så att stegen blir heltal.
+    // The scale in tenths of a bar, so the steps are integers.
     const gauge = { x: w + 90, y: w / 2, r: w * 0.28, min: 0, max: 25, a0: 135, a1: 405 };
     const shift = shiftPattern(params.gearbox.ratios.length, w / 2, w * 2.45, w * 0.36);
     if (this.faces?.params !== params) {
@@ -121,7 +121,7 @@ export class Hud {
       canvas.height = this.gauges.height;
       const c = canvas.getContext('2d')!;
       drawFace(c, s, tacho, 500, 1000, (v) => String(v / s.rpmUnit), g.rpmRed, `1/min x${s.rpmUnit}`);
-      // Långa skalor får en siffra var 40 km/h, annars blir siffrorna för små att läsa.
+      // Long scales get a number every 40 km/h, otherwise the numbers are too small to read.
       drawFace(c, s, speedo, 10, g.speedMax - g.speedMin > 240 ? 40 : 20, String, null, 'km/h');
       drawKnob(c, s, shift, null);
       if (turbo) drawFace(c, s, gauge, 1, 5, (v) => String(v / 10).replace('.', ','), null, 'bar');
@@ -134,7 +134,7 @@ export class Hud {
     drawNeedle(ctx, s, speedo, kmh);
     if (turbo) drawNeedle(ctx, s, gauge, boost * turbo.bar * 10);
 
-    // Spakens kula glider till vald växel och växelns siffra lyser.
+    // The lever's knob slides to the selected gear and the gear's number lights up.
     const at = shift.slot(gearNo);
     this.lever ??= { ...at };
     this.lever.x += (at.x - this.lever.x) * 0.35;
@@ -147,8 +147,8 @@ export class Hud {
   }
 
   /**
-   * Klocka, mellantider och resultat. best är rekordet nu. field är förarna som startat före dig
-   * i mästerskapet, med sina tider på etappen.
+   * Clock, splits and result. best is the current record. field is the drivers who started before you
+   * in the championship, with their times on the stage.
    */
   updateTimer(timer: StageTimer, best: StageRecord | null, field: RoadTime[] = []) {
     const splits = timer.splits.map((t, i) => `M${i + 1} ${formatTime(t)}${formatDelta(t, best?.splits[i])}`).join(' · ');
@@ -158,13 +158,13 @@ export class Hud {
     } else if (timer.state === 'running') {
       html = `<div class="clock">${formatTime(timer.time)}</div>${splits}${fieldHtml(timer, best, field)}`;
     } else {
-      // Resultatet med jämförelser visas på målskärmen.
+      // The result with comparisons is shown on the finish screen.
       html = `<div class="clock">Mål ${formatTime(timer.time)}</div>${fieldHtml(timer, best, field)}`;
     }
     if (this.timer.innerHTML !== html) this.timer.innerHTML = html;
   }
 
-  /** Upplästa noter som ligger framför bilen, närmast först. */
+  /** Read-out notes ahead of the car, nearest first. */
   updateNotes(notes: PaceNote[], missingVoice: boolean) {
     const icon = (n: PaceNote) => (n.kind === 'corner' ? (n.dir! > 0 ? '↰' : '↱') : n.kind === 'crest' ? '⌒' : n.kind === 'finish' ? '⚑' : '▦');
     const html = notes
@@ -209,7 +209,7 @@ export class Hud {
   }
 }
 
-/** En rund mätare: centrum, radie, skala och vinklar i grader (0 = höger, medurs). */
+/** A round gauge: centre, radius, scale and angles in degrees (0 = right, clockwise). */
 interface Dial {
   x: number;
   y: number;
@@ -220,7 +220,7 @@ interface Dial {
   a1: number;
 }
 
-/** Svart urtavla med vita streck och siffror, som i 80-talets svenska bilar. */
+/** Black dial with white ticks and numbers, as in 80s Swedish cars. */
 const DEFAULT_STYLE: GaugeStyle = {
   face: '#111',
   ink: '#eee',
@@ -236,7 +236,7 @@ function dialAngle(d: Dial, v: number) {
   return ((d.a0 + t * (d.a1 - d.a0)) * Math.PI) / 180;
 }
 
-/** Urtavla med streck och siffror i stilens färger. */
+/** Dial with ticks and numbers in the style's colours. */
 function drawFace(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, minor: number, major: number, label: (v: number) => string, red: number | null, caption: string) {
   const { x, y, r } = d;
   ctx.fillStyle = s.face;
@@ -256,7 +256,7 @@ function drawFace(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, minor: 
   ctx.strokeStyle = ctx.fillStyle = s.ink;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // Tresiffriga tal och tätt satta siffror får mindre text för att inte flyta ihop.
+  // Three-digit numbers and tightly spaced numbers get smaller text so they don't run together.
   const chars = label(d.max).length;
   const gapR = (((d.a1 - d.a0) / ((d.max - d.min) / major)) * Math.PI / 180) * 0.58;
   ctx.font = `${Math.round(r * Math.min(chars > 2 ? 0.14 : 0.2, gapR / (chars * 0.65)))}px Helvetica, Arial, sans-serif`;
@@ -272,7 +272,7 @@ function drawFace(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, minor: 
     ctx.stroke();
     if (isMajor) ctx.fillText(label(v), x + Math.cos(a) * r * 0.58, y + Math.sin(a) * r * 0.58);
   }
-  // Bildtexten står mitt i luckan där skalan inte går.
+  // The caption sits in the middle of the gap where the scale doesn't go.
   const gap = ((d.a0 + d.a1 + 360) / 2) * (Math.PI / 180);
   ctx.fillStyle = s.ink;
   ctx.font = `${Math.round(r * 0.1)}px Helvetica, Arial, sans-serif`;
@@ -280,8 +280,8 @@ function drawFace(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, minor: 
 }
 
 /**
- * Växelmönstret på spakknoppen: R uppe till vänster, sedan 1/2, 3/4 och så vidare,
- * udda växlar uppe och jämna nere, som på 240:s knopp.
+ * The shift pattern on the lever knob: R top left, then 1/2, 3/4 and so on,
+ * odd gears up and even down, as on the 240's knob.
  */
 function shiftPattern(gears: number, cx: number, cy: number, R: number) {
   const gates = 1 + Math.ceil(gears / 2);
@@ -296,7 +296,7 @@ function shiftPattern(gears: number, cx: number, cy: number, R: number) {
     gateX,
     up,
     down,
-    /** Spakens läge för en växel; 0 = friläge i 3/4-gaten (eller närmaste). */
+    /** The lever position for a gear; 0 = neutral in the 3/4 gate (or nearest). */
     slot(gear: number) {
       if (gear < 0) return { x: gateX(0), y: up };
       if (gear === 0) return { x: gateX(Math.min(2, gates - 1)), y: cy };
@@ -305,7 +305,7 @@ function shiftPattern(gears: number, cx: number, cy: number, R: number) {
   };
 }
 
-/** Knoppen med mönstret (active null), eller bara den valda växelns siffra i nålens färg. */
+/** The knob with the pattern (active null), or just the selected gear's number in the needle's colour. */
 function drawKnob(ctx: CanvasRenderingContext2D, s: GaugeStyle, p: ReturnType<typeof shiftPattern>, active: number | null) {
   const { cx, cy, R, up, down, gateX } = p;
   const labels: [string, number, number, number][] = [['R', -1, gateX(0), up - R * 0.2]];
@@ -358,7 +358,7 @@ function drawNeedle(ctx: CanvasRenderingContext2D, s: GaugeStyle, d: Dial, v: nu
   ctx.fill();
 }
 
-/** Resultat för målskärmen: tid, mellantider och jämförelse mot rekordet före åket. */
+/** Result for the finish screen: time, splits and comparison with the record before the run. */
 export function resultHtml(timer: StageTimer, previousBest: StageRecord | null) {
   const splits = timer.splits.map((t, i) => `M${i + 1} ${formatTime(t)}${formatDelta(t, previousBest?.splits[i])}`).join(' · ');
   const record = !previousBest || timer.time < previousBest.time;
@@ -368,19 +368,19 @@ export function resultHtml(timer: StageTimer, previousBest: StageRecord | null) 
   return `<div class="result">${formatTime(timer.time)}</div><div>${splits}</div><div>${verdict}</div>`;
 }
 
-/** " −0.32" i grönt eller " +0.84" i rött; tomt utan referens. */
+/** " −0.32" in green or " +0.84" in red; empty without a reference. */
 export interface RoadTime {
   name: string;
   time: number;
 }
 
-/** Förarna före dig på vägen vid din senaste mellantid eller i mål, med din plats bland dem. */
+/** The drivers ahead of you on the road at your latest split or at the finish, with your place among them. */
 function fieldHtml(timer: StageTimer, best: StageRecord | null, field: RoadTime[]) {
   if (!field.length) return '';
   const done = timer.state === 'finished';
   const k = timer.splits.length - 1;
   if (!done && k < 0) return `<div class="field">${field.length} förare före dig på vägen</div>`;
-  // Motståndarna har bara en sluttid; mellantiden tas som samma andel av den som i ditt rekord.
+  // The opponents only have a finish time; the split is taken as the same share of it as in your record.
   const frac = done ? 1 : best?.splits[k] && best.time ? best.splits[k]! / best.time : (k + 1) / (timer.splitAt.length + 1);
   const mine = done ? timer.time : timer.splits[k]!;
   const rows = [...field.map((f) => ({ name: f.name, t: f.time * frac })), { name: 'Du', t: mine }].sort((a, b) => a.t - b.t);

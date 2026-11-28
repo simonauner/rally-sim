@@ -1,10 +1,10 @@
 import type { BodyShape } from './shape';
 
 /**
- * Ljung 2000 16V: kitcaren på Ljung 1600 S:s kaross och hjulbas, breddad över den bredare spårvidden och
- * 3 cm lägre, med en stor lykta per sida. Karossen ritas av Blendermodellen (blender/ljung2000/, byggd av
- * blender/ljung1600/build.py), så formen här används bara till skadezonerna, dekalerna, lyktornas sken och
- * följer modellens mått.
+ * Ljung 2000 16V: the kit car on the Ljung 1600 S body and wheelbase, widened over the wider track and
+ * 3 cm lower, with one large lamp per side. The body is drawn by the Blender model (blender/ljung2000/, built by
+ * blender/ljung1600/build.py), so the shape here is only used for the damage zones, the decals, the lamp glow,
+ * and follows the model's dimensions.
  */
 export const ljung2000: BodyShape = {
   halfX: 0.851,

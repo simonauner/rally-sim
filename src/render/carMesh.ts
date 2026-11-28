@@ -32,7 +32,7 @@ const PLATE = new THREE.Color(0xeeeeea);
 const SILL = new THREE.Color(0x4c4f52);
 
 
-/** Rundar kanterna på en uppdelad låda ("clay"-look). */
+/** Rounds the edges of a subdivided box ("clay" look). */
 function roundBox(pos: THREE.BufferAttribute, hx: number, hy: number, hz: number, r: number) {
   const p = new THREE.Vector3();
   const inner = new THREE.Vector3();
@@ -54,7 +54,7 @@ function hash(i: number): number {
   return s - Math.floor(s);
 }
 
-/** Mjukt brus i rummet (värdebrus på ett gitter med rutan `cell`), 0..1. */
+/** Smooth spatial noise (value noise on a grid with cell size `cell`), 0..1. */
 function valueNoise(x: number, y: number, z: number, cell: number): number {
   const fx = x / cell, fy = y / cell, fz = z / cell;
   const ix = Math.floor(fx), iy = Math.floor(fy), iz = Math.floor(fz);
@@ -66,21 +66,21 @@ function valueNoise(x: number, y: number, z: number, cell: number): number {
   return lerp(plane(0), plane(1), tz);
 }
 
-/** Djupaste bucklan: plåten viker sig eller bucklas grovt, den veckas inte ihop som ett dragspel. */
+/** Deepest dent: the panel folds or dents coarsely, it doesn't crumple up like an accordion. */
 const MAX_DENT = 0.15;
-/** Bucklans styrka varierar mjukt över plåten i rutor av den här storleken, så den blir ojämn men grov. */
+/** Dent strength varies smoothly over the panel in cells of this size, so it gets uneven but coarse. */
 const DENT_CELL = 0.35;
 
-/** En kroppsdel vars hörn kan flyttas när bilen skadas. */
+/** A body part whose vertices can move when the car is damaged. */
 class DeformablePart {
   readonly mesh: THREE.Mesh;
   private pos: THREE.BufferAttribute;
   private orig: Float32Array;
   private disp: Float32Array;
-  /** Bucklans styrka per hörn, ur ett mjukt brus i rummet: hörn på samma plats (vid en färgkant) får samma. */
+  /** Dent strength per vertex, from smooth spatial noise: vertices at the same position (at a colour edge) get the same. */
   private noise: Float32Array;
 
-  /** `side` (0..1) skalar bucklor från träffar rakt från sidan: en styvare långsida. */
+  /** `side` (0..1) scales dents from hits straight from the side: a stiffer long side. */
   constructor(
     geo: THREE.BufferGeometry,
     material: THREE.Material,
@@ -102,7 +102,7 @@ class DeformablePart {
     const r2 = radius * radius;
     amount *= 1 + (this.side - 1) * Math.abs(dir.x);
     for (let i = 0; i < this.pos.count; i++) {
-      // Avståndet från den oskadda ytan, så upprepade träffar fördjupar samma buckla i stället för att vandra inåt.
+      // Distance from the undamaged surface, so repeated hits deepen the same dent instead of creeping inward.
       const dx = this.orig[i * 3]! - local.x;
       const dy = this.orig[i * 3 + 1]! - local.y;
       const dz = this.orig[i * 3 + 2]! - local.z;
@@ -137,14 +137,14 @@ class DeformablePart {
     this.commit();
   }
 
-  /** Krymper bucklorna mot k (0 = hel), för en lagning man ser. */
+  /** Shrinks the dents towards k (0 = intact), for a visible repair. */
   scale(k: number) {
     for (let i = 0; i < this.disp.length; i++) this.disp[i]! *= k;
     this.commit();
   }
 }
 
-/** Uppdelad låda med rundade kanter, centrerad i `c`. */
+/** Subdivided box with rounded edges, centred at `c`. */
 function roundedBox(
   w: number,
   h: number,
@@ -177,8 +177,8 @@ const BODIES: Record<CarModel['body'], BodyShape> = {
   hoshi4wd,
 };
 
-/** Bilar med en egen modell från Blender (blender/). Övriga byggs av formen i bodies/. */
-// Egna chunks: en modell är flera hundra kB, så den hämtas först när bilen ska visas.
+/** Cars with their own model from Blender (blender/). The others are built from the shape in bodies/. */
+// Separate chunks: a model is several hundred kB, so it is fetched only when the car is to be shown.
 const MODEL_LOADERS: Partial<Record<CarModel['body'], () => Promise<ModelData>>> = {
   soraTurbo: () => import('./models/soraTurbo').then((m) => m.soraTurbo),
   hoshi4wd: () => import('./models/hoshi4wd').then((m) => m.hoshi4wd),
@@ -192,19 +192,19 @@ const MODEL_LOADERS: Partial<Record<CarModel['body'], () => Promise<ModelData>>>
 const MODELS: Partial<Record<CarModel['body'], ModelData>> = {};
 const loading: Partial<Record<CarModel['body'], Promise<void>>> = {};
 
-/** Sant när bilens Blendermodell är hämtad, eller när den byggs av formen i bodies/. */
+/** True when the car's Blender model is fetched, or when it is built from the shape in bodies/. */
 export function carModelReady(model: CarModel): boolean {
   return !MODEL_LOADERS[model.body] || !!MODELS[model.body];
 }
 
-/** Hämtar bilens Blendermodell; måste vara klar innan dess CarMesh byggs. */
+/** Fetches the car's Blender model; must be done before its CarMesh is built. */
 export function loadCarModel(model: CarModel): Promise<void> {
   const load = MODEL_LOADERS[model.body];
   if (!load || MODELS[model.body]) return Promise.resolve();
   return (loading[model.body] ??= load().then(
     (data) => void (MODELS[model.body] = data),
     (e: unknown) => {
-      delete loading[model.body]; // Nästa försök hämtar igen, t.ex. efter ett nätverksfel.
+      delete loading[model.body]; // The next attempt fetches again, e.g. after a network error.
       throw e;
     },
   ));
@@ -226,8 +226,8 @@ const PALETTE: Record<string, THREE.Color> = {
 };
 
 /**
- * Material för en del av en Blendermodell: färgen efter hörnets material, lacken (med dekaler på karossen)
- * och skarvarna i lackens färg. Lyktorna lyser som på de byggda bilarna; `left` väljer strålkastarsidan.
+ * Material for a part of a Blender model: the colour from the vertex's material, the paint (with decals on the body)
+ * and the seams in the paint colour. The lamps glow as on the built cars; `left` picks the headlight side.
  */
 function modelMaterial(data: ModelData, paint: THREE.Color, lamp: THREE.Node<'float'>, tail: FloatUniform, painted: THREE.Node<'color'> = color(paint)) {
   const m = attribute('mat', 'float');
@@ -236,7 +236,7 @@ function modelMaterial(data: ModelData, paint: THREE.Color, lamp: THREE.Node<'fl
     if (name === 'paint') return painted;
     if (name === 'shade') return color(paint.clone().multiplyScalar(0.72));
     const c = PALETTE[name];
-    if (!c) throw new Error(`Okänt material i bilmodellen: ${name}`);
+    if (!c) throw new Error(`Unknown material in the car model: ${name}`);
     return color(c);
   };
   const mat = new THREE.MeshToonNodeMaterial();
@@ -246,13 +246,13 @@ function modelMaterial(data: ModelData, paint: THREE.Color, lamp: THREE.Node<'fl
 }
 
 /**
- * Delarna ur en Blendermodell. 'body' och 'body_…' (dörrar, stötfångare, baklucka) är paneler som bucklas
- * var för sig och bär dekalerna, 'wheel' är hela hjulet (utsidan åt +x), 'rim'
- * bara fälgen (sätts i ett däck byggt i koden) och resten är lösa detaljer som ramlar
- * av. Extraljusrampen ('pod…') bara om `pod`.
+ * The parts of a Blender model. 'body' and 'body_…' (doors, bumpers, boot lid) are panels that dent
+ * separately and carry the decals, 'wheel' is the whole wheel (outside towards +x), 'rim'
+ * only the rim (fitted in a tyre built in code) and the rest are loose details that fall
+ * off. The auxiliary light pod ('pod…') only if `pod`.
  */
 function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow: LampGlow, tailGlow: FloatUniform, decals: THREE.Texture, pod: boolean) {
-  // Dekaler på lacken: sidorna under gördellinjen, huven, bakluckan och taket.
+  // Decals on the paint: the sides below the belt line, the hood, the boot lid and the roof.
   const p = attribute('rest', 'vec3');
   const side = abs(p.x).greaterThan(0.7).and(p.y.lessThan(b.belt));
   const roof = p.y.greaterThan(b.roof - 0.04);
@@ -266,7 +266,7 @@ function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow:
     if (part.name.startsWith('pod') && !pod) continue;
     const g = partGeometry(part);
     if (part.name === 'rim') {
-      // Platta ytor: fälgens skarpa kanter ska inte rundas av mjuka normaler.
+      // Flat faces: the rim's sharp edges shouldn't be rounded off by smooth normals.
       const flat = g.toNonIndexed();
       flat.computeVertexNormals();
       rim = new THREE.Mesh(flat, modelMaterial(data, paint, lampGlow[0], tailGlow));
@@ -274,8 +274,8 @@ function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow:
       continue;
     }
     if (part.name === 'body' || part.name.startsWith('body_')) {
-      // Dekalerna och bucklorna räknas i bilens koordinater, så panelerna har sitt origo i bilens.
-      if (part.at.some((c) => c !== 0)) throw new Error(`${part.name}: panelens origo ska ligga i bilens origo`);
+      // Decals and dents are computed in car coordinates, so the panels have their origin at the car's.
+      if (part.at.some((c) => c !== 0)) throw new Error(`${part.name}: the panel's origin must be at the car's origin`);
       panels.push(new DeformablePart(g, panelMaterial, 0.35));
       continue;
     }
@@ -289,11 +289,11 @@ function buildModel(data: ModelData, b: BodyShape, paint: THREE.Color, lampGlow:
     mesh.position.set(...part.at);
     details.add(mesh);
   }
-  if (!panels.length) throw new Error('Bilmodellen saknar body');
+  if (!panels.length) throw new Error('The car model has no body');
   return { panels, details, wheel, rim };
 }
 
-/** Ett hjul av modellens hjul; på höger sida speglat, så fälgens utsida vänds utåt. */
+/** A wheel from the model's wheel; mirrored on the right side, so the rim's outside faces outward. */
 function modelWheel(wheel: THREE.Mesh, left: boolean): THREE.Group {
   const g = new THREE.Group();
   const m = wheel.clone();
@@ -304,7 +304,7 @@ function modelWheel(wheel: THREE.Mesh, left: boolean): THREE.Group {
 
 type Hit = [x: number, y: number, z: number, nx: number, ny: number, nz: number];
 
-/** Var skadezonerna träffas när bucklorna ritas från siffrorna: punkt och riktningen plåten trycks. */
+/** Where the damage zones are hit when the dents are drawn from the numbers: point and the direction the panel is pushed. */
 function zoneHits(b: BodyShape): Record<keyof DamageState, Hit[]> {
   const { nose, tail, halfX: x, roof } = b;
   return {
@@ -316,7 +316,7 @@ function zoneHits(b: BodyShape): Record<keyof DamageState, Hit[]> {
   };
 }
 
-/** Karossen med lyktor, grill, lister och hjulhus över hjulen i `wheelZ`. */
+/** The body with lamps, grille, mouldings and wheel arches over the wheels at `wheelZ`. */
 function buildBody(
   b: BodyShape,
   wheelZ: Range,
@@ -336,23 +336,23 @@ function buildBody(
     let x = pos.getX(i);
     let y = pos.getY(i);
     const z = pos.getZ(i);
-    // Huven sluttar svagt ner mot fronten, bakluckan rundas av i bakkant.
+    // The hood slopes gently down towards the front, the boot lid is rounded off at the rear edge.
     const hood = b.hoodDrop * clamp01((z - screen[0]) / (nose - screen[0])) ** 1.4;
     const trunk = b.trunkDrop * clamp01((backlight[0] - z) / (backlight[0] - tail)) ** 1.3;
     const rise = (b.beltRise ?? 0) * clamp01((screen[0] - z) / (screen[0] - tail));
-    // Plåten som flyttas räcker dubbelt så djupt som huven sluttar, så en djup nos inte trycks ihop.
+    // The moved bodywork reaches twice as deep as the hood slope, so a deep nose isn't squashed.
     const span = Math.max(0.3, 2 * b.hoodDrop);
     y -= (hood + trunk - rise) * clamp01((y - (belt - span)) / span);
     if (b.taper) {
-      // Rundad nos och bakparti sett ovanifrån.
+      // Rounded nose and tail seen from above.
       x *= 1 - b.taper[0] * clamp01((z - (nose - 0.7)) / 0.7) ** 2 - b.taper[1] * clamp01((tail + 0.5 - z) / 0.5) ** 2;
     }
-    // Sidan lutar lite inåt ovanför sidolisten.
+    // The side leans slightly inward above the side moulding.
     x *= 1 - 0.03 * clamp01((y - crease) / (belt - crease));
     pos.setXY(i, x, y);
   }
-  // Utbyggda hjulhus: sidan under en hylla strax under gördellinjen skjuts ut kring hjulen,
-  // med korta sluttande övergångar så de blir lådformade.
+  // Flared wheel arches: the side below a shelf just under the belt line is pushed out around the wheels,
+  // with short sloping transitions so they become box-shaped.
   if (b.flare) {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -363,8 +363,8 @@ function buildBody(
       pos.setX(i, x + Math.sign(x) * b.flare * out * along * k);
     }
   }
-  // Hjulhus: lyft plåten ytterst över hjulen upp till en båge, så hela hjulet syns.
-  // Bara |x| > 0.5 lyfts, så kvarvarande plåt innanför bildar hjulhusets innervägg.
+  // Wheel arches: lift the outermost bodywork over the wheels up to an arc, so the whole wheel shows.
+  // Only |x| > 0.5 is lifted, so the remaining bodywork inside forms the arch's inner wall.
   for (let i = 0; i < pos.count; i++) {
     if (Math.abs(pos.getX(i)) < 0.5) continue;
     wheelZ.forEach((zw, w) => {
@@ -374,12 +374,12 @@ function buildBody(
       pos.setY(i, Math.max(pos.getY(i), archY + Math.sqrt(r * r - dz * dz)));
     });
   }
-  // Färgerna räknas från formen före bucklorna. Efter lyftet ligger hjulhusets tak precis
-  // på bågen, så kanten mot sidan blir en ren cirkel.
+  // Colours are computed from the shape before the dents. After the lift the arch's roof lies exactly
+  // on the arc, so the edge against the side becomes a clean circle.
   g.setAttribute('rest', pos.clone());
   g.computeVertexNormals();
-  // Färgen räknas per pixel från vilopositionen, så lyktornas kanter blir skarpa
-  // (hörnfärger tonas ut över en hel ruta) och följer med när plåten bucklas.
+  // Colour is computed per pixel from the rest position, so the lamp edges stay sharp
+  // (vertex colours fade out over a whole cell) and follow along when the panel dents.
   const p = attribute('rest', 'vec3');
   const ax = abs(p.x);
   const band = (lo: number, hi: number) => p.y.greaterThan(lo).and(p.y.lessThan(hi));
@@ -389,39 +389,39 @@ function buildBody(
   const top = p.y.greaterThan(belt - 0.1);
   const { lampY, lampX, tailY } = b;
 
-  // Fram: grill med kromram och lodräta lameller, höga rektangulära strålkastare som fyller
-  // fronten från huvkanten ner till stötfångaren, blinkers i lyktans nedre ytterhörn.
+  // Front: grille with a chrome surround and vertical slats, tall rectangular headlights filling
+  // the front from the hood edge down to the bumper, indicators in the lamp's lower outer corner.
   const grilleBox = front.and(ax.lessThan(b.grilleX)).and(band(...lampY));
   const grilleFrame = grilleBox.and(ax.greaterThan(b.grilleX - 0.025).or(p.y.lessThan(lampY[0] + 0.02)).or(p.y.greaterThan(lampY[1] - 0.02)));
   const crate = fract(p.x.mul(40)).lessThan(0.35);
   const lampUnit = front.and(ax.greaterThan(lampX[0])).and(ax.lessThan(lampX[1])).and(band(...lampY));
   const lampRim = front.and(ax.greaterThan(lampX[0] - 0.015)).and(ax.lessThan(lampX[1] + 0.015)).and(band(lampY[0] - 0.015, lampY[1] + 0.015));
-  // Med blinkers i stötfångaren har strålkastarna inga (bandet 9–9 är tomt).
+  // With indicators in the bumper the headlights have none (the band 9–9 is empty).
   const indicator = (b.bumperBlinkers ? band(9, 9) : band(lampY[0], lampY[0] + 0.09)).and(
     lampUnit.and(ax.greaterThan(lampX[0] + 0.6 * (lampX[1] - lampX[0]))).or(side.and(p.z.greaterThan(nose - 0.08))),
   );
   let lamp = lampUnit.and(indicator.not());
   let lampFrame = lampRim;
   if (b.roundLamps) {
-    // Runda lyktor med kromring i en svart panel som går från grillen ut till hörnet.
+    // Round lamps with a chrome ring in a black panel running from the grille out to the corner.
     const dist = ([x, r]: [number, number]) => ax.sub(x).mul(ax.sub(x)).add(p.y.sub((lampY[0] + lampY[1]) / 2).pow(2)).sqrt().div(r);
     const near = (lim: number) => b.roundLamps!.map((l) => dist(l).lessThan(lim)).reduce((a, c) => a.or(c));
     lamp = front.and(near(0.82));
     lampFrame = front.and(near(1)).or(lampUnit);
   }
-  // Ventilspringor i huven, ute vid kanterna så startnumret får plats emellan.
+  // Vent slots in the hood, out at the edges so the start number fits in between.
   const vents = b.hoodVents
     ? top.and(p.z.greaterThan(nose - 0.8)).and(p.z.lessThan(nose - 0.5)).and(ax.greaterThan(0.46)).and(ax.lessThan(0.66)).and(fract(p.z.mul(28)).lessThan(0.45))
     : null;
   const scoop = b.hoodScoop ? top.and(p.z.greaterThan(screen[0] + 0.12)).and(p.z.lessThan(screen[0] + 0.4)).and(ax.lessThan(0.24)) : null;
 
-  // Bak: höga lyktor som går runt hörnen, röd med blinkersband överst och backljus inåt.
+  // Rear: tall lamps wrapping round the corners, red with an indicator band at the top and reversing light inboard.
   const tailZone = band(...tailY).and(rear.and(ax.greaterThan(b.tailX)).or(side.and(p.z.lessThan(tail + 0.14))));
   const tailAmber = tailZone.and(p.y.greaterThan(tailY[1] - 0.055));
   const tailReverse = tailZone.and(rear).and(ax.lessThan(b.tailX + 0.1));
   const plate = rear.and(ax.lessThan(0.26)).and(band(tailY[0] + 0.03, tailY[1] - 0.05));
 
-  // Sidor: mörk skyddslist med kromkant, dörrspringor, mörka hjulhus och grå trösklar.
+  // Sides: dark rubbing strip with chrome edge, door seams, dark wheel arches and grey sills.
   const stripZ = side.and(p.z.lessThan(nose - 0.12)).and(p.z.greaterThan(tail + 0.16));
   const strip = stripZ.and(band(crease - 0.016, crease + 0.008));
   const stripChrome = stripZ.and(band(crease + 0.008, crease + 0.018));
@@ -429,9 +429,9 @@ function buildBody(
   const seam = side.and(p.y.greaterThan(bottom + 0.09)).and([screen[0], ...b.doorSeams].map(seamAt).reduce((a, c) => a.or(c)));
   const archDist = (w: number) => p.z.sub(wheelZ[w]!).mul(p.z.sub(wheelZ[w]!)).add(p.y.sub(archY).mul(p.y.sub(archY))).sqrt().sub(archR[w]!);
   const archs = ax.greaterThan(b.halfX - 0.4).and(archDist(0).lessThan(0.004).or(archDist(1).lessThan(0.004)));
-  // Smal skuggad kant runt hjulhusen på sidan.
+  // Narrow shaded edge around the wheel arches on the side.
   const archLip = side.and(archDist(0).lessThan(0.03).or(archDist(1).lessThan(0.03)));
-  // Skarvar runt motorhuven och bakluckan.
+  // Seams around the hood and boot lid.
   const lidSeam = top.and(
     ax
       .lessThan(b.halfX - 0.07)
@@ -459,8 +459,8 @@ function buildBody(
       ),
     ),
   );
-  // Lyktorna lyser lite själva, så de inte blir mörka i skugga, och starkt när strålkastarna är på.
-  // Blinkers och backljus används inte och lyser därför aldrig.
+  // The lamps glow a little by themselves, so they don't go dark in shadow, and brightly when the headlights are on.
+  // Indicators and reversing lights aren't used and therefore never light up.
   mat.emissiveNode = select(
     lamp,
     color(LAMP).mul(select(p.x.greaterThan(0), lampGlow[0], lampGlow[1])),
@@ -469,14 +469,14 @@ function buildBody(
   return new DeformablePart(g, mat);
 }
 
-/** Kupé med lutande vindruta och bakruta, svarta fönsterlister och lodräta mittstolpar. */
+/** Cabin with raked windscreen and rear window, black window trims and vertical centre pillars. */
 function buildCabin(b: BodyShape, paint: THREE.Color, decals: THREE.Texture): DeformablePart {
   const { screen, backlight, belt } = b;
   const H = b.roof - belt + 0.01;
   const L = screen[0] - backlight[0];
   const hx = b.cabinHalfX;
   const g = roundedBox(2 * hx, H, L, [12, 6, 24], 0.05);
-  // Rutor räknas i lådans koordinater före formningen, se buildBody.
+  // Windows are computed in the box's coordinates before shaping, see buildBody.
   g.setAttribute('rest', (g.getAttribute('position') as THREE.BufferAttribute).clone());
   const pos = g.getAttribute('position') as THREE.BufferAttribute;
   const baseMid = (screen[0] + backlight[0]) / 2;
@@ -485,13 +485,13 @@ function buildCabin(b: BodyShape, paint: THREE.Color, decals: THREE.Texture): De
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
-    const u = pos.getZ(i) / (L / 2); // -1 bak, 1 fram
-    const t = y / H + 0.5; // 0 nere, 1 uppe
-    // Stolparna går rakt från rutornas fot till taket.
+    const u = pos.getZ(i) / (L / 2); // -1 rear, 1 front
+    const t = y / H + 0.5; // 0 bottom, 1 top
+    // The pillars run straight from the window base to the roof.
     const z = (1 - t) * (baseMid + (u * L) / 2) + t * (topMid + u * topHalf);
-    // Sidorutorna lutar inåt, taket välvs svagt.
+    // The side windows lean inward, the roof is gently domed.
     const crown = 0.03 * (x / hx) ** 2 * t ** 3;
-    // Nedersta raden sänks ner i karossen, så stolparna möter gördellinjen utan hack.
+    // The bottom row is sunk into the body, so the pillars meet the belt line without a notch.
     const sink = 0.06 * (1 - t) ** 3;
     pos.setXYZ(i, x * (1 - 0.17 * t), belt - 0.01 + t * H - crown - sink, z);
   }
@@ -503,14 +503,14 @@ function buildCabin(b: BodyShape, paint: THREE.Color, decals: THREE.Texture): De
   const ax = abs(p.x);
   const side = ax.greaterThan(hx - 0.04);
   const ends = abs(u).greaterThan(0.96);
-  // Bilens z, så B-stolpen och stolpen vid kvartsrutan blir lodräta och inte lutar med A/C.
+  // The car's z, so the B-pillar and the pillar at the quarter window are vertical and don't lean with A/C.
   const z = t.oneMinus().mul(u.mul(L / 2).add(baseMid)).add(t.mul(u.mul(topHalf).add(topMid)));
   const zIn = (lo: number, hi: number) => z.greaterThan(lo).and(z.lessThan(hi));
-  // Sidorutor åtskilda av svarta stolpar. Den främsta följer A-stolpen, den bakersta C-stolpen.
+  // Side windows separated by black pillars. The front one follows the A-pillar, the rearmost the C-pillar.
   const pane = ([lo, hi]: Range) =>
     hi === Infinity ? z.greaterThan(lo).and(u.lessThan(0.93)) : lo === -Infinity ? z.lessThan(hi).and(u.greaterThan(-0.8)) : zIn(lo, hi);
   const sideGlass = side.and(tIn(0.13, 0.91)).and(b.sideGlass.map(pane).reduce((a, c) => a.or(c)));
-  // A-stolparna och vindrutans ram är mörka hela vägen ut; C-stolpen är lackad.
+  // The A-pillars and windscreen frame are dark all the way out; the C-pillar is painted.
   const sideTrim = side.and(tIn(0.08, 0.95)).and(u.greaterThan(-0.84));
   const endGlass = ends.and(ax.lessThan(hx - 0.12)).and(tIn(0.1, 0.9));
   const endTrim = ends.and(tIn(0.05, 0.95)).and(u.greaterThan(0).or(ax.lessThan(hx - 0.08)));
@@ -518,21 +518,21 @@ function buildCabin(b: BodyShape, paint: THREE.Color, decals: THREE.Texture): De
   const aPillar = u.greaterThan(0.9).and(ax.greaterThan(hx - 0.12)).and(tIn(0.05, 0.95));
   const trim = sideTrim.or(endTrim).or(aPillar);
   const mat = new THREE.MeshToonNodeMaterial();
-  // Taket: plana ovansidan, med x och z som efter formningen.
+  // The roof: the flat top, with x and z as after shaping.
   const roof = t.greaterThan(0.97).and(abs(u).lessThan(0.95));
   const painted = roofDecals(color(paint), p.x.mul(0.83), u.mul(topHalf).add(topMid), roof, b, decals, paint);
   mat.colorNode = select(glass, color(GLASS), select(trim, color(BLACK), painted));
   return new DeformablePart(g, mat);
 }
 
-/** Stor svart stötfångare med kromlist överst, som går runt hörnen. */
+/** Large black bumper with a chrome strip on top, wrapping round the corners. */
 interface BumperStyle {
-  /** Lack; utan den blir stötfångaren svart med kromlist. */
+  /** Paint; without it the bumper is black with a chrome strip. */
   paint?: THREE.Color;
-  /** Höjd och hörnradie. */
+  /** Height and corner radius. */
   H?: number;
   r?: number;
-  /** Svart luftintag med lameller på framsidan, och blinkers i hörnen. */
+  /** Black air intake with slats on the front, and indicators in the corners. */
   intake?: boolean;
   blinkers?: boolean;
 }
@@ -541,11 +541,11 @@ function buildBumper(halfX: number, z: number, y: number, depth: number, { paint
   const g = roundedBox(2 * halfX + 0.08, H, depth, [8, 3, 6], r, [0, y, z]);
   g.computeVertexNormals();
   const mat = new THREE.MeshToonNodeMaterial();
-  // Höjd räknad från stötfångarens överkant, så detaljerna sitter rätt oavsett höjd.
+  // Height measured from the bumper's top edge, so the details sit right regardless of height.
   const h = positionGeometry.y.sub(y + H / 2);
   const x = abs(positionGeometry.x);
   const face = positionGeometry.z.sub(z).mul(Math.sign(z)).greaterThan(depth / 2 - 0.03);
-  // Lackad stötfångare: svart underkant, svarta luftintag med lameller och blinkers ute i hörnen.
+  // Painted bumper: black lower edge, black air intakes with slats and indicators out in the corners.
   const vent = face.and(x.lessThan(halfX - 0.2)).and(h.lessThan(-0.06)).and(h.greaterThan(0.03 - H));
   const slat = fract(h.mul(45)).lessThan(0.3);
   const blinker = face.and(h.greaterThan(-0.055)).and(h.lessThan(-0.015)).and(x.greaterThan(halfX - 0.32)).and(x.lessThan(halfX - 0.08));
@@ -556,25 +556,25 @@ function buildBumper(halfX: number, z: number, y: number, depth: number, { paint
   return new DeformablePart(g, mat);
 }
 
-/** En detalj som lossnar när karossen under den buckats in, och då faller till marken. */
+/** A detail that comes loose when the body under it has been dented in, and then falls to the ground. */
 interface Detail {
   mesh: THREE.Mesh;
   home: THREE.Vector3;
   dent: number;
-  /** Stänkskydd: hänger under karossen, så träffar ovanför räknas och de lossnar lättare. */
+  /** Mud flap: hangs below the body, so hits above it count and it comes loose more easily. */
   flap: boolean;
   loose: boolean;
   vel: THREE.Vector3;
   spin: THREE.Vector3;
 }
 
-/** Bucklans djup (m) vid en detalj innan den lossnar. */
+/** Dent depth (m) at a detail before it comes loose. */
 const DETACH_DENT = 0.12;
 
-/** Små odeformerbara detaljer: speglar, främre nummerplåt, stänkskydd, dörrhandtag. */
+/** Small non-deformable details: mirrors, front number plate, mud flaps, door handles. */
 /**
- * Klass 2-bilarnas extraljusramp: fyra runda lampor på en svart balk framför grillen.
- * Lyser med strålkastarna och ramlar av, en och en, vid krockar framifrån.
+ * The class 2 cars' auxiliary light pod: four round lamps on a black bar in front of the grille.
+ * Lights up with the headlights and falls off, one by one, in frontal crashes.
  */
 function addLampPod(g: THREE.Group, b: BodyShape, lampGlow: LampGlow) {
   const black = new THREE.MeshToonMaterial({ color: BLACK });
@@ -610,7 +610,7 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
   };
   add(0.5, 0.11, 0.02, 0, b.bumperY[0], b.nose + 0.11, new THREE.MeshToonMaterial({ color: PLATE }));
   if (b.spoiler === 'roof') {
-    // Takspoiler över bakrutans överkant, lutad bakåt, på två fästen.
+    // Roof spoiler over the rear window's top edge, tilted back, on two mounts.
     const lip = new THREE.Mesh(new THREE.BoxGeometry(2 * b.cabinHalfX * 0.8, 0.025, 0.2), new THREE.MeshToonMaterial({ color: paint }));
     lip.position.set(0, b.roof + 0.035, b.backlight[1] - 0.1);
     lip.rotation.x = -0.25;
@@ -618,9 +618,9 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
     g.add(lip);
     for (const s of [1, -1]) add(0.03, 0.04, 0.1, s * 0.45, b.roof + 0.01, b.backlight[1] - 0.06, black);
   } else if (b.spoiler === 'trunk') {
-    // Vinge över bakluckans bakkant, på två fästen, nästan hela bilens bredd.
+    // Wing over the boot lid's rear edge, on two mounts, almost the full width of the car.
     const wing = new THREE.Mesh(new THREE.BoxGeometry(2 * b.halfX - 0.16, 0.03, 0.18), new THREE.MeshToonMaterial({ color: paint }));
-    // Bakluckans kant ligger beltRise över gördellinjen; vingen står strax ovanför den.
+    // The boot lid's edge lies beltRise above the belt line; the wing stands just above it.
     const deck = b.belt + (b.beltRise ?? 0);
     wing.position.set(0, deck + 0.07, b.tail + 0.16);
     wing.rotation.x = -0.1;
@@ -629,23 +629,23 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
     for (const s of [1, -1]) add(0.04, 0.1, 0.08, s * (b.halfX - 0.22), deck + 0.02, b.tail + 0.18, new THREE.MeshToonMaterial({ color: paint }));
   }
   if (b.roofVent) {
-    // Luftintag till kupén framtill på taket, med svart öppning framåt.
+    // Cabin air intake at the front of the roof, with a black opening facing forward.
     add(0.32, 0.05, 0.22, 0, b.roof + 0.02, b.screen[1] - 0.2, new THREE.MeshToonMaterial({ color: paint }));
     add(0.26, 0.03, 0.01, 0, b.roof + 0.025, b.screen[1] - 0.088, black);
   }
   const mirrorZ = b.screen[0] - 0.12;
   for (const s of [1, -1]) {
-    // Spegeln sitter på dörren i sidorutans främre hörn.
-    add(0.08, 0.05, 0.08, s * (b.cabinHalfX + 0.03), b.belt + 0.05, mirrorZ + 0.01, black); // spegelfot
-    add(0.15, 0.12, 0.08, s * (b.cabinHalfX + 0.14), b.belt + 0.1, mirrorZ, b.paintedMirrors ? new THREE.MeshToonMaterial({ color: paint }) : black); // spegel
-    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[0] - 0.46, black, 'flap'); // stänkskydd fram
-    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[1] - 0.46, black, 'flap'); // stänkskydd bak
+    // The mirror sits on the door at the side window's front corner.
+    add(0.08, 0.05, 0.08, s * (b.cabinHalfX + 0.03), b.belt + 0.05, mirrorZ + 0.01, black); // mirror base
+    add(0.15, 0.12, 0.08, s * (b.cabinHalfX + 0.14), b.belt + 0.1, mirrorZ, b.paintedMirrors ? new THREE.MeshToonMaterial({ color: paint }) : black); // mirror
+    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[0] - 0.46, black, 'flap'); // front mud flap
+    add(0.2, 0.16, 0.015, s * (b.halfX - 0.13), b.bottom - 0.08, wheelZ[1] - 0.46, black, 'flap'); // rear mud flap
     for (const z of b.doorHandles) add(0.02, 0.03, 0.14, s * (b.halfX + 0.005), b.belt - 0.09, z, black);
   }
   return g;
 }
 
-/** Ett ihåligt däck runt en modellerad fälg (innerradie 0,205 m), så de insänkta ekrarna syns. */
+/** A hollow tyre around a modelled rim (inner radius 0.205 m), so the recessed spokes show. */
 function buildModelWheel(radius: number, rim: THREE.Mesh): THREE.Group {
   const inner = 0.205;
   const profile = [
@@ -668,11 +668,11 @@ function buildWheel(radius: number, rally = false): THREE.Group {
     new THREE.CylinderGeometry(radius, radius, 0.22, 28).rotateZ(Math.PI / 2),
     new THREE.MeshToonMaterial({ color: 0x242424 }),
   );
-  // Släta navkapslar med en ring av korta slitsar, som visar rotationen.
+  // Smooth hubcaps with a ring of short slots, which show the rotation.
   const cap = (r: number, w: number, c: number) =>
     new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 28).rotateZ(Math.PI / 2), new THREE.MeshToonMaterial({ color: c }));
   g.add(tyre, cap(radius * (rally ? 0.72 : 0.7), 0.232, rally ? 0xf2f2ee : 0xd6d6d6), cap(radius * 0.2, 0.24, 0xb4b4b4));
-  // Rallyfälgen: tät ring av smala hål nära kanten, så den liknar en ekrad fälg.
+  // The rally rim: tight ring of narrow holes near the edge, so it resembles a spoked rim.
   const slotMat = new THREE.MeshToonMaterial({ color: rally ? 0x2a2a2a : 0x6a6a6a });
   const [count, at, len] = rally ? [20, 0.52, 0.32] : [10, 0.47, 0.2];
   for (let i = 0; i < count; i++) {
@@ -688,18 +688,18 @@ function buildWheel(radius: number, rally = false): THREE.Group {
   return g;
 }
 
-/** Lyktglasets självlysning [vänster, höger]; lokalt x > 0 är vänster. */
+/** Lamp lens self-illumination [left, right]; local x > 0 is left. */
 type FloatUniform = THREE.UniformNode<'float', number>;
 type LampGlow = [FloatUniform, FloatUniform];
 
 export class CarMesh {
   readonly group = new THREE.Group();
   private lampGlow: LampGlow = [uniform(0.5), uniform(0.5)];
-  /** Baklyktornas röda sken: alltid tänt, starkare med strålkastarna och mycket starkare vid inbromsning. */
+  /** The tail lights' red glow: always on, brighter with the headlights and much brighter under braking. */
   private tailGlow: FloatUniform = uniform(0.9);
-  /** Baklyktornas röda sken på marken bakom bilen, ett per lykta; riktat bakåt så det inte färgar karossen. */
+  /** The tail lights' red glow on the ground behind the car, one per lamp; aimed backwards so it doesn't tint the body. */
   private tailLights = [0, 1].map(() => new THREE.SpotLight(0xff1a0a, 0, 10, 1.2, 0.8, 2));
-  /** Smal kägla bakifrån mot stötfångaren under varje lykta, så ytan mellan lyktorna förblir mörk. */
+  /** Narrow cone from behind towards the bumper under each lamp, so the area between the lamps stays dark. */
   private bumperLights = [0, 1].map(() => new THREE.SpotLight(0xff1a0a, 0, 1.2, 0.3, 0.5, 2));
   readonly wheels: THREE.Group[] = [];
   private parts: DeformablePart[];
@@ -710,7 +710,7 @@ export class CarMesh {
   private xAxis = new THREE.Vector3(1, 0, 0);
   private detailGroup: THREE.Group;
   private details: Detail[];
-  /** Avgasröret (modelldelen 'exhaust') och dess mynning i bilens koordinater; bilar byggda av bodies/ har inget synligt rör. */
+  /** The exhaust pipe (model part 'exhaust') and its outlet in car coordinates; cars built from bodies/ have no visible pipe. */
   private exhaust?: { detail: Detail; tip: THREE.Vector3 };
   private lastUpdate = 0;
 
@@ -723,16 +723,16 @@ export class CarMesh {
     this.hits = zoneHits(b);
     const wheels = car.params.wheels;
     const wheelZ: Range = [wheels.find((w) => w.front)!.mount[2], wheels.find((w) => !w.front)!.mount[2]];
-    // Främre stötfångaren går bak till hjulhuset, den bakre en bit runt hörnen.
+    // The front bumper runs back to the wheel arch, the rear one a little round the corners.
     const front = b.nose + 0.1 - (wheelZ[0] + b.archR[0] + 0.04);
     const decals = decalTexture(b, wheelZ, c, startNumber(car.params.name), model.sponsors?.() ?? []);
-    if (!carModelReady(model)) throw new Error(`Bilmodellen ${model.body} är inte hämtad (loadCarModel)`);
+    if (!carModelReady(model)) throw new Error(`Car model ${model.body} is not fetched (loadCarModel)`);
     const data = MODELS[model.body];
     const built = data && buildModel(data, b, c, this.lampGlow, this.tailGlow, decals, tierOf(car.params.name) === 2);
     this.parts = built ? built.panels : [
       buildBody(b, wheelZ, c, this.lampGlow, this.tailGlow, decals),
       buildCabin(b, c, decals),
-      // En avsmalnande nos får en smalare stötfångare med rundare hörn, så den följer formen.
+      // A tapering nose gets a narrower bumper with rounder corners, so it follows the shape.
       buildBumper((b.halfX + (b.flare ?? 0)) * (1 - 0.5 * (b.taper?.[0] ?? 0)), b.nose + 0.1 - front / 2, b.bumperY[0], front, {
         paint: b.paintedBumpers ? c : undefined,
         H: b.bumperH,
@@ -761,7 +761,7 @@ export class CarMesh {
     }));
     const pipe = this.details.find((d) => d.mesh.name === 'exhaust');
     if (pipe) {
-      // Mynningen: mitten av rörets bakersta hörn (röret kan vara böjt, så inte hela rörets mitt).
+      // The outlet: the centre of the pipe's rearmost vertices (the pipe may be bent, so not the whole pipe's centre).
       const pos = pipe.mesh.geometry.getAttribute('position');
       let minZ = Infinity;
       for (let i = 0; i < pos.count; i++) minZ = Math.min(minZ, pos.getZ(i));
@@ -777,8 +777,8 @@ export class CarMesh {
       tip.divideScalar(n).add(pipe.home);
       this.exhaust = { detail: pipe, tip };
     }
-    // Strax bakom bakpartiet, så karossen ligger bakom ljuskäglan.
-    // Ett par ljus per baklykta, mitt för lyktan ute vid hörnet.
+    // Just behind the tail, so the body lies behind the light cone.
+    // A pair of lights per tail light, in line with the lamp out at the corner.
     const tailLightY = (b.tailY[0] + b.tailY[1]) / 2;
     const tailLightX = (b.tailX + b.halfX) / 2;
     [1, -1].forEach((s, i) => {
@@ -800,7 +800,7 @@ export class CarMesh {
     }
   }
 
-  /** Avgasrörets mynning i världen; false när bilen saknar synligt rör eller röret har lossnat. */
+  /** The exhaust outlet in the world; false when the car has no visible pipe or the pipe has come off. */
   exhaustTip(out: THREE.Vector3): boolean {
     if (!this.exhaust || this.exhaust.detail.loose) return false;
     out.copy(this.exhaust.tip).applyQuaternion(this.car.quat).add(this.car.pos);
@@ -812,7 +812,7 @@ export class CarMesh {
     this.wheels.forEach((w) => scene.add(w));
   }
 
-  /** `fall` = false när skadan återskapas (dentFrom): lösa detaljer saknas då bara, de ramlar inte. */
+  /** `fall` = false when the damage is recreated (dentFrom): loose details are then just missing, they don't fall. */
   applyDamage(events: DamageEvent[], fall = true) {
     if (events.length === 0) return;
     for (const e of events) {
@@ -821,7 +821,7 @@ export class CarMesh {
       for (const part of this.parts) part.dent(e.local, e.normal, amount, radius);
       for (const d of this.details) {
         if (d.loose) continue;
-        // Stänkskyddet sitter i karossens underkant: mät bara i sidled och längsled.
+        // The mud flap sits at the body's lower edge: measure only sideways and lengthways.
         const d2 = d.flap ? (d.home.x - e.local.x) ** 2 + (d.home.z - e.local.z) ** 2 : d.home.distanceToSquared(e.local);
         d.dent += amount * Math.exp(-d2 / (radius * radius));
         if (d.dent > (d.flap ? DETACH_DENT * 0.6 : DETACH_DENT)) this.detach(d, fall);
@@ -856,20 +856,20 @@ export class CarMesh {
     }
   }
 
-  /** Lyktglaset: svagt sken på dagen, starkt med strålkastarna på, släckt när lyktan är trasig. Baklyktorna lyser alltid. */
+  /** The lamp lens: faint glow by day, bright with the headlights on, off when the lamp is broken. The tail lights are always lit. */
   setLamps(on: boolean, lamps: number[], braking: boolean) {
     lamps.forEach((l, i) => (this.lampGlow[i]!.value = l >= LAMP_BROKEN ? 0 : on ? 2.4 * (1 - 0.6 * l) : 0.5));
-    // Glaset lyser klart med strålkastarna på; vid inbromsning ännu starkare.
+    // The lens glows brightly with the headlights on; even brighter under braking.
     this.tailGlow.value = braking ? 4 : on ? 2.5 : 0.9;
-    // Skenet på stötfångaren, marken, rök och damm syns bara vid inbromsning i mörker (strålkastarna på).
+    // The glow on the bumper, ground, smoke and dust shows only under braking in the dark (headlights on).
     const tail = on && braking ? 2 : 0;
     this.tailLights.forEach((l) => (l.intensity = tail));
     this.bumperLights.forEach((l) => (l.intensity = tail * 0.8));
   }
 
   /**
-   * Bucklor som motsvarar skadesiffrorna, när de riktiga träffarna inte finns kvar
-   * (t.ex. efter omladdningen mellan etapperna). Samma impuls som gav siffran i Car.registerDamage.
+   * Dents matching the damage numbers, when the real hits are no longer available
+   * (e.g. after the reload between stages). The same impulse that gave the number in Car.registerDamage.
    */
   dentFrom(d: DamageState) {
     const events: DamageEvent[] = [];
@@ -884,12 +884,12 @@ export class CarMesh {
     this.applyDamage(events, false);
   }
 
-  /** Krymper bucklorna mot k; anropas varje bildruta under en lagning. */
+  /** Shrinks the dents towards k; called every frame during a repair. */
   heal(k: number) {
     for (const p of this.parts) p.scale(k);
   }
 
-  /** Lös detalj: faller, studsar lite mot marken och glider till stillastående. */
+  /** Loose detail: falls, bounces a little on the ground and slides to a standstill. */
   private fallStep(d: Detail, dt: number) {
     const m = d.mesh;
     d.vel.y -= 9.81 * dt;

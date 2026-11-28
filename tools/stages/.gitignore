@@ -1,4 +1,4 @@
-# Nedladdat och härlett: rallyts kartor, OSM-uttag och mellanfiler går att ta fram igen.
+# Downloaded and derived: the rally's maps, OSM extracts and intermediate files can be regenerated.
 maps/
 */map.osm
 */map.bmp

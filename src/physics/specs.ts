@@ -6,7 +6,7 @@ import { World } from './world';
 
 const DT = 1 / 240;
 
-/** Plan yta med ett enda underlag och inga hinder, för provkörningar. */
+/** Flat ground with a single surface and no obstacles, for test drives. */
 export class FlatWorld extends World {
   constructor(private surface: SurfaceId) {
     super();
@@ -25,15 +25,15 @@ export interface CarSpecs {
   powerRpm: number;
   torqueNm: number;
   torqueRpm: number;
-  /** Andel av vikten på framaxeln. */
+  /** Fraction of the weight on the front axle. */
   frontWeight: number;
-  /** Uppmätt med fullgas på plant grus, med bilens egna däck. NaN om bilen inte når 100. */
+  /** Measured at full throttle on flat gravel, with the car's own tyres. NaN if the car never reaches 100. */
   zeroTo100: number;
-  /** Högsta fart på plan asfalt, km/h. */
+  /** Top speed on flat asphalt, km/h. */
   topSpeedKmh: number;
 }
 
-/** Bilens data: motorn räknas ur momentkurvan, accelerationen provkörs i fysiken. */
+/** The car's specs: engine figures come from the torque curve, acceleration is test-driven in the physics. */
 export function carSpecs(p: CarParams): CarSpecs {
   const e = p.engine;
   let powerKw = 0;
@@ -58,7 +58,7 @@ export function carSpecs(p: CarParams): CarSpecs {
 
 const full: Input = { throttle: 1, brake: 0, steer: 0, handbrake: 0 };
 
-/** Tid tills `done` blir sant med fullgas, eller NaN. */
+/** Time until `done` becomes true at full throttle, or NaN. */
 function fullThrottle(p: CarParams, surface: SurfaceId, seconds: number, done: (car: Car) => boolean): number {
   const car = new Car(p, new FlatWorld(surface));
   for (let t = 0; t < seconds; t += DT) {

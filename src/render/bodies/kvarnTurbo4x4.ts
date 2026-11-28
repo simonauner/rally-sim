@@ -1,6 +1,6 @@
 import type { BodyShape } from './shape';
 
-/** Kvarn Turbo 4x4: kantig 80-talssedan: lång flat huv och baklucka, stora fyrkantiga lyktor. */
+/** Kvarn Turbo 4x4: boxy 80s saloon: long flat hood and boot lid, large square lamps. */
 export const kvarnTurbo4x4: BodyShape = {
   halfX: 0.85,
   bottom: -0.31,
@@ -15,7 +15,7 @@ export const kvarnTurbo4x4: BodyShape = {
   trunkDrop: 0.05,
   cabinHalfX: 0.74,
   archY: -0.24,
-  archR: [0.39, 0.38], // bakre hjulhuset sluter tätare om hjulet
+  archR: [0.39, 0.38], // the rear wheel arch hugs the wheel more tightly
   doorSeams: [-0.4, -1.22],
   sideGlass: [
     [-0.37, Infinity],

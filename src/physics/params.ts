@@ -2,7 +2,7 @@ import type { DiffParams, EngineParams, GearboxParams } from './drivetrain';
 import type { TyreType } from './surfaces';
 
 export interface WheelDef {
-  /** Fäste i kroppens lokala koordinater (x vänster, y upp, z framåt, origo i tyngdpunkten). */
+  /** Mount in the body's local coordinates (x left, y up, z forward, origin at the centre of mass). */
   mount: [number, number, number];
   front: boolean;
   left: boolean;
@@ -11,7 +11,7 @@ export interface WheelDef {
 export interface CarParams {
   name: string;
   mass: number;
-  /** Tröghetsmoment kring x (stampning), y (girning) och z (rullning). */
+  /** Moment of inertia about x (pitch), y (yaw) and z (roll). */
   inertia: [number, number, number];
   cgHeight: number;
   wheelRadius: number;
@@ -38,32 +38,32 @@ export interface CarParams {
   steer: { maxAngle: number; speedRef: number; rate: number; centerRate: number };
   aero: { cdA: number; rho: number };
   diff: DiffParams;
-  /** Andel av drivmomentet som går till framaxeln (0 = bakhjulsdrift). */
+  /** Fraction of the drive torque sent to the front axle (0 = rear-wheel drive). */
   frontShare: number;
-  /** Mittdiff för fyrhjulsdrift; utan den delas momentet fast efter frontShare. */
+  /** Centre diff for four-wheel drive; without it the torque is split fixed by frontShare. */
   centerDiff?: DiffParams;
   engine: EngineParams;
   gearbox: GearboxParams;
   tyre: TyreType;
-  /** Global grepp-multiplikator för trimning. */
+  /** Global grip multiplier for tuning. */
   gripScale: number;
-  /** Skalorna på varvräknaren och hastighetsmätaren, som i bilens egen instrumentpanel. */
+  /** The scales on the rev counter and speedometer, as on the car's own instrument panel. */
   gauges: { rpmMax: number; rpmRed: number; speedMin: number; speedMax: number; style?: GaugeStyle };
 }
 
-/** Färger och skalvinklar för bilar med en egen instrumentpanel; utan den blir urtavlan svart med vita siffror. */
+/** Colours and scale angles for cars with their own instrument panel; without it the dial is black with white numbers. */
 export interface GaugeStyle {
   face: string;
-  /** Streck, siffror och växelmönster. */
+  /** Ticks, numbers and shift pattern. */
   ink: string;
   needle: string;
   red: string;
-  /** Skalornas start- och slutvinkel i grader (0 = höger, medurs). */
+  /** Start and end angle of the scales in degrees (0 = right, clockwise). */
   tachoArc: [number, number];
   speedoArc: [number, number];
-  /** Varvräknarens siffror räknas i hundratals eller tusentals varv. */
+  /** The rev counter's numbers count in hundreds or thousands of rpm. */
   rpmUnit: 100 | 1000;
-  /** Det röda fältet som röda streck och siffror i stället för en båge. */
+  /** The red zone as red ticks and numbers instead of an arc. */
   redInk?: boolean;
 }
 
@@ -71,7 +71,7 @@ function boxInertia(m: number, l: number, w: number, h: number, k: number): [num
   return [(m / 12) * (h * h + l * l) * k, (m / 12) * (w * w + l * l) * k, (m / 12) * (w * w + h * h) * k];
 }
 
-/** En fiktiv hobbyrallybil: stor, tung och bakhjulsdriven sedan från 80-talet. */
+/** A fictional club rally car: a big, heavy, rear-wheel-drive saloon from the 80s. */
 export function kvarn240(): CarParams {
   const mass = 1250;
   const R = 0.32;
@@ -134,12 +134,12 @@ export function kvarn240(): CarParams {
     },
     tyre: 'gravel',
     gripScale: 1,
-    // Varvräknare 0–7 med orange fält från 6 250, hastighetsmätare 20–200 km/h.
+    // Rev counter 0–7 with an orange zone from 6,250, speedometer 20–200 km/h.
     gauges: { rpmMax: 7000, rpmRed: 6250, speedMin: 20, speedMax: 200 },
   };
 }
 
-/** Samma kaross med turbomotor: segt i botten, sedan kommer allt på en gång. */
+/** The same body with a turbo engine: sluggish low down, then everything arrives at once. */
 export function kvarn240Turbo(): CarParams {
   const p = kvarn240();
   return {
@@ -152,7 +152,7 @@ export function kvarn240Turbo(): CarParams {
       curveRpm: [900, 1500, 2500, 3000, 3500, 4500, 5500, 6200, 6800],
       curveNm: [100, 125, 160, 230, 275, 285, 255, 215, 160],
       launchRpm: 4200,
-      // Ungefär 0,7 bar som förebildens gatversion med laddluftkylare.
+      // About 0.7 bar like the road version of the original with an intercooler.
       turbo: { spool: 0.7, offBoost: 0.6, antilag: 0, bar: 0.7 },
     },
     gearbox: { ...p.gearbox, final: 4.1 },
@@ -161,16 +161,16 @@ export function kvarn240Turbo(): CarParams {
 }
 
 /**
- * En fiktiv liten framhjulsdriven halvkombi från 80-talet med 1,6-liters förgasarmotor:
- * billig, lätt och kvick. Amatörernas instegsbil, som understyr in i kurvan och vill
- * lyfta inre bakhjulet, men går att vrida med handbromsen eller lyft av gasen.
+ * A fictional small front-wheel-drive hatchback from the 80s with a 1.6-litre carburettor engine:
+ * cheap, light and nimble. The amateurs' entry car, which understeers into corners and likes to
+ * lift the inside rear wheel, but can be rotated with the handbrake or a lift of the throttle.
  */
 export function ljung1600(): CarParams {
   const mass = 880;
   const R = 0.29;
   const cg = 0.5;
   const wheelbase = 2.4;
-  // Tung front: motorn sitter tvärs framför framaxeln.
+  // Heavy front: the engine sits transversely ahead of the front axle.
   const zF = wheelbase * 0.38;
   const zR = -wheelbase * 0.62;
   const yMount = R - cg + 0.125;
@@ -196,7 +196,7 @@ export function ljung1600(): CarParams {
       bump: 1700,
       rebound: 2800,
       arbFront: 8000,
-      // Styv bakaxel, så bakvagnen hjälper till att vrida bilen.
+      // Stiff rear axle, so the rear helps rotate the car.
       arbRear: 10000,
       freeLen: 0.24,
       minLen: 0,
@@ -229,20 +229,20 @@ export function ljung1600(): CarParams {
     },
     tyre: 'gravel',
     gripScale: 1,
-    // Varvräknaren går till 8 000, så smidda kolvar (+500 rpm) ryms på skalan.
+    // The rev counter goes to 8,000, so forged pistons (+500 rpm) fit on the scale.
     gauges: { rpmMax: 8000, rpmRed: 6600, speedMin: 20, speedMax: 200 },
   };
 }
 
 /**
- * Klass 2: en fiktiv kitcar-halvkombi med tvåliters 16-ventilsmotor. Lätt, varvglad och nervös,
- * med spärrdiff fram som drar i ratten under gaspådrag. Ljung 1600 S i tävlingsversion.
+ * Class 2: a fictional kit car hatchback with a two-litre 16-valve engine. Light, rev-happy and nervous,
+ * with a front limited-slip diff that tugs at the wheel under throttle. Ljung 1600 S in competition trim.
  */
 export function ljung2000(): CarParams {
   const mass = 1000;
   const R = 0.3;
   const cg = 0.48;
-  // Samma kaross och hjulbas som Ljung 1600 S; kitcaren får bredare spårvidd under breddarna.
+  // Same body and wheelbase as the Ljung 1600 S; the kit car gets a wider track under the arch extensions.
   const wheelbase = 2.4;
   const zF = wheelbase * 0.39;
   const zR = -wheelbase * 0.61;
@@ -306,8 +306,8 @@ export function ljung2000(): CarParams {
 }
 
 /**
- * Klass 2: en fiktiv lätt coupé med bakhjulsdrift och tvåliters sugmotor långt bak i motorrummet.
- * Kort hjulbas och mycket gas, så den vrider sig lätt; för den som vill sladda.
+ * Class 2: a fictional light rear-wheel-drive coupé with a two-litre naturally aspirated engine set far back in the bay.
+ * Short wheelbase and lots of power, so it rotates easily; for those who want to slide.
  */
 export function strandGt(): CarParams {
   const mass = 1050;
@@ -320,7 +320,7 @@ export function strandGt(): CarParams {
   return {
     name: 'Strand 2.0 GT',
     mass,
-    // Låg tröghet kring höjdaxeln: tunga delar nära mitten och kort kaross.
+    // Low yaw inertia: heavy parts near the middle and a short body.
     inertia: boxInertia(mass, 4.1, 1.7, 1.3, 0.72),
     cgHeight: cg,
     wheelRadius: R,
@@ -377,8 +377,8 @@ export function strandGt(): CarParams {
 }
 
 /**
- * Klass 2: Kvarnens sedankaross med fyrhjulsdrift och stor turbo, som en Grupp A-bil.
- * Mycket grepp och mest effekt, men tung och seg i botten; förlåtande men svår att sladda.
+ * Class 2: the Kvarn saloon body with four-wheel drive and a big turbo, like a Group A car.
+ * Lots of grip and the most power, but heavy and sluggish low down; forgiving but hard to slide.
  */
 export function kvarnTurbo4x4(): CarParams {
   const p = kvarn240();
@@ -403,7 +403,7 @@ export function kvarnTurbo4x4(): CarParams {
     brake: { total: 5600, bias: 0.64, handbrake: 3800 },
     steer: { ...p.steer, rate: 2.0, centerRate: 3.4 },
     diff: { lock: 0.4, preload: 60 },
-    // Bakvikt i momentet som i en Grupp A-bil, och en viskös mittdiff.
+    // Rear-biased torque split like a Group A car, and a viscous centre diff.
     frontShare: 0.4,
     centerDiff: { lock: 0.5, preload: 100 },
     engine: {
@@ -415,7 +415,7 @@ export function kvarnTurbo4x4(): CarParams {
       inertia: 0.2,
       clutchLockRpm: 2600,
       launchRpm: 4500,
-      // Grupp A-bilarna gick på runt 1,5 bar före restriktorerna 1995.
+      // The Group A cars ran around 1.5 bar before the 1995 restrictors.
       turbo: { spool: 0.6, offBoost: 0.6, antilag: 0, bar: 1.5 },
     },
     gearbox: {
@@ -431,7 +431,7 @@ export function kvarnTurbo4x4(): CarParams {
   };
 }
 
-/** Fyra hjul med samma fästhöjd; z räknas från tyngdpunkten. */
+/** Four wheels at the same mount height; z is measured from the centre of mass. */
 const wheelsAt = (y: number, xF: number, xR: number, zF: number, zR: number): WheelDef[] => [
   { mount: [xF, y, zF], front: true, left: true },
   { mount: [-xF, y, zF], front: true, left: false },
@@ -440,10 +440,10 @@ const wheelsAt = (y: number, xF: number, xR: number, zF: number, zR: number): Wh
 ];
 
 /**
- * Klass 2: en fiktiv rundad japansk coupé med fyrhjulsdrift och tvåliters turbo, modellerad på en
- * Grupp A-bil från början av 90-talet: 299 hk vid ~5 700 rpm men 459 Nm redan vid 4 000, så den drar
- * starkt ur kurvorna men orkar inte upp mot begränsaren. Lång hjulbas och tung nos: stabil i fart
- * men trög att vrida in; jämn kraftfördelning med viskös mittdiff.
+ * Class 2: a fictional rounded Japanese coupé with four-wheel drive and a two-litre turbo, modelled on a
+ * Group A car from the early 90s: 299 hp at ~5,700 rpm but 459 Nm already at 4,000, so it pulls
+ * hard out of corners but runs out of breath towards the limiter. Long wheelbase and heavy nose: stable at speed
+ * but reluctant to turn in; even torque split with a viscous centre diff.
  */
 export function hoshi4wd(): CarParams {
   const p = kvarnTurbo4x4();
@@ -455,7 +455,7 @@ export function hoshi4wd(): CarParams {
     ...p,
     name: 'Hoshi 2.0 4WD',
     mass,
-    // Lång kaross med tunga delar långt fram och bak: trög kring höjdaxeln.
+    // Long body with heavy parts far forward and back: high yaw inertia.
     inertia: boxInertia(mass, 4.41, 1.745, 1.3, 0.86),
     cgHeight: cg,
     wheelRadius: R,
@@ -464,7 +464,7 @@ export function hoshi4wd(): CarParams {
     wheels: wheelsAt(R - cg + 0.125, 0.755, 0.755, wheelbase * 0.42, -wheelbase * 0.58),
     body: { halfX: 0.873, halfZ: 2.2, bottomY: -0.3, topY: 0.78 },
     susp: { ...p.susp, kFront: 32000, kRear: 29000, arbFront: 13000, arbRear: 12000 },
-    // Jämn fördelning 50/50 med viskös mittdiff, som i förebilden.
+    // Even 50/50 split with a viscous centre diff, as in the original.
     frontShare: 0.5,
     centerDiff: { lock: 0.4, preload: 80 },
     steer: { ...p.steer, rate: 1.9, centerRate: 3.3 },
@@ -475,16 +475,16 @@ export function hoshi4wd(): CarParams {
       curveNm: [120, 150, 260, 360, 430, 459, 410, 365, 290, 230, 180],
       launchRpm: 4500,
     },
-    // Sexväxlad klolåda; utväxlingarna är inte publicerade, så Kvarnens behålls. Växla upp strax efter
-    // effekttoppen, eftersom momentet faller brant över 5 700 rpm.
+    // Six-speed dog box; the ratios are not published, so the Kvarn's are kept. Shift up just after
+    // peak power, since torque falls steeply above 5,700 rpm.
     gearbox: { ...p.gearbox, upshiftRpm: 6300, downshiftRpm: 3600, shiftTime: 0.16 },
     gauges: { rpmMax: 8000, rpmRed: 7000, speedMin: 20, speedMax: 220 },
   };
 }
 
 /**
- * Klass 2: en fiktiv italiensk kantig halvkombi med fyrhjulsdrift, kort hjulbas och mer moment bak.
- * Vrider sig villigt in i kurvorna men är nervös på krön; för den som vill sladda med fyra hjul.
+ * Class 2: a fictional boxy Italian hatchback with four-wheel drive, a short wheelbase and more torque to the rear.
+ * Turns in willingly but is nervous over crests; for those who want to slide on four wheels.
  */
 export function volpeTurbo(): CarParams {
   const p = kvarnTurbo4x4();
@@ -505,7 +505,7 @@ export function volpeTurbo(): CarParams {
     body: { halfX: 0.88, halfZ: 1.95, bottomY: -0.3, topY: 0.92 },
     susp: { ...p.susp, kFront: 34000, kRear: 32000, arbFront: 12000, arbRear: 14000 },
     steer: { ...p.steer, rate: 2.2, centerRate: 3.6 },
-    // 47/53 som i förebilden: epicyklisk mittdiff med viskokoppling.
+    // 47/53 as in the original: epicyclic centre diff with a viscous coupling.
     frontShare: 0.47,
     centerDiff: { lock: 0.45, preload: 90 },
     engine: {
@@ -513,7 +513,7 @@ export function volpeTurbo(): CarParams {
       curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
       curveNm: [105, 130, 190, 280, 340, 360, 360, 330, 270, 210],
     },
-    // Orange skala på svart; varvräknaren börjar klockan tre, hastighetsmätaren klockan nio.
+    // Orange scale on black; the rev counter starts at three o'clock, the speedometer at nine o'clock.
     gauges: {
       rpmMax: 9000,
       rpmRed: 7000,
@@ -525,9 +525,9 @@ export function volpeTurbo(): CarParams {
 }
 
 /**
- * Klass 2: en fiktiv tysk coupé från början av 80-talet med femcylindrig turbo långt fram och
- * fyrhjulsdrift med nästan låst mittdiff. Massor av effekt efter ett stort turbohål, men tung nos
- * som understyr; bromsa tidigt och gasa sent.
+ * Class 2: a fictional German coupé from the early 80s with a five-cylinder turbo far forward and
+ * four-wheel drive with a nearly locked centre diff. Masses of power after a big turbo lag, but a heavy nose
+ * that understeers; brake early and get on the throttle late.
  */
 export function brenner5t(): CarParams {
   const p = kvarnTurbo4x4();
@@ -544,7 +544,7 @@ export function brenner5t(): CarParams {
     wheelRadius: R,
     wheelbase,
     trackFront: 1.46,
-    // Motorn hänger framför framaxeln: 58 % av vikten fram.
+    // The engine hangs ahead of the front axle: 58 % of the weight at the front.
     wheels: wheelsAt(R - cg + 0.125, 0.73, 0.74, wheelbase * 0.42, -wheelbase * 0.58),
     // As the Blender model: nose 1.905 m forward, tail 2.415 m back, roof 0.775 m above the centre of gravity.
     body: { halfX: 0.865, halfZ: 2.16, centerZ: -0.255, bottomY: -0.305, topY: 0.775 },
@@ -561,7 +561,7 @@ export function brenner5t(): CarParams {
       curveNm: [100, 115, 140, 200, 310, 360, 370, 330, 275, 210],
       inertia: 0.22,
       launchRpm: 5000,
-      // 1,6 bar som rallyversionen av förebilden med 230 kW.
+      // 1.6 bar like the rally version of the original with 230 kW.
       turbo: { spool: 0.8, offBoost: 0.55, antilag: 0, bar: 1.6 },
     },
     gearbox: { ...p.gearbox, ratios: [3.0, 2.0, 1.5, 1.18, 0.95], final: 4.4, shiftTime: 0.2 },
@@ -570,10 +570,10 @@ export function brenner5t(): CarParams {
 }
 
 /**
- * Klass 2: en fiktiv japansk tvådörrars coupé med boxermotor, låg tyngdpunkt och mjuk fjädring. Stabil
- * och förlåtande över ojämnheter, och drar jämnt ur kurvorna. Mått, vikt och motor följer förebilden
- * från 1999: 4,35 × 1,69 × 1,405 m, hjulbas 2,52 m, spårvidd 1,47/1,46 m, 1 260 kg, 206 kW vid
- * 6 500 rpm och 352 Nm vid 4 000 rpm, däck 205/50 R16.
+ * Class 2: a fictional Japanese two-door coupé with a boxer engine, low centre of mass and soft suspension. Stable
+ * and forgiving over bumps, and pulls evenly out of corners. Dimensions, weight and engine follow the original
+ * from 1999: 4.35 × 1.69 × 1.405 m, wheelbase 2.52 m, track 1.47/1.46 m, 1,260 kg, 206 kW at
+ * 6,500 rpm and 352 Nm at 4,000 rpm, tyres 205/50 R16.
  */
 export function soraTurbo(): CarParams {
   const p = kvarnTurbo4x4();
@@ -591,7 +591,7 @@ export function soraTurbo(): CarParams {
     wheelbase,
     trackFront: 1.47,
     wheels: wheelsAt(R - cg + 0.125, 0.735, 0.73, wheelbase * 0.44, -wheelbase * 0.56),
-    // Taket som rallyversionen i Blendermodellen: 1,30 m över marken.
+    // Roof as on the rally version in the Blender model: 1.30 m above the ground.
     body: { halfX: 0.845, halfZ: 2.175, bottomY: -0.3, topY: 0.79 },
     susp: { ...p.susp, kFront: 30000, kRear: 27000, bump: 2500, rebound: 4000, arbFront: 13000, arbRear: 11000 },
     frontShare: 0.5,
@@ -600,10 +600,10 @@ export function soraTurbo(): CarParams {
       ...p.engine,
       curveRpm: [950, 1500, 2500, 3000, 3500, 4000, 5000, 6000, 6800, 7200],
       curveNm: [115, 150, 230, 310, 340, 352, 345, 325, 295, 225],
-      // Gatversionen av förebilden: 1,1 bar från 3 000 rpm.
+      // The road version of the original: 1.1 bar from 3,000 rpm.
       turbo: { ...p.engine.turbo!, bar: 1.1 },
     },
-    // Vit urtavla med svarta siffror och orange nål; rött fält från 8000 som på förlagan.
+    // White dial with black numbers and an orange needle; red zone from 8000 as on the original.
     gauges: {
       rpmMax: 10000,
       rpmRed: 8000,
@@ -615,7 +615,7 @@ export function soraTurbo(): CarParams {
 }
 
 
-/** En dekal på karossen: fiktivt namn, textfärg och eventuell bakgrund (CSS-färger). */
+/** A decal on the body: fictional name, text colour and optional background (CSS colours). */
 export interface Sponsor {
   name: string;
   fg: string;
@@ -624,17 +624,17 @@ export interface Sponsor {
 
 export interface CarModel {
   make: () => CarParams;
-  /** Bilens egen kaross i src/render/bodies/ (samma namn som filen). */
+  /** The car's own body in src/render/bodies/ (same name as the file). */
   body: 'kvarn240' | 'kvarn240Turbo' | 'kvarnTurbo4x4' | 'soraTurbo' | 'ljung1600' | 'ljung2000' | 'strandGt' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
-  /** En rad om bilen i bilväljaren. */
+  /** A one-line description of the car in the car picker. */
   blurb: string;
-  /** Lackfärg. */
+  /** Paint colour. */
   paint: number;
-  /** Dekaler från monterade delar, läses när bilen byggs. Saknas utanför karriären. */
+  /** Decals from fitted parts, read when the car is built. Absent outside the career. */
   sponsors?: () => Sponsor[];
 }
 
-/** Bilarna man kan välja före en etapp. */
+/** The cars you can pick before a stage. */
 export const CARS: CarModel[] = [
   { make: kvarn240, body: 'kvarn240', paint: 0xc4553a, blurb: 'Tung och bakhjulsdriven 80-talssedan. Förlåtande, men vill sladda.' },
   {
@@ -649,7 +649,7 @@ export const CARS: CarModel[] = [
     paint: 0xd9b22e,
     blurb: 'Liten och lätt framhjulsdriven halvkombi. Billig, kvick och understyr, men vrids runt med handbromsen.',
   },
-  // Klass 2: låses upp när alla mästerskap i klass 1 är vunna.
+  // Class 2: unlocked when all class 1 championships are won.
   {
     make: ljung2000,
     body: 'ljung2000',

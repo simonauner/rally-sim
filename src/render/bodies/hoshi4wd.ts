@@ -1,9 +1,9 @@
 import type { BodyShape } from './shape';
 
 /**
- * Hoshi 2.0 4WD: rundad tredörrars liftback-coupé från 1991 med breda skärmar och uppfällda strålkastare.
- * Karossen ritas av Blendermodellen (blender/hoshi4wd/), så formen här används bara till skadezonerna,
- * dekalerna, baklyktornas sken och fälgarna, och följer modellens mått.
+ * Hoshi 2.0 4WD: rounded three-door liftback coupé from 1991 with wide fenders and pop-up headlights.
+ * The body is drawn by the Blender model (blender/hoshi4wd/), so the shape here is only used for the damage zones,
+ * the decals, the tail-light glow and the rims, and follows the model's dimensions.
  */
 export const hoshi4wd: BodyShape = {
   halfX: 0.875,

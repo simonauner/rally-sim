@@ -1,14 +1,15 @@
 /**
- * Bygdsiljum ur Rally Sweden, ca 26 km, delad i fem etapper på drygt 5 km. Den sista biten före mål
- * saknas i OpenStreetMap och är avritad från rallyts sträckkarta (ca 1,5 km, ±30 m). Hörn i
- * korsningar är utjämnade, och vägen är 8 m bred i snäva hörn. Lutningen är begränsad till 12 %
- * där höjddatan tar med branter bredvid vägen, och till 5 % de första 60 m.
- * Vägen följer OpenStreetMap och höjden EU-DEM, samplad var 20:e meter med lätt utjämning. Varje
- * del har origo i sin startpunkt: x väster, z norr, y höjd över starten, i meter.
+ * Bygdsiljum from Rally Sweden, about 26 km, split into five stages of just over 5 km. The last stretch
+ * before the finish is missing from OpenStreetMap and is traced from the rally's stage map (about
+ * 1.5 km, ±30 m). Corners at junctions are smoothed, and the road is 8 m wide in tight corners. The
+ * gradient is capped at 12 % where the elevation data picks up steep slopes beside the road, and at
+ * 5 % for the first 60 m.
+ * The road follows OpenStreetMap and the elevation EU-DEM, sampled every 20 m with light smoothing.
+ * Each part has its origin at its start point: x west, z north, y height above the start, in metres.
  *
- * Vägdata © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
- * Höjd: EU-DEM v1.1 via OpenTopoData, framställd med Copernicus-data finansierad av EU.
- * Datan i den här filen är härledd från OpenStreetMap och delas under ODbL 1.0.
+ * Road data © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
+ * Elevation: EU-DEM v1.1 via OpenTopoData, produced using Copernicus data funded by the EU.
+ * The data in this file is derived from OpenStreetMap and shared under ODbL 1.0.
  */
 
 import type { RealStagePart } from '../stage';

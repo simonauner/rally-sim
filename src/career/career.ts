@@ -1,18 +1,18 @@
 /**
- * Karriärens regler: ekonomi, uppgraderingar och bilpriser. Ren logik utan DOM; sparas av
- * store.ts och synkas med kontot. Alla funktioner returnerar ett nytt tillstånd.
+ * The career's rules: economy, upgrades and car prices. Pure logic without DOM; saved by
+ * store.ts and synced with the account. All functions return a new state.
  */
 
 import { MAX_HISTORY, type CareerState, type HistoryEntry } from '../account/protocol';
 import { CARS, type CarParams, type Sponsor } from '../physics/params';
 
 /**
- * Pengar man börjar med, utan bil. Räcker till en av de billiga bilarna hos bilhandlaren:
- * 240 GL med pengar över till delar, eller Ljungen och nästan inget mer.
+ * Starting money, without a car. Enough for one of the cheap cars at the dealer:
+ * the 240 GL with money left for parts, or the Ljung and almost nothing more.
  */
 export const START_MONEY = 10000;
 export const DAILY_BONUS = 500;
-/** Vad bilarna kostar hos bilhandlaren. */
+/** What the cars cost at the dealer. */
 export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 GL': 6000,
   'Kvarn 240 Turbo': 15000,
@@ -27,8 +27,8 @@ export const CAR_PRICES: Record<string, number> = {
 };
 
 /**
- * Bilarnas klass: 1 är 80-talets amatörbilar, 2 är kitcars och Grupp A-bilar som låses upp
- * när alla mästerskap i klass 1 är vunna. Bilar som saknas här räknas som klass 1.
+ * The cars' class: 1 is 80s amateur cars, 2 is kit cars and Group A cars that unlock
+ * when all class 1 championships are won. Cars missing here count as class 1.
  */
 export type Tier = 1 | 2;
 const CAR_TIERS: Record<string, Tier> = {
@@ -43,60 +43,60 @@ const CAR_TIERS: Record<string, Tier> = {
 export const tierOf = (car: string): Tier => CAR_TIERS[car] ?? 1;
 
 /**
- * Klassens takt mot klass 1 (guldtider och motståndare) och hur mycket mer prispengarna är värda.
- * shortcut: 0,92 är uppskattat från verkligheten (Rally4/Rally2 mot Rally5), inte uppmätt;
- * testföraren kör inte fort nog för att mäta skillnaden. Justera efter provkörning.
+ * The class's pace relative to class 1 (gold times and rivals) and how much more the prize money is worth.
+ * shortcut: 0.92 is estimated from the real world (Rally4/Rally2 vs Rally5), not measured;
+ * the test driver is not fast enough to measure the difference. Adjust after test drives.
  */
 export const TIER_PACE: Record<Tier, number> = { 1: 1, 2: 0.92 };
 export const TIER_PRIZE: Record<Tier, number> = { 1: 1, 2: 2 };
 
 export type UpgradeGroup = 'Motor' | 'Drivlina' | 'Bromsar' | 'Fjädring' | 'Kaross' | 'Däck';
 
-/** En del man kan köpa och montera, en gång per bil. Sparas som nivå 1 i garaget. */
+/** A part you can buy and fit, once per car. Saved as level 1 in the garage. */
 export interface Upgrade {
   id: string;
-  /** Bilklassen delen passar; klass 2 har egna, dyrare delar. */
+  /** The car class the part fits; class 2 has its own, more expensive parts. */
   tier: Tier;
   group: UpgradeGroup;
   name: string;
-  /** Fiktiv sponsor vars dekal klistras på bilen när delen är monterad. */
+  /** Fictional sponsor whose decal goes on the car when the part is fitted. */
   sponsor: Sponsor;
   price: number;
-  /** Vad delen gör, för menyn. */
+  /** What the part does, for the menu. */
   effect: string;
-  /** Vilka bilar i klassen delen passar; saknas den passar alla. */
+  /** Which cars in the class the part fits; if missing, it fits all. */
   fits?: (p: CarParams) => boolean;
   apply: (p: CarParams) => void;
 }
 
-/** Bilarnas fabriksparametrar efter namn. */
+/** The cars' factory parameters by name. */
 const PARAMS = new Map(CARS.map((m) => [m.make().name, m.make()]));
 const awd = (p: CarParams) => !!p.centerDiff;
 const turbo = (p: CarParams) => !!p.engine.turbo;
 const only = (name: string) => (p: CarParams) => p.name === name;
 const brenner = only('Brenner 5T Coupé');
-/** Ändrar turbons egenskaper; bara för delar med `fits: turbo`. */
+/** Changes the turbo's properties; only for parts with `fits: turbo`. */
 const tuneTurbo = (p: CarParams, t: Partial<NonNullable<CarParams['engine']['turbo']>>) => {
   p.engine = { ...p.engine, turbo: { ...p.engine.turbo!, ...t } };
 };
 const fits = (u: Upgrade, p: CarParams) => u.fits?.(p) ?? true;
 
-/** Tar bort vikt och tröghet i samma andel. */
+/** Removes mass and inertia in the same proportion. */
 const lighten = (p: CarParams, kg: number) => {
   const k = (p.mass - kg) / p.mass;
   p.mass -= kg;
   p.inertia = p.inertia.map((i) => i * k) as CarParams['inertia'];
 };
 
-/** Skalar vridmomentkurvan med en faktor som beror på varvtalet. */
+/** Scales the torque curve by a factor that depends on rpm. */
 const torque = (p: CarParams, factor: (rpm: number) => number) => {
   p.engine = { ...p.engine, curveNm: p.engine.curveNm.map((nm, i) => nm * factor(p.engine.curveRpm[i]!)) };
 };
 
 /**
- * Delarna. Effekterna är måttliga och staplas, så en fullt byggd 240 GL fortfarande är en 240 GL.
- * shortcut: fysiken har ingen bromsfading eller motorvärme, så borrade skivor och luftfilter ger bara
- * mer moment; ge dem egna effekter om det modelleras.
+ * The parts. The effects are moderate and stack, so a fully built 240 GL is still a 240 GL.
+ * shortcut: the physics has no brake fade or engine heat, so drilled discs and air filters only give
+ * more torque; give them their own effects if that gets modelled.
  */
 export const UPGRADES: Upgrade[] = [
   {
@@ -285,7 +285,7 @@ export const UPGRADES: Upgrade[] = [
     fits: turbo,
     apply: (p) => tuneTurbo(p, { spool: p.engine.turbo!.spool * 0.8 }),
   },
-  // Klass 2: tävlingsdelar till kitcars och Grupp A-bilar.
+  // Class 2: competition parts for kit cars and Group A cars.
   {
     tier: 2,
     id: 'ecu',
@@ -338,7 +338,7 @@ export const UPGRADES: Upgrade[] = [
     name: 'Lamellspärr',
     price: 7000,
     effect: 'Nästan låst diff: drar rakt ut ur kurvorna men vill gå rakt fram',
-    // Låser både fram- och bakaxeln på en fyrhjulsbil och gör den bara mer understyrd.
+    // Locks both the front and rear axle on a 4WD car and only makes it understeer more.
     fits: (p) => !awd(p),
     apply: (p) => {
       p.diff = { lock: Math.max(p.diff.lock, 0.75), preload: Math.max(p.diff.preload, 120) };
@@ -402,7 +402,7 @@ export const UPGRADES: Upgrade[] = [
       p.gripScale *= 1.06;
     },
   },
-  // Klass 2 efter motor och drivlina.
+  // Class 2 by engine and drivetrain.
   {
     tier: 2,
     id: 'throttles',
@@ -468,7 +468,7 @@ export const UPGRADES: Upgrade[] = [
       p.centerDiff = { lock: Math.min(0.9, c.lock + 0.15), preload: c.preload + 30 };
     },
   },
-  // Delar till en enda bil.
+  // Parts for a single car.
   {
     tier: 2,
     id: 'headers',
@@ -523,7 +523,7 @@ export const UPGRADES: Upgrade[] = [
       p.gearbox = { ...p.gearbox, shiftTime: p.gearbox.shiftTime * 0.4 };
     },
   },
-  // Brenner: femcylindern och coupékarossen från Grupp B-tiden.
+  // Brenner: the five-cylinder and the coupé body from the Group B era.
   {
     tier: 2,
     id: 'head20v',
@@ -566,7 +566,7 @@ export const UPGRADES: Upgrade[] = [
   },
 ];
 
-/** De gamla uppgraderingarna i nivåer, och vad varje nivå kostade. Köpta nivåer återbetalas. */
+/** The old levelled upgrades, and what each level cost. Bought levels are refunded. */
 const OLD_UPGRADES: Record<string, number[]> = {
   engine: [2000, 4500, 8000],
   brakes: [1000, 2500, 4000],
@@ -574,7 +574,7 @@ const OLD_UPGRADES: Record<string, number[]> = {
   tyres: [1500, 3500, 6000],
 };
 
-/** Byter gamla nivåuppgraderingar, och delar som inte längre passar bilen, mot pengarna tillbaka. Samma resultat varje gång, så den kan köras vid varje laddning. */
+/** Swaps old levelled upgrades, and parts that no longer fit the car, for a refund. Same result every time, so it can run on every load. */
 export function migrateCareer(career: CareerState): CareerState {
   let refund = 0;
   const garage: CareerState['garage'] = {};
@@ -599,23 +599,23 @@ export function newCareer(): CareerState {
 
 export const levelOf = (career: CareerState, car: string, upgrade: string) => career.garage[car]?.upgrades[upgrade] ?? 0;
 
-/** Delarna som passar bilen. */
+/** The parts that fit the car. */
 export const upgradesFor = (car: string) => {
   const p = PARAMS.get(car);
   return UPGRADES.filter((u) => u.tier === tierOf(car) && (!p || fits(u, p)));
 };
 
-/** Dekalerna för bilens monterade delar, i delarnas ordning. */
+/** The decals for the car's fitted parts, in part order. */
 export const sponsorsOf = (upgrades: Record<string, number>) => UPGRADES.filter((u) => upgrades[u.id]).map((u) => u.sponsor);
 
-/** Bilens parametrar med karriärens uppgraderingar. */
+/** The car's parameters with the career's upgrades. */
 export function applyUpgrades(params: CarParams, upgrades: Record<string, number>): CarParams {
   const p = { ...params };
   for (const u of UPGRADES) if (upgrades[u.id] && fits(u, params)) u.apply(p);
   return p;
 }
 
-/** Lägger till en rad i historiken; de äldsta faller bort när den är full. */
+/** Adds a row to the history; the oldest drop off when it is full. */
 export function logged(career: CareerState, entry: Omit<HistoryEntry, 'at'>, at = Date.now()): CareerState {
   return { ...career, history: [...(career.history ?? []), { ...entry, at }].slice(-MAX_HISTORY) };
 }
@@ -641,7 +641,7 @@ export function buyCar(career: CareerState, car: string): BuyResult {
   return logged({ ...career, money: career.money - price, garage: { ...career.garage, [car]: { upgrades: {} } } }, { kind: 'car', name: car, amount: -price });
 }
 
-/** Dagsbonusen, en gång per dag. `today` är YYYY-MM-DD i lokal tid. */
+/** The daily bonus, once per day. `today` is YYYY-MM-DD in local time. */
 export function claimDailyBonus(career: CareerState, today: string): { career: CareerState; bonus: number } {
   if (career.bonusDay === today) return { career, bonus: 0 };
   return { career: { ...career, money: career.money + DAILY_BONUS, bonusDay: today }, bonus: DAILY_BONUS };
@@ -649,7 +649,7 @@ export function claimDailyBonus(career: CareerState, today: string): { career: C
 
 export const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/** Medaljgränser per etapp (sekunder) och prispengar. Den som går i mål får alltid något. */
+/** Medal thresholds per stage (seconds) and prize money. Finishing always pays something. */
 export const MEDALS = [
   { name: 'guld', prize: 1200 },
   { name: 'silver', prize: 800 },
@@ -657,54 +657,54 @@ export const MEDALS = [
 ] as const;
 export const FINISH_PRIZE = 250;
 export const STAGE_TARGETS: Record<string, [gold: number, silver: number, bronze: number]> = {
-  // Värmskog i tre delar. Testföraren med grusdäck: Grinsbol 233 s, Tollesrud 218 s och
-  // Åsterud 222 s i skymning.
+  // Värmskog in three parts. The test driver on gravel tyres: Grinsbol 233 s, Tollesrud 218 s and
+  // Åsterud 222 s at dusk.
   Grinsbol: [235, 260, 298],
   Tollesrud: [219, 242, 278],
   Åsterud: [226, 250, 287],
-  // Gårdsjö och Colins. Testföraren: Botten 280 s i gryning, Rannsjön 268 s, Larssäter 208 s och
+  // Gårdsjö and Colins. The test driver: Botten 280 s at dawn, Rannsjön 268 s, Larssäter 208 s and
   // Stor-Jangen 214 s.
   Botten: [286, 316, 363],
   Rannsjön: [270, 299, 342],
   Larssäter: [210, 232, 266],
   'Stor-Jangen': [216, 239, 274],
-  // Royal Forest i fyra delar. Testföraren: Södra Hulteby 236 s, Ämten 223 s, Lindås 226 s och
+  // Royal Forest in four parts. The test driver: Södra Hulteby 236 s, Ämten 223 s, Lindås 226 s and
   // Lungsund 240 s.
   'Södra Hulteby': [238, 263, 302],
   Ämten: [225, 249, 285],
   Lindås: [228, 252, 289],
   Lungsund: [242, 268, 307],
-  // Ängebäckstorp och Ölme. Testföraren: Sundstorp 262 s, Bäckelid 270 s, Niklasdamm 217 s och
-  // Broby 202 s i skymning.
+  // Ängebäckstorp and Ölme. The test driver: Sundstorp 262 s, Bäckelid 270 s, Niklasdamm 217 s and
+  // Broby 202 s at dusk.
   Sundstorp: [264, 292, 335],
   Bäckelid: [272, 301, 345],
   Niklasdamm: [219, 242, 278],
   Broby: [207, 229, 262],
-  // Bygdsiljum i fem delar på drygt 5 km. Testföraren med vinterdäck: Åsjön 290 s, Altarliden
-  // 292 s, Bergtjärnen 293 s, Torpet 303 s (T-korsningen i krypfart) och Trollberget 293 s på natten.
+  // Bygdsiljum in five parts of just over 5 km. The test driver on winter tyres: Åsjön 290 s, Altarliden
+  // 292 s, Bergtjärnen 293 s, Torpet 303 s (the T-junction at crawling speed) and Trollberget 293 s at night.
   Åsjön: [292, 323, 370],
   Altarliden: [293, 324, 372],
   Bergtjärnen: [296, 327, 375],
   Torpet: [305, 337, 387],
   Trollberget: [304, 336, 385],
-  // Bäck i tre delar på cirka 3,4 km. Testföraren med vinterdäck: Näs 190 s, Rickleån 195 s och
-  // Valsfäboda 195 s i skymning.
+  // Bäck in three parts of about 3.4 km. The test driver on winter tyres: Näs 190 s, Rickleån 195 s and
+  // Valsfäboda 195 s at dusk.
   Näs: [191, 211, 242],
   Rickleån: [196, 217, 249],
   Valsfäboda: [199, 220, 252],
-  // Andersvattnet i fyra delar på drygt 5 km. Testföraren med vinterdäck: Storberget 291 s,
-  // Hösjöälven 303 s (hårnålen i krypfart), Röjmyrberget 323 s och Flarkån 314 s i skymning.
+  // Andersvattnet in four parts of just over 5 km. The test driver on winter tyres: Storberget 291 s,
+  // Hösjöälven 303 s (the hairpin at crawling speed), Röjmyrberget 323 s and Flarkån 314 s at dusk.
   Storberget: [293, 324, 371],
   Hösjöälven: [306, 338, 388],
   Röjmyrberget: [324, 358, 411],
   Flarkån: [318, 352, 403],
 };
 
-/** Medaljgränserna för en etapp i bilens klass, eller undefined för en okänd etapp. */
+/** The medal thresholds for a stage in the car's class, or undefined for an unknown stage. */
 export const stageTargets = (stageName: string, tier: Tier = 1) =>
   STAGE_TARGETS[stageName]?.map((t) => Math.round(t * TIER_PACE[tier])) as [number, number, number] | undefined;
 
-/** Prispengarna för ett enstaka åk; klass 2 har snävare gränser och större priser. */
+/** The prize money for a single run; class 2 has tighter thresholds and bigger prizes. */
 export function prizeFor(stageName: string, time: number, tier: Tier = 1): { medal: string | null; prize: number } {
   const targets = stageTargets(stageName, tier);
   const i = targets ? targets.findIndex((t) => time <= t) : -1;

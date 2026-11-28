@@ -2,14 +2,14 @@ import { Quaternion, Vector3 } from 'three';
 import type { Car } from './car';
 import type { Stage } from './stage';
 
-/** En hel avspärrning: två trästolpar och bräder (kg). Lätt mot bilen, men märks. */
+/** A whole barrier: two wooden posts and boards (kg). Light compared with the car, but noticeable. */
 const MASS = 40;
 const HEIGHT = 1.1;
 const POST = 0.12;
 const BOARD_Y = 0.85;
 const BOARD_H = 0.3;
 const BOARD_T = 0.06;
-/** Halva djupet där en träff räknas; tjockare än brädan så bilen inte hoppar över den i ett steg. */
+/** Half the depth within which a hit counts; thicker than the board so the car can't skip past it in one step. */
 const HIT_DEPTH = 0.3;
 const GRAVITY = 9.81;
 
@@ -31,12 +31,12 @@ const tmpQ = new Quaternion();
 const tmpAxis = new Vector3();
 
 /**
- * Avspärrningarna vid korsningarna. De står kvar tills bilen kör in i dem; då tar bilen en
- * smäll motsvarande avspärrningens massa och delarna flyger iväg.
+ * The barriers at the junctions. They stay up until the car drives into them; then the car takes a
+ * hit matching the barrier's mass and the parts fly off.
  */
 export class Barriers {
   readonly parts: BarrierPart[] = [];
-  /** Delarna i parts som hör till varje avspärrning, och om den är nerkörd. */
+  /** The parts in `parts` belonging to each barrier, and whether it has been knocked down. */
   private groups: { from: number; to: number; down: boolean }[] = [];
 
   constructor(private stage: Stage) {
@@ -56,7 +56,7 @@ export class Barriers {
     this.reset();
   }
 
-  /** Ställer upp alla avspärrningar igen. */
+  /** Puts all barriers back up. */
   reset() {
     for (const p of this.parts) {
       p.pos.copy(p.home.pos);
@@ -68,7 +68,7 @@ export class Barriers {
     for (const g of this.groups) g.down = false;
   }
 
-  /** Ett fysiksteg: träffar från bilen och delar i luften. */
+  /** One physics step: hits from the car and parts in the air. */
   update(car: Car, dt: number) {
     this.stage.barriers.forEach((r, i) => {
       const g = this.groups[i]!;
@@ -109,7 +109,7 @@ export class Barriers {
 
   private knock(g: { from: number; to: number; down: boolean }, car: Car, at: Vector3) {
     g.down = true;
-    // Fullständigt oelastisk stöt längs bilens rörelse: bilen ger avspärrningen sin fart.
+    // Perfectly inelastic impact along the car's motion: the car gives the barrier its velocity.
     const m = car.params.mass;
     tmpR.copy(at).sub(car.pos);
     const v = car.pointVelocity(tmpR, new Vector3());

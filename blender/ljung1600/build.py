@@ -1,26 +1,28 @@
 """
-Bygger Ljung 1600 S i Blender och sparar ljung1600.blend bredvid skriptet.
+Builds the Ljung 1600 S in Blender and saves ljung1600.blend next to the script.
 
     blender -b --factory-startup -P blender/ljung1600/build.py
     blender -b --factory-startup -P blender/ljung1600/build.py -- ljung2000   # blender/ljung2000/ljung2000.blend
 
-Ljung 2000 16V är kitcaren på samma kaross och hjulbas: breddad så att hjulhusen hamnar över dess
-bredare spårvidd (1,48 m i stället för 1,40 m), 3 cm lägre, med större hjulhus och breddare, en stor gul
-lykta per sida i stället för två, grill över hela fronten, svart stötfångare med hål och lackad spoiler med
-luftintag, lackade backspeglar, mörka fälgar med fem hål och ett luftintag på taket. Det som skiljer styrs
-av KIT nedan.
+The Ljung 2000 16V is the kit car on the same body and wheelbase: widened so the wheel arches sit over its
+wider track (1.48 m instead of 1.40 m), 3 cm lower, with larger wheel arches and flares, one large yellow
+light per side instead of two, a grille across the whole front, a black bumper with holes and a painted
+spoiler with air intakes, painted mirrors, dark rims with five holes and an air intake on the roof. The
+differences are controlled by KIT below.
 
-Skriptet ger en första version. Därefter är .blend-filen källan: redigera den i Blender och kör
-blender/export.py för att föra över den till spelet. Kör bara om det här skriptet om du vill börja om.
+The script produces a first version. After that the .blend file is the source: edit it in Blender and run
+blender/export.py to transfer it to the game. Only rerun this script if you want to start over.
 
-Koordinater: allt räknas i bilens koordinater (x = vänster, y = upp, z = framåt, origo i tyngdpunkten)
-och läggs in i Blender som X = x, Y = -z, Z = y, så bilen pekar mot -Y som i Blenders framvy.
-Marken ligger på y = -0,503 och hjulens centrum på y ≈ -0,21 när bilen står still i spelet.
+Coordinates: everything is computed in car coordinates (x = left, y = up, z = forward, origin at the
+centre of mass) and placed in Blender as X = x, Y = -z, Z = y, so the car points towards -Y as in
+Blender's front view. The ground is at y = -0.503 and the wheel centres at y ≈ -0.21 when the car is at
+rest in the game.
 
-Förebilden är en liten tredörrars halvkombi från 80-talet: kort huv som sluttar mot fronten, lång dörr,
-bred C-stolpe och nästan lodrät baklucka. Längder och höjder är uppmätta på en bild rakt från sidan,
-skalad efter spelets hjulbas på 2,40 m (en aning kortare än förebildens), så bilen blir 3,74 m lång
-över stötfångarna och 1,61 m bred. Karossen är skalet; lyktor, grill, stötfångare och fälgar är egna delar.
+The original is a small three-door hatchback from the 80s: short bonnet sloping towards the front, long
+door, wide C-pillar and a nearly vertical tailgate. Lengths and heights are measured from a straight side
+view, scaled by the game's wheelbase of 2.40 m (slightly shorter than the original's), so the car is
+3.74 m long over the bumpers and 1.61 m wide. The body is the shell; lights, grille, bumpers and rims are
+parts of their own.
 """
 
 import math
@@ -36,16 +38,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from simplify import simplify  # noqa: E402
 
 GROUND = -0.503
-WHEELS = [(0.912, -0.203), (-1.488, -0.229)]  # (z, y) fram och bak
+WHEELS = [(0.912, -0.203), (-1.488, -0.229)]  # (z, y) front and rear
 TRACK = [0.70, 0.69]
 TYRE_R = 0.29
 
-# Ljung 2000 16V (kitcaren). main() slår på KIT och byter hjulhusens och fälgens mått i KIT_OVERRIDES.
+# Ljung 2000 16V (the kit car). main() turns on KIT and swaps the wheel arch and rim dimensions in KIT_OVERRIDES.
 KIT = False
-KIT_DROP = 0.03  # hur mycket lägre karossen sitter över hjulen
-KIT_LAMP = (0.6, 0.1)  # (x, radie) för den enda lyktan per sida
+KIT_DROP = 0.03  # how much lower the body sits over the wheels
+KIT_LAMP = (0.6, 0.1)  # (x, radius) of the single light per side
 
-# Materialen, i samma ordning som paletten i src/render/models/model.ts.
+# The materials, in the same order as the palette in src/render/models/model.ts.
 MATERIALS = [
     ('paint', (0.2, 0.24, 0.36)),
     ('glass', (0.17, 0.23, 0.26)),
@@ -57,7 +59,7 @@ MATERIALS = [
     ('tail', (0.63, 0.09, 0.09)),
     ('reverse', (0.85, 0.83, 0.8)),
     ('plate', (0.93, 0.93, 0.92)),
-    ('shade', (0.14, 0.17, 0.26)),  # skarvar: lacken i skugga
+    ('shade', (0.14, 0.17, 0.26)),  # seams: paint in shadow
 ]
 M = {name: i for i, (name, _) in enumerate(MATERIALS)}
 
@@ -79,7 +81,7 @@ def clamp01(t):
 
 
 def piecewise(points, x):
-    """Linjär interpolation i en lista (x, y) sorterad på x."""
+    """Linear interpolation in a list of (x, y) sorted by x."""
     if x <= points[0][0]:
         return points[0][1]
     for (x0, y0), (x1, y1) in zip(points, points[1:]):
@@ -88,26 +90,26 @@ def piecewise(points, x):
     return points[-1][1]
 
 
-# --- Skalet: huv, sidor, bakparti ------------------------------------------------------------
+# --- The shell: bonnet, sides, tail ----------------------------------------------------------
 
-# Plåtens främre och bakre kontur sett från sidan (y, z). Fronten är nästan lodrät under huvens framkant,
-# med lyktorna och grillen i en svart panel; stötfångaren (egen del) ligger utanpå nertill. Bak är
-# bakpanelen lodrät under bakluckans knä.
+# The panel's front and rear outline seen from the side (y, z). The front is nearly vertical below the bonnet's front edge,
+# with the lights and grille in a black panel; the bumper (a part of its own) sits outside at the bottom. At the rear
+# the rear panel is vertical below the tailgate's knee.
 FRONT = [(-0.15, 1.46), (-0.08, 1.53), (0.0, 1.55), (0.2, 1.552), (0.235, 1.54), (0.25, 1.52)]
 REAR = [(-0.15, -1.93), (-0.08, -2.03), (0.0, -2.062), (0.3, -2.068), (0.47, -2.068)]
 NOSE, TAIL = 1.552, -2.068
 
-COWL = 0.454  # vindrutans fot (z)
-BELT_REAR = -1.565  # gördellinjens bakände, där bakluckan tar vid
+COWL = 0.454  # windscreen foot (z)
+BELT_REAR = -1.565  # the belt line's rear end, where the tailgate takes over
 
 
 def belt(z):
-    """Gördellinjen stiger en aning bakåt (kilform)."""
+    """The belt line rises slightly towards the rear (wedge shape)."""
     return lerp(0.425, 0.458, clamp01((COWL - z) / (COWL - BELT_REAR)))
 
 
 def body_top(z):
-    """Ovansidans mittlinje: huven välver ner mot fronten, bakom vindrutan gördellinjen."""
+    """Top centreline: the bonnet curves down towards the front, behind the windscreen the belt line."""
     if z >= COWL:
         return piecewise([(COWL, 0.425), (0.627, 0.39), (1.108, 0.319), (1.45, 0.262), (NOSE, 0.235)], z)
     return belt(z)
@@ -118,7 +120,7 @@ def body_bottom(z):
 
 
 def body_halfwidth(z):
-    """Halva bredden sett ovanifrån: raka sidor, nosen och bakpartiet drar in en aning."""
+    """Half width seen from above: straight sides, the nose and tail pull in slightly."""
     w = 0.805
     if z > 1.35:
         w *= 1 - 0.07 * clamp01((z - 1.35) / (NOSE - 1.35)) ** 2
@@ -128,17 +130,18 @@ def body_halfwidth(z):
 
 
 def clip_range(profile, z, front):
-    """Höjdintervallet där plåten når fram (bak) till z, ur sidokonturen."""
+    """The height range where the panel reaches forward (back) to z, from the side outline."""
     ys = [y / 200 for y in range(-70, 120)]
     inside = [y for y in ys if (piecewise(profile, y) >= z if front else piecewise(profile, y) <= z)]
     return (min(inside), max(inside)) if inside else None
 
 
 def rounded_rect_ring(hw, bottom, top, rt, rb, k, squeeze=lambda y: 1.0, crown=0.0):
-    """Sluten ring i ett tvärsnitt: rak ovansida och sida med rundade hörn (radie rt upptill, rb nertill).
+    """Closed ring in a cross-section: straight top and side with rounded corners (radius rt at the top, rb
+    at the bottom).
 
-    squeeze(y) skalar x på höjden y (sidorna lutar inåt), crown välver ovansidan. Punkterna fördelas
-    jämnt längs omkretsen, k st, med start mitt på ovansidan.
+    squeeze(y) scales x at height y (the sides lean inwards), crown cambers the top. The points are spread
+    evenly along the perimeter, k of them, starting in the middle of the top.
     """
     h = top - bottom
     rt, rb = min(rt, h / 2, hw), min(rb, h / 2, hw)
@@ -175,7 +178,7 @@ def rounded_rect_ring(hw, bottom, top, rt, rb, k, squeeze=lambda y: 1.0, crown=0
 
 
 def stations(z0, z1, fine_ends):
-    """Snitt längs bilen, tätare nära ändarna där formen ändras snabbt."""
+    """Sections along the car, denser near the ends where the shape changes quickly."""
     zs = []
     z = z0
     while z < z1:
@@ -187,7 +190,7 @@ def stations(z0, z1, fine_ends):
 
 
 def loft(name, rings):
-    """Ett slutet skal av ringar (lika många punkter), med lock i båda ändar."""
+    """A closed shell from rings (the same number of points), with caps at both ends."""
     bm = bmesh.new()
     loops = [[bm.verts.new(to_blender(x, y, z)) for x, y in ring] for z, ring in rings]
     k = len(loops[0])
@@ -216,16 +219,16 @@ def lower_body():
         if top - bottom < 0.01:
             mid = (top + bottom) / 2
             top, bottom = mid + 0.005, mid - 0.005
-        # Sidorna är nästan lodräta; axeln över sidolisten drar in mot huven och gördellinjen.
+        # The sides are nearly vertical; the shoulder above the side strip pulls in towards the bonnet and belt line.
         shoulder = lambda y, t=top: 1 - 0.03 * clamp01((y - (t - 0.14)) / 0.14)  # noqa: E731
         rings.append((z, rounded_rect_ring(body_halfwidth(z), bottom, top, 0.05, 0.06, 64, shoulder, crown=0.015)))
     return loft('lower', rings)
 
 
-# --- Kupén: sluttande vindruta, platt tak, bred C-stolpe och brant baklucka ------------------
+# --- Cabin: sloping windscreen, flat roof, wide C-pillar and steep tailgate ------------------
 
-# Takets och bakluckans kontur (z, y): vindrutan från gördellinjen upp till taket, taket nästan platt,
-# bakluckan brant ner till knät ovanför baklyktorna och sedan lodrät.
+# The outline of the roof and tailgate (z, y): the windscreen from the belt line up to the roof, the roof nearly flat,
+# the tailgate steeply down to the knee above the tail lights and then vertical.
 ROOF = [(TAIL, 0.462), (-2.02, 0.52), (-1.969, 0.56), (-1.75, 0.706), (-1.62, 0.8), (-1.546, 0.835), (-1.45, 0.85),
         (-0.623, 0.858), (-0.15, 0.85), (-0.06, 0.838), (0.0, 0.81), (COWL, 0.425)]
 ROOF_FRONT, ROOF_REAR = -0.036, -1.546
@@ -238,8 +241,8 @@ def greenhouse():
         top = piecewise(ROOF, z)
         if top - base < 0.02:
             top = base + 0.02
-        # Sidorutorna lutar tydligt inåt; kupén smalnar lite mot vindrutan men breddas i bakluckan, så
-        # bakrutan blir nästan lika bred som karossen.
+        # The side windows clearly lean inwards; the cabin narrows a little towards the windscreen but widens at the tailgate, so
+        # the rear window is nearly as wide as the body.
         front = clamp01((z + 0.1) / 0.55)
         rear = clamp01((-1.5 - z) / 0.5)
         wb = 0.75 - 0.03 * front + 0.03 * rear
@@ -249,7 +252,7 @@ def greenhouse():
     return loft('greenhouse', rings)
 
 
-ARCH_R = 0.335  # hjulhusets öppning; plastbreddaren runt den är svart ut till FLARE_R
+ARCH_R = 0.335  # the wheel arch opening; the plastic flare around it is black out to FLARE_R
 FLARE_R = 0.4
 
 
@@ -286,7 +289,7 @@ def build_body():
     dec = lower.modifiers.new('decimate', 'DECIMATE')
     dec.ratio = 0.16
     apply_all(lower)
-    # Hjulhusen och baklyktornas fickor fräses ut efter omformningen, så kanterna blir rena.
+    # The wheel arches and the tail lights' pockets are cut out after reshaping, so the edges become clean.
     for c in [*arch_cutters(), *tail_pockets()]:
         mod = lower.modifiers.new('arch', 'BOOLEAN')
         mod.operation = 'DIFFERENCE'
@@ -298,14 +301,14 @@ def build_body():
     return lower
 
 
-# --- Färger: material per yta ----------------------------------------------------------------
+# --- Colours: material per face --------------------------------------------------------------
 #
-# Färgfälten avgränsas av plan. Nätet skärs först längs planen (cut_planes), så varje yta hamnar helt
-# på ena sidan och kanterna blir raka; sedan väljs material efter ytans mitt och normal.
+# The colour fields are bounded by planes. The mesh is first cut along the planes (cut_planes), so each face
+# ends up entirely on one side and the edges become straight; then the material is chosen from the face's centre and normal.
 
 
 def plane(nx, ny, nz, d):
-    """Planet n·p = d i bilens koordinater, normerat."""
+    """The plane n·p = d in car coordinates, normalised."""
     n = Vector((nx, ny, nz))
     return n.normalized(), d / n.length
 
@@ -319,7 +322,7 @@ def mirrored(x):
 
 
 def line_plane(a, b, x_axis=False):
-    """Planet genom linjen a–b i (z, y) (eller (|x|, y) med x_axis), normal uppåt-framåt (utåt)."""
+    """The plane through the line a–b in (z, y) (or (|x|, y) with x_axis), normal up-forward (outwards)."""
     (u0, y0), (u1, y1) = a, b
     nu, ny = y1 - y0, u0 - u1
     if ny < 0:
@@ -334,37 +337,37 @@ def flip_x(pl):
 Y = lambda y: plane(0, 1, 0, y)  # noqa: E731
 Z = lambda z: plane(0, 0, 1, z)  # noqa: E731
 
-# Kupén: rutornas underkant följer gördellinjen; takkanten, vindrutans och bakrutans kanter och stolparna.
+# The cabin: the windows' lower edge follows the belt line; the roof edge, the edges of the windscreen and rear window, and the pillars.
 BELT = line_plane((COWL, 0.432), (BELT_REAR, 0.466))
 WINDOW_TOP = 0.79
-# A-stolpen är lackad, med svart gummilist mot dörrutan; dörrutans framkant är parallell med vindrutan.
+# The A-pillar is painted, with a black rubber seal against the door window; the door window's front edge is parallel to the windscreen.
 A_LINE = line_plane((0.339, 0.432), (-0.087, WINDOW_TOP))
 A_FRAME = line_plane((0.357, 0.432), (-0.069, WINDOW_TOP))
-# Den breda C-stolpen: kvartsrutans bakkant lutar framåt uppåt.
+# The wide C-pillar: the quarter window's rear edge leans forward going up.
 C_LINE = line_plane((-1.56, 0.47), (-1.24, WINDOW_TOP))
 C_GLASS = line_plane((-1.545, 0.47), (-1.225, WINDOW_TOP))
 B_PILLAR, B_FRAME = (-0.72, -0.637), (-0.734, -0.623)
-# Vindrutans sidokant följer kupéns hörn på ett fast avstånd, så A-stolpen blir lika bred hela vägen.
+# The windscreen's side edge follows the cabin's corner at a fixed distance, so the A-pillar is equally wide all the way.
 SCREEN_SIDE = plane(1, 0, 0.0714, 0.5524)
 SCREEN_FRAME = plane(1, 0, 0.0714, 0.5684)
-# Bakrutan i bakluckan, smalare upptill, med svart list runt om; under den lackad plåt.
+# The rear window in the tailgate, narrower at the top, with a black strip all around; painted panel below it.
 BACKLIGHT_SIDE = line_plane((0.66, 0.58), (0.56, 0.83), x_axis=True)
 BACKLIGHT_FRAME = line_plane((0.675, 0.58), (0.575, 0.83), x_axis=True)
 BACKLIGHT_Y = (0.585, 0.83)
-# Skarvar: dörrarna, huven och bakluckan.
+# Seams: the doors, the bonnet and the tailgate.
 SEAM_W = 0.01
 DOOR_SEAMS = (0.477, -0.676)
 HOOD_SEAM_X = 0.7
-COWL_PANEL = 0.5  # svart plastpanel mellan huven och vindrutan
-# Bakluckans sidoskarvar följer baklyktornas lutande innerkant ner till den vågräta skarven nertill.
+COWL_PANEL = 0.5  # black plastic panel between the bonnet and the windscreen
+# The tailgate's side seams follow the tail lights' sloping inner edge down to the horizontal seam at the bottom.
 HATCH_IN = line_plane((0.518, 0.27), (0.603, 0.456), x_axis=True)
 HATCH_OUT = line_plane((0.518 + SEAM_W, 0.27), (0.603 + SEAM_W, 0.456), x_axis=True)
 HATCH_SEAM_Y = 0.07
-# Sidan: en skuggad veckad linje, en svart skyddslist och svarta trösklar.
+# The side: a shaded crease line, a black rubbing strip and black sills.
 CREASE_Y = (0.214, 0.222)
 MOLDING_Y = (-0.028, 0.049)
 SILL_Y = -0.153
-# Fronten: svart panel bakom lyktorna och grillen, under huvens framkant.
+# The front: black panel behind the lights and grille, below the bonnet's front edge.
 PANEL_Y, PANEL_X = (0.03, 0.232), 0.76
 
 FRONT_ZONE = lambda c: c[2] > 1.4  # noqa: E731
@@ -377,8 +380,8 @@ SCREEN_ZONE = lambda c: CABIN_ZONE(c) and c[2] > ROOF_FRONT - 0.12  # noqa: E731
 BACKLIGHT_ZONE = lambda c: CABIN_ZONE(c) and c[2] < ROOF_REAR + 0.02  # noqa: E731
 
 CUTS = [
-    # Rutornas plan skär bara där rutorna finns: plan som fortsätter över taket ger smala flisor som
-    # gallringen (simplify) slår ihop till spetsar.
+    # The window planes only cut where the windows are: planes that continue over the roof give thin slivers that
+    # the thinning (simplify) merges into spikes.
     (CABIN_ZONE, [BELT, Z(ROOF_FRONT), Z(ROOF_REAR)]),
     (SIDE_GLASS_ZONE, [Y(WINDOW_TOP), Y(WINDOW_TOP + 0.012), A_LINE, A_FRAME, C_LINE, C_GLASS, *(Z(v) for v in (*B_PILLAR, *B_FRAME))]),
     (SCREEN_ZONE, [pl for sc in (SCREEN_SIDE, SCREEN_FRAME) for pl in (sc, flip_x(sc))]),
@@ -405,13 +408,13 @@ def cut_planes(obj):
 
 
 def pane_material(p, n):
-    """Kupén: rutor med svarta lister, lackade stolpar och tak."""
+    """The cabin: windows with black strips, painted pillars and roof."""
     x, y, z = p
     ax = abs(x)
     q = (ax, y, z)
     if not above(p, BELT):
         return None
-    # Vindrutan och bakrutan avgränsas bara av planen, så kanterna mot stolparna blir raka.
+    # The windscreen and rear window are bounded only by the planes, so the edges against the pillars become straight.
     if z > ROOF_FRONT and not above(q, SCREEN_SIDE):
         return M['glass']
     if z < ROOF_REAR and not above(q, BACKLIGHT_FRAME):
@@ -420,7 +423,7 @@ def pane_material(p, n):
         if BACKLIGHT_Y[0] - 0.015 < y < BACKLIGHT_Y[1] + 0.012:
             return M['black']
         return M['paint']
-    # Sidorna: rutorna under takkanten med svarta lister; taket och stolparna lackade.
+    # The sides: the windows below the roof edge with black strips; the roof and the pillars painted.
     if y > WINDOW_TOP + 0.012:
         return M['paint']
     if z > ROOF_FRONT - 0.1 and not above(q, SCREEN_FRAME):
@@ -443,7 +446,7 @@ def pane_material(p, n):
 def face_material(p, n):
     x, y, z = p
     ax = abs(x)
-    # Hjulhusen.
+    # The wheel arches.
     for zw, yw in WHEELS:
         if 0.45 < ax < 0.83 and math.hypot(z - zw, y - yw) < ARCH_R + 0.02 and abs(n.x) < 0.8:
             return M['black']
@@ -451,7 +454,7 @@ def face_material(p, n):
         pane = pane_material(p, n)
         if pane is not None:
             return pane
-    # Den svarta panelen i fronten bakom lyktorna och grillen.
+    # The black panel in the front behind the lights and grille.
     if FRONT_ZONE(p) and z > 1.5 and PANEL_Y[0] < y < PANEL_Y[1] and ax < PANEL_X and n.z > 0.5:
         return M['black']
     if SIDE_ZONE(p) and abs(n.x) > 0.4:
@@ -494,7 +497,7 @@ def assign_materials(obj, rule):
         poly.material_index = rule(c, n)
 
 
-# --- Lösa detaljer ---------------------------------------------------------------------------
+# --- Loose details ---------------------------------------------------------------------------
 
 
 def new_object(name, bm, mats, at):
@@ -511,9 +514,9 @@ def new_object(name, bm, mats, at):
 
 
 def assembly(name, at, boxes, prisms=(), discs=()):
-    """En del av lådor [(material, (x0, x1), (y0, y1), (z0, z1))], prismor [(material, [(x, z), ...], (y0, y1))]
-    med en konvex grundyta sett ovanifrån (eller [(material, [(x, y), ...], (z0, z1), 'z')] sedda bakifrån) och
-    runda skivor längs z [(material, (x, y), r, (z0, z1))], i bilens koordinater, med origo i `at`."""
+    """A part made of boxes [(material, (x0, x1), (y0, y1), (z0, z1))], prisms [(material, [(x, z), ...], (y0, y1))]
+    with a convex base seen from above (or [(material, [(x, y), ...], (z0, z1), 'z')] seen from behind) and
+    round discs along z [(material, (x, y), r, (z0, z1))], in car coordinates, with its origin at `at`."""
     mats = []
     bm = bmesh.new()
 
@@ -557,7 +560,7 @@ def mirror_x(xs, s):
 
 
 def cylinder_z(name, mat, at, r, length, segs=20):
-    """Cylinder längs bilens z (framåt) med centrum i `at`."""
+    """Cylinder along the car's z (forward) centred at `at`."""
     bm = bmesh.new()
     res = bmesh.ops.create_cone(bm, cap_ends=True, segments=segs, radius1=r, radius2=r, depth=length)
     bmesh.ops.rotate(bm, cent=Vector(), matrix=Matrix.Rotation(math.pi / 2, 3, 'X'), verts=res['verts'])
@@ -565,8 +568,8 @@ def cylinder_z(name, mat, at, r, length, segs=20):
 
 
 def tube_z(bm, r, length, segs=20, wall=0.004):
-    """Öppet rör längs bilens z med centrum i origo: utsidan och mynningens kant får material 0, insidan 1.
-    Ger rörets hörn."""
+    """Open tube along the car's z centred on the origin: the outside and the mouth's rim get material 0, the inside 1.
+    Returns the tube's vertices."""
     prof = [(r, -length / 2), (r, length / 2), (r - wall, length / 2), (r - wall, -length / 2)]
     rings = [[bm.verts.new(to_blender(rad * math.cos(a), rad * math.sin(a), z))
               for a in (2 * math.pi * i / segs for i in range(segs))] for rad, z in prof]
@@ -581,18 +584,18 @@ def tube_z(bm, r, length, segs=20, wall=0.004):
     return [v for ring in rings for v in ring]
 
 
-# Strålkastarna: två runda lyktor per sida i den svarta panelen, en stor ytterst och en mindre innanför,
-# var och en i en svart ring. Grillen med täta vågräta lameller går mellan de yttre lyktorna, bakom de
-# inre. Mätt på en bild rakt framifrån.
+# The headlights: two round lights per side in the black panel, a large one outermost and a smaller one inside it,
+# each in a black ring. The grille with dense horizontal slats runs between the outer lights, behind the
+# inner ones. Measured from a straight front view.
 LAMP_Y = 0.132
-LAMPS = [(0.584, 0.098), (0.358, 0.074)]  # (x, radie)
+LAMPS = [(0.584, 0.098), (0.358, 0.074)]  # (x, radius)
 LAMP_FACE = 1.566
 GRILLE_X, GRILLE_Y = 0.48, (0.05, 0.212)
 
 
 def headlamp(s, side):
     if KIT:
-        # En stor lykta med gult skydd; glödlampan skymtar nertill innanför.
+        # A large light with a yellow cover; the bulb is faintly visible inside at the bottom.
         x, r = KIT_LAMP
         discs = [('black', (s * x, LAMP_Y), r + 0.01, (1.52, LAMP_FACE - 0.004)), ('amber', (s * x, LAMP_Y), r, (1.52, LAMP_FACE)),
                  ('lamp', (s * (x - 0.03), LAMP_Y - 0.02), 0.035, (1.52, LAMP_FACE + 0.003))]
@@ -607,32 +610,32 @@ def headlamp(s, side):
 def grille():
     y0, y1 = GRILLE_Y
     face = 1.562
-    # Kitcaren har grill över hela fronten mellan lyktorna, med tätare lameller och inget märke.
+    # The kit car has a grille across the whole front between the lights, with denser slats and no badge.
     gx = KIT_LAMP[0] - KIT_LAMP[1] - 0.012 if KIT else GRILLE_X
     boxes = [('black', (-gx, gx), (y0, y1), (1.52, face - 0.01))]
-    # Vågräta lameller.
+    # Horizontal slats.
     n = 9 if KIT else 6
     for i in range(n):
         y = lerp(y0 + 0.015, y1 - 0.015, i / (n - 1))
         t = 0.006 if KIT else 0.007
         boxes.append(('dark', (-gx + 0.01, gx - 0.01), (y - t, y + t), (1.52, face - 0.004)))
-    # Märket mitt i grillen: en enkel rund kromad bricka.
+    # The badge in the middle of the grille: a simple round chrome plaque.
     discs = [] if KIT else [('chrome', (0, (y0 + y1) / 2), 0.04, (1.52, face + 0.004))]
     return assembly('grille', (0, (y0 + y1) / 2, 1.55), boxes, discs=discs)
 
 
-# Stötfångarna: svarta, raka över fronten och bakpanelen och vikta runt hörnen bakåt (framåt) till
-# hjulhusen, med en mörkgrå skyddslist i mitten av framsidan. Bakre sitter högre än den främre.
+# The bumpers: black, straight across the front and rear panel and wrapped around the corners back (forward) to
+# the wheel arches, with a dark grey rubbing strip in the middle of the face. The rear one sits higher than the front one.
 BUMPER_HALF, BUMPER_DEPTH, BUMPER_R = 0.815, 0.075, 0.09
 FRONT_BUMPER_Y, REAR_BUMPER_Y = (-0.128, 0.017), (-0.032, 0.107)
 FRONT_SPOILER_Y, FRONT_LIP_Y = (-0.245, -0.125), (-0.33, -0.24)
 
 
 def bumper(name, z_face, z_end, ys, half=BUMPER_HALF, colours=('black', 'dark')):
-    """En U-formad stötfångare: framsidan i z_face, sidorna bakåt till z_end."""
+    """A U-shaped bumper: the face at z_face, the sides back to z_end."""
     d = 1 if z_face > z_end else -1
     h, r = half, BUMPER_R
-    # Banan sett ovanifrån (x, z) med utåtriktad normal, från höger sida runt till vänster.
+    # The path seen from above (x, z) with an outward normal, from the right side around to the left.
     path = []
     for i in range(6):
         path.append(((-h, lerp(z_end, z_face - d * r, i / 5)), (-1, 0)))
@@ -650,7 +653,7 @@ def bumper(name, z_face, z_end, ys, half=BUMPER_HALF, colours=('black', 'dark'))
         path.append(((h, lerp(z_face - d * r, z_end, i / 5)), (1, 0)))
     y0, y1 = ys
     hh = y1 - y0
-    # Tvärsnittet (utåt, y): nederkanten drar in, framsidan med list, ovansidan lutar in mot plåten.
+    # The cross-section (outwards, y): the bottom edge pulls in, the face with a strip, the top leans in towards the panel.
     sec = [(-0.02, y0), (0, y0 + 0.2 * hh), (0, y0 + 0.62 * hh), (0.004, y0 + 0.7 * hh), (0, y0 + 0.86 * hh), (-0.015, y1),
            (-BUMPER_DEPTH, y1), (-BUMPER_DEPTH, y0)]
     mats = [0, 0, 0, 1, 0, 0, 0, 0]  # black, dark
@@ -667,25 +670,25 @@ def bumper(name, z_face, z_end, ys, half=BUMPER_HALF, colours=('black', 'dark'))
     return new_object(name, bm, list(colours), at)
 
 
-# Baklyktorna: trapetser i bakpartiets hörn under bakluckans knä, i en svart ram. Innerkanten lutar inåt
-# nedåt (bakluckan går ner mellan dem). Övre raden: backljus innanför och gul blinkers ytterst; nedre raden
-# tre röda fält. Mätt på närbilder rakt bakifrån. Lyktan sitter i en ficka som fräses ur karossens hörn
-# (tail_pockets) och fyller den, så att den viker runt hörnet och sidan blir glas fram till fickans kant.
+# The tail lights: trapezoids in the tail's corners below the tailgate's knee, in a black frame. The inner edge leans
+# inwards going down (the tailgate goes down between them). Top row: reversing light inside and yellow indicator outermost;
+# bottom row three red fields. Measured from close-ups straight from behind. The light sits in a pocket cut out of the body's
+# corner (tail_pockets) and fills it, so it wraps around the corner and the side is glass up to the pocket's edge.
 TAIL_Y = (0.27, 0.456)
 TAIL_SPLIT, TAIL_FACE = 0.366, -2.07
-TAIL_POCKET = -2.0  # fickans framkant (z): så långt fram längs sidan som lyktan når
-TAIL_TOP_SPLIT = 0.656  # mellan backljuset och blinkersen (x)
-TAIL_BOTTOM_SPLITS = (0.618, 0.706)  # mellan de röda fälten
+TAIL_POCKET = -2.0  # the pocket's front edge (z): as far forward along the side as the light reaches
+TAIL_TOP_SPLIT = 0.656  # between the reversing light and the indicator (x)
+TAIL_BOTTOM_SPLITS = (0.618, 0.706)  # between the red fields
 TAIL_GAP, TAIL_RIM = 0.004, 0.007
 
 
 def tail_inner(y):
-    """Lyktans innerkant (x) på höjden y: 0,53 nertill, 0,615 upptill."""
+    """The light's inner edge (x) at height y: 0.53 at the bottom, 0.615 at the top."""
     return lerp(0.53, 0.615, (y - TAIL_Y[0]) / (TAIL_Y[1] - TAIL_Y[0]))
 
 
 def tail_pockets():
-    """Fräsar för baklyktornas fickor: lyktans form med ram, från innerkanten ut förbi sidan."""
+    """Cutters for the tail lights' pockets: the light's shape with frame, from the inner edge out past the side."""
     cutters = []
     y0, y1 = TAIL_Y[0] - TAIL_RIM, TAIL_Y[1] + TAIL_RIM
     for s in (1, -1):
@@ -710,12 +713,12 @@ def tail_pockets():
 
 def taillamp(body, s, side):
     y0, y1, sp, g = *TAIL_Y, TAIL_SPLIT, TAIL_GAP
-    # Ytterkanten följer sidan där fickan börjar, så lyktans sida ligger i jämnhöjd med plåten framför.
+    # The outer edge follows the side where the pocket starts, so the light's side is flush with the panel in front.
     ox0, ox1 = (surface_x(body, y, TAIL_POCKET + 0.005) for y in (y0, y1))
     outer = lambda y: lerp(ox0, ox1, (y - y0) / (y1 - y0))  # noqa: E731
 
     def cell(mat, x0, x1, ya, yb, z0=TAIL_FACE):
-        """Ett fält mellan x0 och x1 (tal, eller funktioner av y för de lutande kanterna)."""
+        """A field between x0 and x1 (numbers, or functions of y for the sloping edges)."""
         at = lambda e, y: e(y) if callable(e) else e  # noqa: E731
         poly = [(s * at(x0, ya), ya), (s * at(x1, ya), ya), (s * at(x1, yb), yb), (s * at(x0, yb), yb)]
         return (mat, poly, (z0, TAIL_POCKET + 0.003), 'z')
@@ -735,10 +738,10 @@ def taillamp(body, s, side):
     return assembly(f'taillamp_{side}', (s * 0.65, sum(TAIL_Y) / 2, -2.04), [], prisms)
 
 
-# Backspegeln: en svart triangulär fot i dörrutans framhörn, en kort arm och ett rundat hus som smalnar
-# av framåt, med spegelglaset bakåt.
-MIRROR_FOOT = (0.33, 0.2)  # fotens fram- och bakkant (z) på gördellinjen
-MIRROR_HOUSING = ((0.79, 0.925), (0.44, 0.535), (0.2, 0.275))  # x, y, z (bak, fram)
+# The mirror: a black triangular foot in the door window's front corner, a short arm and a rounded housing that
+# tapers towards the front, with the mirror glass facing back.
+MIRROR_FOOT = (0.33, 0.2)  # the foot's front and rear edge (z) on the belt line
+MIRROR_HOUSING = ((0.79, 0.925), (0.44, 0.535), (0.2, 0.275))  # x, y, z (rear, front)
 
 
 def mirror(body, s, side):
@@ -750,7 +753,7 @@ def mirror(body, s, side):
         return bm.verts.new(to_blender(s * x - at[0], y - at[1], z - at[2]))
 
     def faces(rings, mats):
-        """Ringar i ordning (lika många punkter); lock i båda ändar med första och sista materialet."""
+        """Rings in order (the same number of points); caps at both ends with the first and last material."""
         k = len(rings[0])
         for a, b, m in zip(rings, rings[1:], mats[1:-1]):
             for i in range(k):
@@ -759,24 +762,24 @@ def mirror(body, s, side):
         bm.faces.new(rings[0]).material_index = mats[0]
         bm.faces.new(list(reversed(rings[-1]))).material_index = mats[-1]
 
-    # Foten: en tresidig kil som står på dörren, högst framtill mot A-stolpen.
+    # The foot: a three-sided wedge standing on the door, highest at the front towards the A-pillar.
     zf, zb = MIRROR_FOOT
     by = belt((zf + zb) / 2)
     root = surface_x(body, by - 0.03, (zf + zb) / 2) - 0.015
     tri = lambda x: [v(x, by - 0.01, zf), v(x, by + 0.08, zf), v(x, by - 0.01, zb)]  # noqa: E731
     faces([tri(root), tri(root + 0.035)], [0, 0, 0])
-    # Armen ut till huset.
+    # The arm out to the housing.
     ay, az = by + 0.035, hz0 + 0.04
     arm = lambda x: [v(x, ay, az + 0.015), v(x, ay + 0.025, az + 0.015), v(x, ay + 0.025, az - 0.015), v(x, ay, az - 0.015)]  # noqa: E731
     faces([arm(root + 0.03), arm(hx0 + 0.03)], [0, 0, 0])
 
-    # Huset: rundad rektangel sett bakifrån (x, y), smalare och lägre framtill.
+    # The housing: rounded rectangle seen from behind (x, y), narrower and lower at the front.
     def outline(shrink):
         cx, cy = (hx0 + hx1) / 2, (hy0 + hy1) / 2
         w, h, r = (hx1 - hx0) / 2 - shrink, (hy1 - hy0) / 2 - shrink * 0.6, 0.03
         pts = []
         for cxs, cys, a0 in ((1, 1, 0), (-1, 1, 90), (-1, -1, 180), (1, -1, 270)):
-            # Innerhörnet mot dörren är skarpare än det yttre.
+            # The inner corner against the door is sharper than the outer one.
             rr = r if cxs > 0 else 0.012
             for i in range(5):
                 a = math.radians(a0 + 90 * i / 4)
@@ -786,13 +789,13 @@ def mirror(body, s, side):
     rings = [[v(x, y, z) for x, y in outline(sh)] for z, sh in ((hz0, 0.0), (hz0 + 0.03, 0.0), (hz1, 0.022))]
     glass = [v(x, y, hz0 - 0.004) for x, y in outline(0.012)]
     faces([*rings], [0, 0, 0, 0])
-    # Spegelglaset bakåt, en aning innanför husets kant.
+    # The mirror glass facing back, slightly inside the housing's edge.
     bm.faces.new(list(reversed(glass))).material_index = 1
     return new_object(f'mirror_{side}', bm, ['paint' if KIT else 'black', 'dark'], at)
 
 
 def flare(body, zw, yw, s, name):
-    """Svart plastbreddare runt hjulhuset: en båge från tröskeln över hjulet, som sticker ut från sidan."""
+    """Black plastic flare around the wheel arch: an arc from the sill over the wheel, sticking out from the side."""
     bm = bmesh.new()
     at = (s * 0.8, yw, zw)
     rings = []
@@ -800,7 +803,7 @@ def flare(body, zw, yw, s, name):
     for i in range(n + 1):
         a = math.radians(lerp(-8, 188, i / n))
         c, sn = math.cos(a), math.sin(a)
-        # Under tröskeln finns ingen sida att mäta mot; där följer bågen tröskelns sida.
+        # Below the sill there is no side to measure against; there the arc follows the sill's side.
         x0 = surface_x(body, max(yw + (FLARE_R - 0.012) * sn, -0.14), zw + (FLARE_R - 0.012) * c) - 0.006
         x1 = x0 + (0.045 if KIT else 0.03)
         ring = [(x0, ARCH_R - 0.004), (x1, ARCH_R + 0.006), (x1, FLARE_R - 0.012), (x0, FLARE_R)]
@@ -814,28 +817,28 @@ def flare(body, zw, yw, s, name):
     return new_object(name, bm, ['black'], at)
 
 
-# Golvet är plant fram till z ≈ -1,72 och stiger sedan mot bakpartiet, så ljuddämparen sitter framför det.
+# The floor is flat up to z ≈ -1.72 and then rises towards the tail, so the silencer sits in front of that.
 MUFFLER_X, MUFFLER_Z, MUFFLER_R = 0.42, (-1.44, -1.70), 0.075
 PIPE_R, PIPE_END = 0.027, -2.15
 
 
 def surface_x(body, y, z):
-    """Var karossens sida ligger (x) på höjden y vid z, mätt med en stråle utifrån."""
+    """Where the body's side is (x) at height y at z, measured with a ray from the outside."""
     hit, loc, _, _ = body.ray_cast(to_blender(2, y, z), Vector((-1, 0, 0)))
-    assert hit, f'ingen kaross vid y={y}, z={z}'
+    assert hit, f'no body at y={y}, z={z}'
     return loc.x
 
 
 def floor_y(body, x, z):
-    """Var golvet ligger (y) under x, z, mätt med en stråle nerifrån."""
+    """Where the floor is (y) below x, z, measured with a ray from below."""
     hit, loc, _, _ = body.ray_cast(to_blender(x, -1, z), Vector((0, 0, 1)))
-    assert hit, f'inget golv vid x={x}, z={z}'
+    assert hit, f'no floor at x={x}, z={z}'
     return loc.z
 
 
 def kit_front():
-    """Kitcarens front under lyktorna: en rad hål och två nätade intag i den svarta stötfångaren, en lackad
-    spoiler med fyra intag och runda hål ytterst, och en svart läpp längst ner."""
+    """The kit car's front below the lights: a row of holes and two meshed intakes in the black bumper, a painted
+    spoiler with four intakes and round holes outermost, and a black lip at the very bottom."""
     yb = sum(FRONT_BUMPER_Y) / 2
     holes = [('dark', (x, yb), 0.028, (1.606, 1.616)) for x in (lerp(-0.34, 0.34, i / 8) for i in range(9))]
     nets = [('dark', xs, (yb - 0.025, yb + 0.025), (1.606, 1.615)) for xs in ((-0.62, -0.42), (0.42, 0.62))]
@@ -859,32 +862,32 @@ def details(body):
         z = -0.522
         x = surface_x(body, 0.32, z)
         objs.append(assembly(f'handle_{side}', (s * x, 0.32, z), [('black', mirror_x((x - 0.01, x + 0.012), s), (0.305, 0.335), (z - 0.1, z + 0.1))]))
-        # Sidoblinkers på framskärmen bakom hjulhuset.
+        # Side indicators on the front wing behind the wheel arch.
         x = surface_x(body, 0.169, 0.541)
         objs.append(assembly(f'sidemarker_{side}', (s * x, 0.169, 0.541), [('amber', mirror_x((x - 0.01, x + 0.006), s), (0.16, 0.178), (0.52, 0.56))]))
         if not KIT:
-            # Blinkers i den främre stötfångaren, ytterst.
+            # Indicators in the front bumper, outermost.
             objs.append(assembly(f'blinker_{side}', (s * 0.66, -0.02, 1.61), [('amber', mirror_x((0.58, 0.74), s), (-0.04, 0.0), (1.58, 1.616))]))
         for (zw, yw), nm in zip(WHEELS, 'FR'):
             objs.append(flare(body, zw, yw, s, f'flare_{nm}{side}'))
-            # Stänkskydd bakom hjulet, ungefär 12 cm över marken.
+            # Mud flaps behind the wheel, about 12 cm above the ground.
             objs.append(assembly(f'flap_{nm}{side}', (s * 0.7, -0.3, zw - 0.37), [('black', mirror_x((0.62, 0.78), s), (-0.38, -0.22), (zw - 0.38, zw - 0.366))]))
     objs.append(bumper('bumper_front', 1.612, 1.26, FRONT_BUMPER_Y))
     objs.append(bumper('bumper_rear', -2.132, -1.835, REAR_BUMPER_Y))
     if KIT:
         objs.extend(kit_front())
     else:
-        # Frontspoilern under stötfångaren: svart plast i full bredd som viker runt hörnen bakåt till
-        # hjulhusen, och under den en smalare läpp som går ner till ungefär 17 cm över marken.
+        # The front spoiler below the bumper: black plastic across the full width that wraps around the corners back to
+        # the wheel arches, and below it a narrower lip that reaches down to about 17 cm above the ground.
         objs.append(bumper('spoiler_front', 1.592, 1.27, FRONT_SPOILER_Y))
         objs.append(bumper('spoiler_lip', 1.585, 1.45, FRONT_LIP_Y, half=0.62))
         objs.append(assembly('plate_front', (0, -0.1, 1.615), [('plate', (-0.24, 0.24), (-0.16, -0.04), (1.605, 1.617))]))
-    # Bakre skylten sitter högt i bakluckan mellan baklyktorna, i en svart nedsänkning.
+    # The rear plate sits high in the tailgate between the tail lights, in a black recess.
     objs.append(assembly('plate_rear', (0, 0.37, -2.072), [('black', (-0.285, 0.285), (0.3, 0.44), (-2.074, -2.06)),
                                                           ('plate', (-0.25, 0.25), (0.315, 0.425), (-2.078, -2.066))]))
-    # Ljuddämparen under golvet framför bakstötfångaren; avgasröret går ut under stötfångaren.
-    # Röret följer golvet uppåt bakåt och mynnar strax under stötfångaren.
-    # Kitcaren har en oval, bredare ljuddämpare och dubbla slutrör sida vid sida.
+    # The silencer under the floor in front of the rear bumper; the exhaust pipe exits below the bumper.
+    # The pipe follows the floor up towards the rear and ends just below the bumper.
+    # The kit car has an oval, wider silencer and twin tailpipes side by side.
     rx, ry = (0.11, 0.06) if KIT else (MUFFLER_R, MUFFLER_R)
     pipe_r, pipes_x = (0.023, (-0.045, 0.045)) if KIT else (PIPE_R, (0.0,))
     top = min(floor_y(body, MUFFLER_X, z) for z in MUFFLER_Z)
@@ -903,19 +906,19 @@ def details(body):
         bmesh.ops.translate(bm, vec=Vector((dx, 0, 0)), verts=verts)
     objs.append(new_object('exhaust', bm, ['chrome', 'black'], (MUFFLER_X, (y0 + y1) / 2, (z0 + PIPE_END) / 2)))
     if KIT:
-        # Luftintag framtill på taket.
+        # Air intake at the front of the roof.
         objs.append(assembly('scoop', (0, 0.9, -0.25), [('dark', (-0.14, 0.14), (0.84, 0.92), (-0.38, -0.12)),
                                                          ('black', (-0.12, 0.12), (0.855, 0.912), (-0.118, -0.11))]))
     return objs
 
 
-# --- Fälgen: silverlackerad stålfälg med en ring av runda hål och svart navkapsel --------------
+# --- The rim: silver-painted steel rim with a ring of round holes and a black hubcap -----------
 #
-# Byggs runt hjulets axel (bilens x) med origo i hjulets centrum och ser likadan ut från båda sidor, så
-# samma fälg passar alla fyra hjul. Spelet sätter den i ett ihåligt däck med innerradien 0,205 m.
+# Built around the wheel's axle (the car's x) with its origin at the wheel centre and looks the same from both
+# sides, so the same rim fits all four wheels. The game puts it in a hollow tyre with inner radius 0.205 m.
 
 RIM_R, LIP_W, RIM_FACE = 0.215, 0.02, 0.105
-DISH = (0.07, 0.08)  # fälgskålens djup (x) innanför kanten
+DISH = (0.07, 0.08)  # depth (x) of the rim's dish inside the edge
 HOLES, HOLE_R, HOLE_AT = 16, 0.016, 0.142
 CAP_R = 0.06
 
@@ -945,18 +948,18 @@ def rim():
             j = (i + 1) % segs
             bm.faces.new((f[i], b[i], b[j], f[j])).material_index = mat
 
-    tube(RIM_R - 0.024, RIM_R - 0.017, -RIM_FACE + 0.01, RIM_FACE - 0.01, D)  # trumman bakom skålen
+    tube(RIM_R - 0.024, RIM_R - 0.017, -RIM_FACE + 0.01, RIM_FACE - 0.01, D)  # the drum behind the dish
     for s in (1, -1):
         a0, a1 = sorted((s * (RIM_FACE - LIP_W), s * RIM_FACE))
         tube(RIM_R - LIP_W, RIM_R, a0, a1, C)
-        # Skålen: en silverskiva en bit innanför kanten, med hålen som svarta brickor strax utanpå.
+        # The dish: a silver disc a little inside the edge, with the holes as black discs just outside it.
         d0, d1 = sorted((s * DISH[0], s * DISH[1]))
         disc(RIM_R - 0.018, d0, d1, D if KIT else C, 32)
         h0, h1 = sorted((s * DISH[1], s * (DISH[1] + 0.002)))
         for k in range(HOLES):
             phi = 2 * math.pi * k / HOLES
             disc(HOLE_R, h0, h1, B, 10, (HOLE_AT * math.cos(phi), HOLE_AT * math.sin(phi)))
-        # Navkapseln: en svart kupol (låg skiva) mitt på skålen.
+        # The hubcap: a black dome (low disc) in the middle of the dish.
         c0, c1 = sorted((s * DISH[1], s * (DISH[1] + 0.02)))
         disc(CAP_R, c0, c1, B)
         m0, m1 = sorted((s * (DISH[1] + 0.02), s * (DISH[1] + 0.026)))
@@ -965,12 +968,12 @@ def rim():
 
 
 def reference(wheels, track, tyre_r, ground):
-    """Hjul och mark att modellera mot. Exporteras inte."""
+    """Wheels and ground to model against. Not exported."""
     coll = bpy.data.collections.new('Reference')
     bpy.context.scene.collection.children.link(coll)
     for (zw, yw), xw in zip(wheels, track):
         for s in (1, -1):
-            # Ihåligt däck, så fälgen syns i det.
+            # Hollow tyre, so the rim shows inside it.
             bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=tyre_r, depth=0.205, end_fill_type='NOTHING')
             w = bpy.context.active_object
             sol = w.modifiers.new('wall', 'SOLIDIFY')
@@ -987,7 +990,7 @@ def reference(wheels, track, tyre_r, ground):
     coll.objects.link(g)
 
 
-# Ljung 2000 16V: hjulens läge i vila i spelet (z, y), spårvidd, däckets radie och marken.
+# Ljung 2000 16V: the wheels' resting position in the game (z, y), track, tyre radius and the ground.
 VARIANTS = {
     'ljung1600': (WHEELS, TRACK, TYRE_R, GROUND),
     'ljung2000': ([(0.936, -0.205), (-1.464, -0.222)], [0.74, 0.73], 0.3, -0.512),
@@ -995,9 +998,9 @@ VARIANTS = {
 
 
 def warp(wheels, track, drop=0.0):
-    """Avbildningen (bilens koordinater) som flyttar Ljung 1600:s hjul till `wheels`/`track`: längs bilen
-    förskjuten (och skalad efter hjulbasen, om den skiljer), i sidled skalad efter spårvidden och i höjd så
-    att båda axlarna hamnar rätt, `drop` lägre."""
+    """The mapping (car coordinates) that moves the Ljung 1600's wheels to `wheels`/`track`: shifted along the
+    car (and scaled by the wheelbase, if it differs), scaled sideways by the track and in height so that both
+    axles end up right, `drop` lower."""
     (zf, yf), (zr, yr) = WHEELS
     (zf2, yf2), (zr2, yr2) = wheels
     a = (zf2 - zr2) / (zf - zr)
@@ -1011,8 +1014,8 @@ def warp(wheels, track, drop=0.0):
 
 
 def apply_warp(objs, f):
-    """Töjer delarnas nät; panelerna (body) behåller origo i bilens origo, övriga delar flyttas med."""
-    # matrix_world räknas om först när scenen uppdateras; annars står nyss skapade delar kvar i origo.
+    """Stretches the parts' meshes; the panels (body) keep their origin at the car's origin, other parts move along."""
+    # matrix_world is only recomputed when the scene updates; otherwise newly created parts stay at the origin.
     bpy.context.view_layer.update()
     for obj in objs:
         mw = obj.matrix_world.copy()
@@ -1027,7 +1030,7 @@ def main():
     name = args[0] if args else 'ljung1600'
     wheels, track, tyre_r, ground = VARIANTS[name]
     if name == 'ljung2000':
-        # Större hjulhus och breddare, så att däcken får plats när karossen sitter lägre, och fälgar med fem hål.
+        # Larger wheel arches and flares, so the tyres fit when the body sits lower, and rims with five holes.
         globals().update(KIT=True, ARCH_R=0.36, FLARE_R=0.44, HOLES=5, HOLE_R=0.045, HOLE_AT=0.115)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     export = bpy.data.collections.new('Export')
@@ -1045,7 +1048,7 @@ def main():
         bpy.context.scene.collection.objects.unlink(obj)
         export.objects.link(obj)
     reference(wheels, track, tyre_r, ground)
-    # Fälgen även på de tre andra hjulen, bara att titta på (samma nät).
+    # The rim on the other three wheels too, just for looking at (the same mesh).
     for (zw, yw), xw in zip(wheels, track):
         for sx in (1, -1):
             if (zw, sx) != (wheels[0][0], 1):
@@ -1056,7 +1059,7 @@ def main():
     os.makedirs(folder, exist_ok=True)
     out = os.path.join(folder, f'{name}.blend')
     bpy.ops.wm.save_as_mainfile(filepath=out)
-    print('sparade', out, len(body.data.vertices), 'hörn')
+    print('saved', out, len(body.data.vertices), 'vertices')
 
 
 main()

@@ -1,4 +1,4 @@
-/** Spelarens inställningar, sparade i webbläsaren, och menyn för dem. */
+/** The player's settings, saved in the browser, and their menu. */
 
 import { showMenu } from './menu';
 import { DIFFICULTY_PACE, type Difficulty } from './career/championship';
@@ -23,7 +23,7 @@ function write(key: string, value: string) {
   try {
     localStorage.setItem(key, value);
   } catch {
-    // Privat läge: gäller bara den här sessionen.
+    // Private mode: only applies to this session.
   }
 }
 
@@ -44,7 +44,7 @@ const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'lätt', medium: 'medel', hard: 'svår' };
 
 export const settings = {
-  /** Om kartläsaren läser upp noterna; de visas på skärmen ändå. */
+  /** Whether the co-driver reads the notes aloud; they are shown on screen anyway. */
   get voice() {
     return voice;
   },
@@ -52,16 +52,16 @@ export const settings = {
     voice = on;
     write(VOICE_KEY, on ? 'on' : 'off');
   },
-  /** Allt ljud; N växlar det under körning. */
+  /** All sound; N toggles it while driving. */
   get sound() {
-    // Av tills spelaren har tackat ja på välkomstskärmen.
+    // Off until the player has said yes on the welcome screen.
     return sound === 'on';
   },
   set sound(on: boolean) {
     sound = on ? 'on' : 'off';
     write(SOUND_KEY, sound);
   },
-  /** Klick när man flyttar och väljer i menyerna; hörs bara med ljudet på. */
+  /** Click when moving and choosing in the menus; only heard with sound on. */
   get menuSound() {
     return menuSound;
   },
@@ -69,7 +69,7 @@ export const settings = {
     menuSound = on;
     write(MENU_SOUND_KEY, on ? 'on' : 'off');
   },
-  /** Motorljudet från bilarna bakom huvudmenyn; högtalaren uppe till vänster växlar det. */
+  /** Engine sound from the cars behind the main menu; the speaker at the top left toggles it. */
   get menuCars() {
     return menuCars;
   },
@@ -77,7 +77,7 @@ export const settings = {
     menuCars = on;
     write(MENU_CARS_KEY, on ? 'on' : 'off');
   },
-  /** Motståndarnas fart i nya mästerskap. */
+  /** Opponents' pace in new championships. */
   get difficulty() {
     return difficulty;
   },
@@ -85,7 +85,7 @@ export const settings = {
     difficulty = d;
     write(DIFFICULTY_KEY, d);
   },
-  /** Hur mycket bilen själv motstyr i sladd: 0 av, 1 full. */
+  /** How much the car countersteers by itself in a slide: 0 off, 1 full. */
   get steerAssist() {
     return steerAssist;
   },
@@ -93,7 +93,7 @@ export const settings = {
     steerAssist = v;
     write(STEER_ASSIST_KEY, String(v));
   },
-  /** Antispinn: drar ner gasen när drivhjulen börjar spinna. */
+  /** Traction control: cuts the throttle when the driven wheels start spinning. */
   get tc() {
     return tc;
   },
@@ -101,13 +101,13 @@ export const settings = {
     tc = on;
     write(TC_KEY, on ? 'on' : 'off');
   },
-  /** Ingen har svarat på välkomstfrågorna än. */
+  /** Nobody has answered the welcome questions yet. */
   get firstVisit() {
     return sound === null;
   },
 };
 
-/** Välkomstskärmen första gången spelet startas. */
+/** The welcome screen the first time the game starts. */
 export async function showWelcome() {
   settings.sound = await showMenu({
     title: 'Välkommen!',
@@ -156,7 +156,7 @@ function cycleSteerAssist() {
   settings.steerAssist = STEER_ASSISTS[(STEER_ASSISTS.indexOf(settings.steerAssist) + 1) % STEER_ASSISTS.length]!;
 }
 
-/** Inställningsmenyn, från både huvud- och pausmenyn. */
+/** The settings menu, from both the main and pause menus. */
 export async function showSettings(solid: boolean) {
   let c: 'sound' | 'menuSound' | 'voice' | 'difficulty' | 'steerAssist' | 'tc' | 'back' | undefined;
   for (;;) {
@@ -173,7 +173,7 @@ export async function showSettings(solid: boolean) {
         { label: '← Tillbaka', value: 'back' },
       ],
       cancel: 'back',
-      // Markeringen stannar på raden man just ändrade.
+      // The highlight stays on the row you just changed.
       initial: c,
     });
     if (c === 'back') return;

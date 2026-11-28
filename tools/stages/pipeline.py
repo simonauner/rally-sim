@@ -1,9 +1,9 @@
-"""Verklig sträcka -> etappdelar. Användning: python3 -I pipeline.py <config.json> <steg...>
-Steg: red, osm, fit, route, parts. Config: map (png, relativ), anchors [[px,py,lat,lon]...], start [px,py],
-goal [px,py], parts [[namn, från_m, till_m]...]. Arbetsmapp: configens mapp."""
+"""Real special stage -> stage parts. Usage: python3 -I pipeline.py <config.json> <steps...>
+Steps: red, osm, fit, route, parts. Config: map (png, relative), anchors [[px,py,lat,lon]...], start [px,py],
+goal [px,py], parts [[name, from_m, to_m]...]. Working folder: the config's folder."""
 import json, math, sys, struct, subprocess, heapq, os, time, urllib.request
 import xml.etree.ElementTree as ET
-# Arbetsmappen är configens mapp; 'map' anges relativt den.
+# The working folder is the config's folder; 'map' is given relative to it.
 cfg = json.load(open(sys.argv[1])); D = os.path.dirname(os.path.abspath(sys.argv[1]))
 steps = sys.argv[2:]
 HW = ('primary','secondary','tertiary','unclassified','residential','service','track','road')
@@ -17,7 +17,7 @@ if 'red' in steps:
     for y in range(0, h, 2):
         for x in range(0, w, 2):
             i = off + ((h - 1 - y) if flip else y) * row + x * (bpp // 8); B, G, R = b[i], b[i+1], b[i+2]
-            # Rödhet i stället för fasta gränser: linjen är halvgenomskinlig och får olika nyans över olika bakgrund.
+            # Redness instead of fixed thresholds: the line is semi-transparent and takes on different hues over different backgrounds.
             if R > 140 and R - G > 90 and R - B > 80 and G < 110: pts.append((x, y))
     save('red.json', pts); print('red px', len(pts), file=sys.stderr)
 
@@ -91,7 +91,7 @@ if 'fit' in steps:
             if q is not None and d < 150**2: P.append(p); Q.append(q); ds.append(math.sqrt(d))
         ds.sort()
         if cfg.get('fit') == 'translate':
-            # Bara förskjutning: skala och rotation ligger fast (tätt vägnät i stad drar annars snett).
+            # Translation only: scale and rotation stay fixed (a dense town road network otherwise pulls it askew).
             ex = sum(q[0] - (AX[0]*p[0]+AX[1]*p[1]+AX[2]) for p, q in zip(P, Q)) / len(P)
             ny = sum(q[1] - (AY[0]*p[0]+AY[1]*p[1]+AY[2]) for p, q in zip(P, Q)) / len(P)
             AX = [AX[0], AX[1], AX[2] + ex]; AY = [AY[0], AY[1], AY[2] + ny]
@@ -117,12 +117,12 @@ if 'route' in steps:
             d = min(rd(pa), rd(pb), rd(((pa[0]+pb[0])/2, (pa[1]+pb[1])/2)))
             c = L * (1 + (min(d, 400) / 40) ** 2)
             adj.setdefault(a, []).append((b, c)); adj.setdefault(b, []).append((a, c)); wayof[(a, b)] = wayof[(b, a)] = wid
-    # Luckor i OSM: där en väg tar slut nära den röda linjen följer rutten linjen på kartan
-    # (en pixelgraf genom de röda pixlarna) till närmaste andra väg. Kostar tre gånger mer än OSM.
+    # Gaps in OSM: where a road ends near the red line, the route follows the line on the map
+    # (a pixel graph through the red pixels) to the nearest other road. Costs three times more than OSM.
     raw = load('red.json'); pix = {(p[0], p[1]) for p in raw}
     det = AX[0]*AY[1] - AX[1]*AY[0]
     def topx(e, n): e -= AX[2]; n -= AY[2]; return ((AY[1]*e - AX[1]*n)/det, (-AY[0]*e + AX[0]*n)/det)
-    mpp = math.hypot(AX[0], AY[0])  # meter per pixel
+    mpp = math.hypot(AX[0], AY[0])  # metres per pixel
     def nearpix(p, r=12):
         x, y = topx(*p); best = None
         for q in pix:
@@ -160,7 +160,7 @@ if 'route' in steps:
                 adj[A].append((B, c)); adj[B].append((A, c)); virtual[(A, B)] = geo; virtual[(B, A)] = geo[::-1]
     print('bridges', len(virtual) // 2, file=sys.stderr)
     nn = lambda p: min(adj, key=lambda n: math.hypot(m(*nodes[n])[0]-p[0], m(*nodes[n])[1]-p[1]))
-    # Rutten går via mellanpunkterna i ordning ('via', pixlar), t.ex. när start och mål ligger nära varandra.
+    # The route goes via the waypoints in order ('via', pixels), e.g. when start and finish are close together.
     stops = [nn(tf(p)) for p in [cfg['start'], *cfg.get('via', []), cfg['goal']]]
     path = [stops[0]]
     for start, goal in zip(stops, stops[1:]):
@@ -196,7 +196,7 @@ if 'parts' in steps:
                 t = (d - s[i]) / ((s[i+1]-s[i]) or 1); return (P[i][0]+(P[i+1][0]-P[i][0])*t, P[i][1]+(P[i+1][1]-P[i][1])*t)
     STEP = 20; full = [at(d) for d in range(0, int(TOTAL) + 1, STEP)]
     sm = [full[0]] + [((full[i-1][0]+2*full[i][0]+full[i+1][0])/4, (full[i-1][1]+2*full[i][1]+full[i+1][1])/4) for i in range(1, len(full)-1)] + [full[-1]]
-    # Hörn i korsningar (OSM-noder i rät vinkel) jämnas ut till minst ca 15 m radie, så en bil kommer runt.
+    # Corners at junctions (OSM nodes at right angles) are smoothed to at least about 15 m radius, so a car gets round.
     MIN_R = 30.0; moved = 0
     for it in range(200):
         changed = False
@@ -217,8 +217,8 @@ if 'parts' in steps:
             ys += [r['elevation'] for r in json.load(urllib.request.urlopen(req, timeout=60))['results']]; time.sleep(1.1)
         save('elev.json', ys)
     ys = [(ys[max(0,i-1)] + 2*ys[i] + ys[min(len(ys)-1,i+1)]) / 4 for i in range(len(ys))]
-    # Höjddatan (25 m) tar med strandbranter och diken bredvid vägen. Med 'max_grade' jämnas
-    # profilen ut där den är brantare, men bara där, så backar och krön i övrigt ligger kvar.
+    # The elevation data (25 m) picks up shore banks and ditches beside the road. With 'max_grade' the
+    # profile is smoothed where it is steeper, but only there, so hills and crests otherwise stay.
     if 'max_grade' in cfg:
         g = cfg['max_grade']; seg = [math.hypot(sm[i+1][0]-sm[i][0], sm[i+1][1]-sm[i][1]) for i in range(len(sm)-1)]
         for _ in range(2000):
@@ -237,7 +237,7 @@ if 'parts' in steps:
     for name, a, b in cfg['parts']:
         b = min(b, int(TOTAL)); i0, i1 = a // STEP, min(len(sm)-1, b // STEP); ox, oz = sm[i0]
         loc = lambda e, n: (-(e - ox), n - oz)
-        # Bredare väg i snäva hörn (under ca 30 m radie), som i en korsning där bilen kan använda mynningen.
+        # Wider road in tight corners (under about 30 m radius), as at a junction where the car can use the mouth.
         def sharp(i):
             if i <= 0 or i >= len(sm) - 1: return False
             a, b, c = sm[i-1], sm[i], sm[i+1]
@@ -261,7 +261,7 @@ if 'parts' in steps:
                         if L + d >= 80: t = (80-L)/d; ps.append((pa[0]+(pb[0]-pa[0])*t, pa[1]+(pb[1]-pa[1])*t)); L = 80; break
                         L += d; ps.append(pb)
                     if L < 40: continue
-                    # Första punkten efter korsningen minst 20 m bort, så riktningen och avspärrningen blir rätt.
+                    # The first point after the junction at least 20 m away, so the direction and the barrier come out right.
                     ps = [ps[0]] + [q for q in ps[1:-1] if math.hypot(q[0]-ps[0][0], q[1]-ps[0][1]) >= 20] + [ps[-1]]
                     dense = []; acc = 0
                     for pa, pb in zip(ps, ps[1:]):
@@ -271,6 +271,6 @@ if 'parts' in steps:
                     if any(math.hypot(ps[-1][0]-o[-1][0], ps[-1][1]-o[-1][1]) < 40 for o in spurs): continue
                     spurs.append(ps)
         sep = min([math.hypot(pts[i][0]-pts[j][0], pts[i][1]-pts[j][1]) for i in range(len(pts)) for j in range(i+8, len(pts))] or [1e9])
-        print(name, f'{(b-a)/1000:.1f} km', 'höjd', round(min(p[2] for p in pts)), round(max(p[2] for p in pts)), 'spurs', len(spurs), 'närmast', round(sep), file=sys.stderr)
+        print(name, f'{(b-a)/1000:.1f} km', 'elev', round(min(p[2] for p in pts)), round(max(p[2] for p in pts)), 'spurs', len(spurs), 'closest', round(sep), file=sys.stderr)
         out.append({'name': name, 'road': [[round(x, 1), round(z, 1), round(y, 1)] + ([w] if w != 6 else []) for x, z, y, w in pts], 'spurs': [[{'x': round(loc(*q)[0]), 'z': round(loc(*q)[1])} for q in sp] for sp in spurs]})
     print('total km', round(TOTAL/1000, 2), file=sys.stderr); save('parts.json', out)

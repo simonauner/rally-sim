@@ -1,4 +1,4 @@
-"""Begränsar lutningen i en datafil för verkliga etapper (road: [x, z, y(, w)]) utan att röra x/z."""
+"""Caps the gradient in a real-stage data file (road: [x, z, y(, w)]) without touching x/z."""
 import math, re, sys
 p, g = sys.argv[1], float(sys.argv[2]); src = open(p).read()
 out, worst_before, worst_after = [], 0, 0
@@ -16,12 +16,12 @@ for k in range(1, len(parts), 2):
     for _ in range(5000):
         changed = False
         for i in range(len(ys)-1):
-            # Startrakan (första 60 m) nästan plan, så en bil kommer iväg från stillastående på snö.
+            # The start straight (first 60 m) nearly flat, so a car can pull away from standstill on snow.
             d = ys[i+1] - ys[i]; lim = (0.05 if sum(seg[:i]) < 60 else g) * seg[i]
             if abs(d) > lim + 1e-3:
                 adj = (abs(d) - lim) / 2 * (1 if d > 0 else -1); ys[i] += adj; ys[i+1] -= adj; changed = True
         if not changed: break
-    ys = [y - ys[0] for y in ys]  # starten ligger kvar på höjd 0
+    ys = [y - ys[0] for y in ys]  # the start stays at elevation 0
     worst_after = max(worst_after, max(abs(ys[i+1]-ys[i]) / max(seg[i], 1e-6) for i in range(len(seg))))
     new = []
     for t, y0_, y in zip(toks, [v[2] for v in vals], ys):

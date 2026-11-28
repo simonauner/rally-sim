@@ -1,19 +1,22 @@
 """
-Bygger Sora 2.0 Turbo i Blender och sparar soraTurbo.blend bredvid skriptet.
+Builds the Sora 2.0 Turbo in Blender and saves soraTurbo.blend next to the script.
 
     blender -b --factory-startup -P blender/soraTurbo/build.py
 
-Varje del byggs för sig: skalet (shell.py) delas upp i kaross, dörrar, stötfångare och baklucka som
-bucklas var för sig, lyktorna lyfts ut som egna enheter, och vinge, avgassystem, hjul och övriga
-detaljer (parts.py) är egna objekt. Skriptet ger en första version. Därefter är .blend-filen källan: redigera den i Blender och kör
-blender/export.py för att föra över den till spelet. Kör bara om det här skriptet om du vill börja om.
+Each part is built separately: the shell (shell.py) is split into body, doors, bumpers and boot lid that
+dent separately, the lights are lifted out as units of their own, and the wing, exhaust, wheels and other
+details (parts.py) are objects of their own. The script produces a first version. After that the .blend
+file is the source: edit it in Blender and run blender/export.py to transfer it to the game. Only rerun
+this script if you want to start over.
 
-Koordinater: allt räknas i bilens koordinater (x = vänster, y = upp, z = framåt, origo i tyngdpunkten)
-och läggs in i Blender som X = x, Y = -z, Z = y, så bilen pekar mot -Y som i Blenders framvy.
-Marken ligger på y = -0,486 och hjulens centrum på y = -0,17 när bilen står still i spelet.
+Coordinates: everything is computed in car coordinates (x = left, y = up, z = forward, origin at the
+centre of mass) and placed in Blender as X = x, Y = -z, Z = y, so the car points towards -Y as in
+Blender's front view. The ground is at y = -0.486 and the wheel centres at y = -0.17 when the car is at
+rest in the game.
 
-Måtten följer förebilden (tvådörrars coupé från 1999): 4,35 m lång, 1,69 m bred, hjulbas 2,52 m. Höjderna
-är uppmätta på ett sidofoto av rallyversionen, som är lägre än standardbilens 1,405 m: taket 1,30 m.
+The dimensions follow the original (a two-door coupé from 1999): 4.35 m long, 1.69 m wide, wheelbase
+2.52 m. The heights are measured from a side photo of the rally version, which is lower than the standard
+car's 1.405 m: roof at 1.30 m.
 """
 
 import os
@@ -30,8 +33,8 @@ from common import GROUND, TRACK, WHEELS, to_blender, to_car  # noqa: E402
 
 
 def reference(wheel):
-    """Mark och de tre andra hjulen (kopior av det modellerade, speglade på höger sida) att modellera mot.
-    Exporteras inte."""
+    """Ground and the other three wheels (copies of the modelled one, mirrored on the right side) to model
+    against. Not exported."""
     coll = bpy.data.collections.new('Reference')
     bpy.context.scene.collection.children.link(coll)
     for (zw, yw), xw in zip(WHEELS, TRACK):
@@ -51,7 +54,7 @@ def reference(wheel):
 
 
 def surface(parts):
-    """surface(s, y, z): karossens yta (x) på sidan s, med en stråle in från sidan mot delarna."""
+    """surface(s, y, z): the body surface (x) on side s, with a ray cast in from the side towards the parts."""
     import bmesh
     from mathutils.bvhtree import BVHTree
 
@@ -66,7 +69,7 @@ def surface(parts):
     def at(s, y, z):
         hit = tree.ray_cast(to_blender(s * 2.0, y, z), to_blender(-s, 0, 0))[0]
         if hit is None:
-            raise RuntimeError(f'ingen kaross vid y={y}, z={z}')
+            raise RuntimeError(f'no body at y={y}, z={z}')
         return to_car(hit)[0]
 
     return at
@@ -96,7 +99,7 @@ def main():
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'soraTurbo.blend')
     bpy.ops.wm.save_as_mainfile(filepath=out)
     for obj in objs:
-        print(f'{obj.name}: {len(obj.data.vertices)} hörn')
+        print(f'{obj.name}: {len(obj.data.vertices)} vertices')
 
 
 main()

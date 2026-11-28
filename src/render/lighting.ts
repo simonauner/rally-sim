@@ -7,14 +7,14 @@ interface LightPreset {
   fog: [near: number, far: number];
   hemi: [sky: number, ground: number, intensity: number];
   sun: [color: number, intensity: number];
-  /** Solens läge relativt bilen; låg sol ger långa skuggor. */
+  /** Sun position relative to the car; a low sun gives long shadows. */
   sunOffset: [number, number, number];
   headlights: boolean;
-  /** Cel-shadingens konturfärg; måste vara mörkare än scenen, annars syns den som ljusa linjer. */
+  /** Cel-shading outline colour; must be darker than the scene, or it shows as light lines. */
   outline: number;
 }
 
-/** Ljuset per tid på dygnet. Dag är det som alltid funnits; resten är mörkare med lägre sol. */
+/** Lighting per time of day. Day is what has always been there; the rest are darker with a lower sun. */
 export const LIGHTS: Record<Light, LightPreset> = {
   day: { sky: 0xcfe3ee, fog: [120, 520], hemi: [0xe8f3ff, 0x8a7a5a, 1.1], sun: [0xfff1d6, 2.4], sunOffset: [40, 70, -30], headlights: false, outline: 0x1c1c24 },
   dawn: { sky: 0xe8c3a8, fog: [80, 380], hemi: [0xc4c8e4, 0x5a4c58, 0.7], sun: [0xffb47a, 1.7], sunOffset: [70, 16, 40], headlights: true, outline: 0x1c1c24 },
@@ -32,13 +32,13 @@ export function applyLight(scene: THREE.Scene, hemi: THREE.HemisphereLight, sun:
   sun.intensity = preset.sun[1];
 }
 
-/** Lyktornas läge i bilens lokala koordinater (x = vänster). */
+/** Lamp positions in the car's local coordinates (x = left). */
 const LAMP_POS = [
   [0.6, 0.0, 2.0],
   [-0.6, 0.0, 2.0],
 ] as const;
 
-/** Två strålkastare som följer bilen; en skadad lykta lyser svagare och en trasig inte alls. */
+/** Two headlights that follow the car; a damaged lamp shines dimmer and a broken one not at all. */
 export class Headlights {
   readonly group = new THREE.Group();
   private spots: THREE.SpotLight[];
@@ -47,7 +47,7 @@ export class Headlights {
     this.spots = LAMP_POS.map(([x, y, z]) => {
       const s = new THREE.SpotLight(0xfff2d0, 0, 120, 0.4, 0.6, 1);
       s.position.set(x, y, z);
-      // Lite nedåt och en aning utåt, så vägkanterna syns i kurvorna.
+      // Slightly down and a touch outward, so the road edges show in corners.
       s.target.position.set(x * 3, y - 0.8, z + 30);
       this.group.add(s, s.target);
       return s;

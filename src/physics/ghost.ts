@@ -1,9 +1,9 @@
 import type { Quaternion, Vector3 } from 'three';
 
-/** Inspelat åk: position och rotation med fast takt, räknat i etapptid från startlinjen. */
+/** Recorded run: position and rotation at a fixed rate, in stage time from the start line. */
 export interface GhostData {
   hz: number;
-  /** x, y, z, qx, qy, qz, qw per bild. */
+  /** x, y, z, qx, qy, qz, qw per frame. */
   frames: number[];
 }
 
@@ -21,10 +21,10 @@ export class GhostRecorder {
     this.next = 0;
   }
 
-  /** Anropas varje fysiksteg medan klockan går; sparar en bild per 1/hz sekund. */
+  /** Called every physics step while the clock runs; stores one frame per 1/hz seconds. */
   record(t: number, pos: Vector3, quat: Quaternion) {
     while (t >= this.next) {
-      // Avrundning håller sparfilen liten: mm i position, 1e-4 i kvaternion.
+      // Rounding keeps the save file small: mm for position, 1e-4 for the quaternion.
       this.frames.push(round(pos.x, 1e3), round(pos.y, 1e3), round(pos.z, 1e3));
       this.frames.push(round(quat.x, 1e4), round(quat.y, 1e4), round(quat.z, 1e4), round(quat.w, 1e4));
       this.next = this.frames.length / STRIDE / this.hz;
@@ -36,7 +36,7 @@ export class GhostRecorder {
   }
 }
 
-/** Ghostens läge vid etapptiden t. Returnerar false när åket är slut. */
+/** The ghost's pose at stage time t. Returns false when the run is over. */
 export function sampleGhost(g: GhostData, t: number, pos: Vector3, quat: Quaternion): boolean {
   const n = g.frames.length / STRIDE;
   const f = Math.max(0, t) * g.hz;
@@ -52,7 +52,7 @@ export function sampleGhost(g: GhostData, t: number, pos: Vector3, quat: Quatern
   const qy = F[b + 4]!;
   const qz = F[b + 5]!;
   const qw = F[b + 6]!;
-  // Interpolera linjärt och normalisera; vid 20 Hz är skillnaden mot slerp osynlig.
+  // Interpolate linearly and normalise; at 20 Hz the difference from slerp is invisible.
   const sign = quat.x * qx + quat.y * qy + quat.z * qz + quat.w * qw < 0 ? -1 : 1;
   quat.set(
     quat.x + (sign * qx - quat.x) * u,

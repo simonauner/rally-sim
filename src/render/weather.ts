@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { Weather } from '../physics/weather';
 
-/** Sikt och ljus per väder, ovanpå tid på dygnet. `grey` = hur mycket himlen gråas ut. */
+/** Visibility and light per weather, on top of time of day. `grey` = how much the sky is greyed out. */
 const LOOK: Record<Weather, { fog: [number, number] | null; grey: number; sun: number; hemi: number }> = {
   clear: { fog: null, grey: 0, sun: 1, hemi: 1 },
   rain: { fog: [25, 200], grey: 0.7, sun: 0.35, hemi: 0.8 },
@@ -9,12 +9,12 @@ const LOOK: Record<Weather, { fog: [number, number] | null; grey: number; sun: n
   snowfall: { fog: [20, 150], grey: 0.7, sun: 0.4, hemi: 0.9 },
 };
 
-/** Gråar ut himlen och drar in dimman; anropas efter applyLight. */
+/** Greys out the sky and pulls in the fog; called after applyLight. */
 export function applyWeather(scene: THREE.Scene, hemi: THREE.HemisphereLight, sun: THREE.DirectionalLight, weather: Weather) {
   const look = LOOK[weather];
   if (!look.fog) return;
   const sky = (scene.background as THREE.Color).clone();
-  // Samma ljushet, mindre färg: en mulen dag blir grå och en mulen natt förblir mörk.
+  // Same lightness, less colour: an overcast day turns grey and an overcast night stays dark.
   const l = sky.r * 0.3 + sky.g * 0.59 + sky.b * 0.11;
   sky.lerp(new THREE.Color(l, l, l), look.grey);
   scene.background = sky;
@@ -27,7 +27,7 @@ export function applyWeather(scene: THREE.Scene, hemi: THREE.HemisphereLight, su
 const BOX = 36;
 const HALF_H = 12;
 
-/** Regn eller snöfall i en låda runt kameran; dropparna som faller ur lådan börjar om överst. */
+/** Rain or snowfall in a box around the camera; drops that fall out of the box start over at the top. */
 export class Precipitation {
   readonly mesh: THREE.InstancedMesh;
   private pos: Float32Array;
@@ -41,7 +41,7 @@ export class Precipitation {
     const rain = kind === 'rain';
     const count = rain ? 2600 : 3200;
     const geo = rain ? new THREE.BoxGeometry(0.015, 0.55, 0.015) : new THREE.IcosahedronGeometry(0.05, 0);
-    // Utan toon-material slipper partiklarna konturerna från cel-shadingen.
+    // Without a toon material the particles avoid the cel-shading outlines.
     const mat = new THREE.MeshBasicMaterial({ color: rain ? 0xaab6c4 : 0xffffff, transparent: rain, opacity: rain ? 0.55 : 1 });
     this.mesh = new THREE.InstancedMesh(geo, mat, count);
     this.mesh.frustumCulled = false;
@@ -63,11 +63,11 @@ export class Precipitation {
       const k = i * 3;
       this.pos[k + 1]! -= fall * dt;
       if (!rain) {
-        // Flingorna singlar i sidled.
+        // The flakes drift sideways.
         this.pos[k]! += Math.sin(time * 0.9 + this.phase[i]!) * 0.4 * dt;
         this.pos[k + 2]! += Math.cos(time * 0.7 + this.phase[i]!) * 0.4 * dt;
       }
-      // Lådan följer kameran: läget räknas relativt kameran och lindas runt.
+      // The box follows the camera: position is computed relative to the camera and wrapped around.
       const x = camera.x + wrap(this.pos[k]! - camera.x, BOX);
       const y = camera.y + wrap(this.pos[k + 1]! - camera.y, 2 * HALF_H);
       const z = camera.z + wrap(this.pos[k + 2]! - camera.z, BOX);

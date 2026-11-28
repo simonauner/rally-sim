@@ -1,14 +1,14 @@
 import * as THREE from 'three/webgpu';
 
 /**
- * En bilmodell från Blender (blender/export.py): karossen 'body' och lösa detaljer, med ett material
- * per hörn. Materialens namn slås upp i bilens palett i carMesh.ts.
+ * A car model from Blender (blender/export.py): the 'body' shell and loose details, with one material
+ * per vertex. Material names are looked up in the car's palette in carMesh.ts.
  */
 export interface ModelPart {
   name: string;
-  /** Delens origo i bilens koordinater. */
+  /** The part's origin in car coordinates. */
   at: [number, number, number];
-  /** Base64: positioner i mm (int16, relativt `at`), materialindex (uint8) och trianglar (uint16). */
+  /** Base64: positions in mm (int16, relative to `at`), material index (uint8) and triangles (uint16). */
   pos: string;
   mat: string;
   index: string;
@@ -26,7 +26,7 @@ function bytes(b64: string): ArrayBuffer {
   return a.buffer;
 }
 
-/** Delens geometri med attributet 'mat' (materialindex) och 'rest' (vilopositionen, för färgfält som ska följa bucklor). */
+/** The part's geometry with the attribute 'mat' (material index) and 'rest' (rest position, for colour fields that should follow dents). */
 export function partGeometry(p: ModelPart): THREE.BufferGeometry {
   const mm = new Int16Array(bytes(p.pos));
   const pos = new Float32Array(mm.length);

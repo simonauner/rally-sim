@@ -3,7 +3,7 @@ import type { DamageEvent } from './physics/collision';
 import type { Car } from './physics/car';
 import type { SurfaceId } from './physics/surfaces';
 
-/** Underlagsljud: filterfrekvens och Q för rullbrus respektive slirljud. */
+/** Surface sound: filter frequency and Q for rolling noise and slip sound respectively. */
 const SURFACE_SOUND: Record<SurfaceId, { roll: number; slip: number; q: number; level: number }> = {
   asphalt: { roll: 400, slip: 1100, q: 9, level: 0.35 },
   gravel: { roll: 900, slip: 1800, q: 0.8, level: 0.9 },
@@ -13,31 +13,31 @@ const SURFACE_SOUND: Record<SurfaceId, { roll: number; slip: number; q: number; 
   water: { roll: 600, slip: 900, q: 0.5, level: 1 },
 };
 
-/** Motorljudets klang. Övertonen k ligger på k × halva vevaxelvarvet, alltså motorordning k/2. */
+/** The engine sound's timbre. Harmonic k sits at k × half the crankshaft speed, i.e. engine order k/2. */
 interface EngineSound {
-  /** Amplitud för överton k. */
+  /** Amplitude of harmonic k. */
   harmonic: (k: number) => number;
-  /** Hur hårt tonen mättas i distorsionen, utan respektive med full gas. */
+  /** How hard the tone saturates in the distortion, off and at full throttle. */
   drive: [number, number];
-  /** Avgasfiltrets brytfrekvens: bas + halva varvtalet × (utan gas, extra med gas). */
+  /** Exhaust filter cutoff: base + half the rpm × (off throttle, extra on throttle). */
   filter: [number, number, number];
-  /** Volym: grund, extra med full gas och extra vid begränsaren (stiger med varvet i kvadrat). */
+  /** Volume: base, extra at full throttle and extra at the limiter (rises with rpm squared). */
   gain: [number, number, number];
-  /** Insugets resonansfrekvens: Hz + Hz vid begränsaren + gånger halva varvtalet. */
+  /** Intake resonance frequency: Hz + Hz at the limiter + times half the rpm. */
   intakeHz: [number, number, number];
-  /** Insugets volym med full gas: grund, per varv och per ansträngning. */
+  /** Intake volume at full throttle: base, per rpm and per strain. */
   intake: [number, number, number];
-  /** Raspets mittfrekvens i Hz. */
+  /** Rasp centre frequency in Hz. */
   raspHz: number;
-  /** Raspets styrka: grund, per gas och per ansträngning över 4 500 rpm. */
+  /** Rasp strength: base, per throttle and per strain above 4,500 rpm. */
   rasp: [number, number, number];
-  /** Turbons visslande: volym vid fullt laddtryck och tonhöjd i Hz utan respektive med fullt tryck. */
+  /** Turbo whistle: volume at full boost and pitch in Hz at no and at full boost. */
   turbo?: { level: number; hz: [number, number] };
-  /** Rassel i avgassystemet (antilag) när man växlar eller lyfter med laddtryck: smällarnas styrka. */
+  /** Exhaust rattle (anti-lag) when shifting or lifting with boost: strength of the bangs. */
   crackle?: number;
 }
 
-/** Stor lågvarvig radfyra: mjukt mullrande avgaston med tändfrekvensen och dess andra överton, svaga halvordningar. */
+/** Big low-revving inline four: soft rumbling exhaust note with the firing frequency and its second harmonic, weak half orders. */
 const BIG_FOUR: EngineSound = {
   harmonic: (k) => (k === 4 ? 1 : k === 8 ? 0.35 : k % 4 === 0 ? 0.4 / k : k % 2 === 0 ? 0.02 : 0.006),
   drive: [0.3, 0.5],
@@ -49,13 +49,13 @@ const BIG_FOUR: EngineSound = {
   rasp: [0.25, 0.1, 0.6],
 };
 
-/** Liten tvärställd förgasarfyra: tunn, surrig ton där tändfrekvensen dominerar och volymen följer varvet. */
+/** Small transverse carburettor four: thin, buzzy note where the firing frequency dominates and the volume follows rpm. */
 const SMALL_FOUR: EngineSound = {
   harmonic: (k) => (k === 4 ? 1 : k % 4 === 0 ? 0.12 : k % 2 === 0 ? 0.08 : 0.03),
   drive: [0.35, 0.6],
   filter: [3000, 20, 20],
   gain: [0.07, 0.08, 0.8],
-  // Insuget förstärker tändfrekvensens andra överton när motorn drar.
+  // The intake amplifies the firing frequency's second harmonic when the engine pulls.
   intakeHz: [0, 0, 8],
   intake: [0.5, 1, 0],
   raspHz: 1400,
@@ -63,8 +63,8 @@ const SMALL_FOUR: EngineSound = {
 };
 
 /**
- * Boxerfyra med olika långa grenrör: tändfrekvensen dominerar men halvordningarna 2,5 och 3,5 är starka
- * och ger det ojämna mullret. Proportionerna är mätta på en inspelning av en boxer med turbo.
+ * Boxer four with unequal-length headers: the firing frequency dominates but half orders 2.5 and 3.5 are strong
+ * and give the uneven rumble. The proportions are measured from a recording of a turbo boxer.
  */
 const BOXER_ORDERS = [0, 0, 0.03, 0.05, 1, 0.4, 0.08, 0.2, 0.1, 0.1, 0.06, 0.04, 0.04];
 const BOXER: EngineSound = {
@@ -72,12 +72,12 @@ const BOXER: EngineSound = {
   harmonic: (k) => BOXER_ORDERS[k] ?? (k % 2 === 0 ? 0.02 : 0.01),
   drive: [0.35, 0.55],
   rasp: [0.25, 0.15, 0.6],
-  // Inspelningen visslar runt 1,0–1,7 kHz och ligger kvar en stund efter gaspådraget.
+  // The recording whistles around 1.0–1.7 kHz and lingers a while after throttle application.
   turbo: { level: 0.035, hz: [900, 1700] },
   crackle: 1,
 };
 
-/** Femcylindrig radmotor: tändfrekvensen på 2,5 gånger varvtalet och ett tydligt varv-mullrande under. */
+/** Inline five: firing frequency at 2.5 times rpm and a clear once-per-rev rumble below. */
 const FIVE: EngineSound = {
   ...BIG_FOUR,
   harmonic: (k) => (k === 5 ? 1 : k === 10 ? 0.35 : k % 5 === 0 ? 0.4 / k : k === 2 || k === 3 ? 0.08 : 0.02),
@@ -85,12 +85,12 @@ const FIVE: EngineSound = {
   crackle: 1,
 };
 
-/** Grupp A-motor: stor radfyra med turbo och antilag. */
+/** Group A engine: big turbo inline four with anti-lag. */
 const RALLY_FOUR: EngineSound = { ...BIG_FOUR, turbo: { level: 0.03, hz: [1000, 1900] }, crackle: 0.8 };
 
 const ENGINE_SOUND: Record<string, EngineSound> = {
   'Ljung 1600 S': SMALL_FOUR,
-  // Gatbil: turbo men ingen antilag.
+  // Road car: turbo but no anti-lag.
   'Kvarn 240 Turbo': { ...BIG_FOUR, turbo: { level: 0.02, hz: [800, 1500] } },
   'Kvarn Turbo 4x4': RALLY_FOUR,
   'Hoshi 2.0 4WD': RALLY_FOUR,
@@ -99,7 +99,7 @@ const ENGINE_SOUND: Record<string, EngineSound> = {
   'Sora 2.0 Turbo': BOXER,
 };
 
-/** Syntetiserat ljud med Web Audio: motor, däck/underlag och krockar. */
+/** Synthesised sound with Web Audio: engine, tyres/surface and crashes. */
 export class Sound {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
@@ -120,21 +120,21 @@ export class Sound {
   private slipFilter!: BiquadFilterNode;
   private turboOsc!: OscillatorNode;
   private turboGain!: GainNode;
-  /** Laddtrycket 0–1, som byggs upp och sjunker med fördröjning. */
+  /** Boost 0–1, which builds and drops with a delay. */
   private boost = 0;
   private lastT = 0;
   private lastGear = 0;
   private lastThr = 0;
-  /** När rasslet får börja igen, så att växling och gaslyft inte ger två skurar. */
+  /** When the rattle may start again, so shifting and lifting don't give two bursts. */
   private crackleUntil = 0;
   private noise!: AudioBuffer;
   get muted() {
     return !settings.sound;
   }
-  /** Avståndsdämpning, 0–1, t.ex. för bilarna bakom huvudmenyn. */
+  /** Distance attenuation, 0–1, e.g. for the cars behind the main menu. */
   private volume = 1;
 
-  // Webbläsare kräver en användargest innan ljud får starta. Capture: menyerna stoppar tangenttrycken.
+  // Browsers require a user gesture before audio may start. Capture: the menus stop the key presses.
   private start = () => {
     this.stopListening();
     this.init();
@@ -150,14 +150,14 @@ export class Sound {
     removeEventListener('pointerdown', this.start);
   }
 
-  /** Stänger av ljudet för gott. */
+  /** Turns the sound off for good. */
   close() {
     this.stopListening();
     void this.ctx?.close();
     this.ctx = null;
   }
 
-  /** pan: -1 = vänster, 1 = höger. */
+  /** pan: -1 = left, 1 = right. */
   setVolume(v: number, pan = 0) {
     this.volume = v;
     if (this.ctx) this.panner.pan.setTargetAtTime(pan, this.ctx.currentTime, 0.05);
@@ -171,14 +171,14 @@ export class Sound {
     this.panner = ctx.createStereoPanner();
     this.master.connect(this.panner).connect(ctx.destination);
 
-    // Vitt brus i loop, delat av motorrasp, rull-, slir- och krockljud.
+    // Looped white noise, shared by engine rasp, rolling, slip and crash sounds.
     this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = this.noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
 
-    // Motor: klangen sätts per bil i update().
+    // Engine: the timbre is set per car in update().
     this.engOsc = ctx.createOscillator();
     const shaper = ctx.createWaveShaper();
     const curve = new Float32Array(256);
@@ -187,7 +187,7 @@ export class Sound {
     this.engDrive = ctx.createGain();
     this.engOsc.connect(this.engDrive).connect(shaper);
 
-    // Rasp: brus som pulsar i takt med tändningarna.
+    // Rasp: noise pulsing in time with the firings.
     const raspBand = (this.raspBand = ctx.createBiquadFilter());
     raspBand.type = 'bandpass';
     raspBand.Q.value = 0.7;
@@ -198,7 +198,7 @@ export class Sound {
     this.engOsc.connect(this.raspDepth).connect(this.raspGain.gain);
     src.connect(raspBand).connect(this.raspGain).connect(shaper);
 
-    // Avgas: djupt lågpass. Insug: resonant ton som tar över vid höga varv.
+    // Exhaust: deep low-pass. Intake: resonant tone that takes over at high rpm.
     this.engFilter = ctx.createBiquadFilter();
     this.engFilter.type = 'lowpass';
     this.engFilter.Q.value = 1.5;
@@ -213,7 +213,7 @@ export class Sound {
     shaper.connect(this.intakeFilter).connect(this.intakeGain).connect(this.master);
     this.engOsc.start();
 
-    // Turbo: en ren ton som följer laddtrycket.
+    // Turbo: a pure tone that follows boost.
     this.turboOsc = ctx.createOscillator();
     this.turboOsc.type = 'triangle';
     this.turboGain = ctx.createGain();
@@ -236,11 +236,11 @@ export class Sound {
     return [f, g];
   }
 
-  /** Pausar allt ljud, t.ex. när pausmenyn är öppen. */
+  /** Pauses all sound, e.g. while the pause menu is open. */
   setPaused(paused: boolean) {
     if (!this.ctx) return;
     void (paused ? this.ctx.suspend() : this.ctx.resume());
-    // Ljudet kan ha slagits av eller på i inställningarna under pausen.
+    // Sound may have been turned on or off in the settings during the pause.
     if (!paused) this.setVolume(this.volume);
   }
 
@@ -249,7 +249,7 @@ export class Sound {
     this.setVolume(this.volume);
   }
 
-  /** Anropas en gång per bildruta. */
+  /** Called once per frame. */
   update(car: Car, throttle: number) {
     const ctx = this.ctx;
     if (!ctx) return;
@@ -269,11 +269,11 @@ export class Sound {
 
     const half = dtn.rpm / 120;
     const thr = dtn.limiterCut ? 0 : throttle;
-    // 0 vid tomgång, 1 vid begränsaren. Motorn trivs inte över ~4500 rpm, så den låter ansträngd där.
+    // 0 at idle, 1 at the limiter. The engine doesn't like it above ~4500 rpm, so it sounds strained there.
     const { idleRpm, limiterRpm } = dtn.engine;
     const rev = Math.min(1, Math.max(0, (dtn.rpm - idleRpm) / (limiterRpm - idleRpm)));
     const strain = Math.max(0, (dtn.rpm - 4500) / (limiterRpm - 4500));
-    // Liten slumpvis varvtalsvariation så tonen inte blir helt jämn.
+    // Small random rpm variation so the tone isn't perfectly steady.
     this.engOsc.frequency.setTargetAtTime(half * (1 + (Math.random() - 0.5) * 0.012), t, tau);
     this.engDrive.gain.setTargetAtTime(es.drive[0] + (es.drive[1] - es.drive[0]) * thr, t, tau);
     this.engFilter.frequency.setTargetAtTime(es.filter[0] + half * (es.filter[1] + es.filter[2] * thr), t, tau);
@@ -285,7 +285,7 @@ export class Sound {
     this.intakeGain.gain.setTargetAtTime(thr * (es.intake[0] + es.intake[1] * rev + es.intake[2] * strain), t, tau);
     this.turbo(es, dtn.rpm, dtn.shiftTimer > 0 ? 0 : thr, dtn.gear, t);
 
-    // Däck: rullbrus efter fart, slirljud efter hur mycket hjulen glider.
+    // Tyres: rolling noise by speed, slip sound by how much the wheels slide.
     let slip = 0;
     let contacts = 0;
     const count: Partial<Record<SurfaceId, number>> = {};
@@ -312,12 +312,12 @@ export class Sound {
     this.slipGain.gain.setTargetAtTime(Math.min(1, slipAmt) * 0.5 * s.level, t, tau);
   }
 
-  /** Laddtrycket och turbotonen, och rasslet när trycket släpps vid växling eller gaslyft. */
+  /** Boost and the turbo tone, and the rattle when boost is released on a shift or lift. */
   private turbo(es: EngineSound, rpm: number, thr: number, gear: number, t: number) {
     const dt = Math.min(0.1, t - this.lastT);
     this.lastT = t;
-    // Trycket kommer över ~3 000 rpm med full gas; byggs upp på ~0,4 s och släpps på ~0,15 s.
-    // thr är 0 medan växeln byts, så trycket släpps vid varje växling.
+    // Boost comes above ~3,000 rpm at full throttle; builds in ~0.4 s and releases in ~0.15 s.
+    // thr is 0 while the gear changes, so boost is released on every shift.
     const target = thr * Math.min(1, Math.max(0, (rpm - 3000) / 2500));
     this.boost += (target - this.boost) * (1 - Math.exp(-dt / (target > this.boost ? 0.4 : 0.15)));
     const tb = es.turbo;
@@ -335,8 +335,8 @@ export class Sound {
   }
 
   /**
-   * En skur korta smällar som i en inspelning av en rallybil med antilag: 6–12 st över knappt en
-   * sekund med oregelbundna mellanrum, var och en några millisekunder lång och mest 100–500 Hz.
+   * A burst of short bangs as in a recording of a rally car with anti-lag: 6–12 of them over just under a
+   * second at irregular intervals, each a few milliseconds long and mostly 100–500 Hz.
    */
   private crackle(amp: number, t0: number) {
     const ctx = this.ctx!;
@@ -358,12 +358,12 @@ export class Sound {
       src.connect(f).connect(g).connect(this.master);
       src.start(t, Math.random());
       src.stop(t + len + 0.01);
-      // Exponentiella mellanrum med medel ~70 ms, som i inspelningen.
+      // Exponential intervals with a mean of ~70 ms, as in the recording.
       t += 0.015 - Math.log(1 - Math.random()) * 0.07;
     }
   }
 
-  /** Smäll vid krock, starkare ju större impuls. */
+  /** Bang on a crash, stronger the bigger the impulse. */
   impact(events: DamageEvent[]) {
     const ctx = this.ctx;
     if (!ctx) return;

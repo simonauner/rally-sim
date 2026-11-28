@@ -1,13 +1,13 @@
 /**
- * Konto och synk: hur spelet och synkservern (sync/) pratar. Delas av båda, så bara ren
- * TypeScript utan DOM. Modellen kommer från season-o-meter:
+ * Account and sync: how the game and the sync server (sync/) talk. Shared by both, so plain
+ * TypeScript without DOM only. The model comes from season-o-meter:
  *
- * Kontot är en hemlighet på 128 slumpbitar som skapas i webbläsaren. Servern lagrar kontot
- * under SHA-256 av hemligheten, så den ser aldrig själva hemligheten. Den som har hemligheten
- * (eller återställningsnyckeln, recoveryKey.ts) kan läsa och skriva kontot.
+ * The account is a secret of 128 random bits created in the browser. The server stores the account
+ * under the SHA-256 of the secret, so it never sees the secret itself. Whoever has the secret
+ * (or the recovery key, recoveryKey.ts) can read and write the account.
  */
 
-/** 128 slumpbitar, base64url. Konto-id har samma form. */
+/** 128 random bits, base64url. Account ids have the same shape. */
 const TOKEN = /^[A-Za-z0-9_-]{22}$/;
 
 export const isSecret = (value: unknown): value is string => typeof value === 'string' && TOKEN.test(value);
@@ -25,35 +25,35 @@ export function fromBase64Url(text: string) {
 
 export const newSecret = () => toBase64Url(crypto.getRandomValues(new Uint8Array(16)));
 
-/** Id:t servern lagrar kontot under. */
+/** The id the server stores the account under. */
 export async function accountIdFor(secret: string) {
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
   return toBase64Url(new Uint8Array(hash).slice(0, 16));
 }
 
-/** Ett värde och när det sattes (ms sedan 1970). */
+/** A value and when it was set (ms since 1970). */
 export type Stamped = [value: string, updatedAt: number];
 
 export type AccountData = Record<string, Stamped>;
 
 /**
- * POST /v1/sync med `Authorization: Bearer <hemlighet>`: skickar enhetens data och får
- * tillbaka allt som ändrats på servern sedan `since`, markören från förra synken.
+ * POST /v1/sync with `Authorization: Bearer <secret>`: sends the device's data and gets
+ * back everything changed on the server since `since`, the cursor from the previous sync.
  */
 export type SyncRequest = { since: number; changes: AccountData };
 export type SyncResponse = { cursor: number; changes: AccountData };
 
-/** Bästa åket på en bana. Ghosten har samma form som GhostData i physics/ghost.ts. */
+/** Best run on a stage. The ghost has the same shape as GhostData in physics/ghost.ts. */
 export interface StageRecord {
   time: number;
   splits: number[];
-  /** Saknas i rekord sparade innan ghosten fanns. */
+  /** Missing in records saved before the ghost existed. */
   ghost?: { hz: number; frames: number[] };
-  /** Banversionen rekordet sattes på. Saknas i rekord från innan banor versionerades. */
+  /** The stage version the record was set on. Missing in records from before stages were versioned. */
   version?: string;
 }
 
-/** Ett åk på 90 s är cirka 90 kB; det här räcker till ungefär en halvtimme. */
+/** A 90 s run is about 90 kB; this is enough for roughly half an hour. */
 export const MAX_VALUE_LENGTH = 2_000_000;
 const MAX_SPLITS = 20;
 
@@ -69,8 +69,8 @@ export function isStageRecord(value: unknown): value is StageRecord {
 }
 
 /**
- * Nyckeln för bästa åket på en bana. Versionsepoken ingår (major och recordsSince, se
- * StageDef), så rekord från olika banversioner aldrig jämförs med varandra.
+ * The key for the best run on a stage. The version epoch is included (major and recordsSince, see
+ * StageDef), so records from different stage versions are never compared with each other.
  */
 export const recordKey = (stage: { name: string; version: string; recordsSince: string }) =>
   `best:${stage.name}:${stage.version.split('.')[0]}:${stage.recordsSince}`;
@@ -87,34 +87,34 @@ function parseRecord(value: string): StageRecord | null {
   }
 }
 
-/** Karriären: pengar och garage. Delas med servern för validering. */
+/** The career: money and garage. Shared with the server for validation. */
 export interface CareerState {
   money: number;
-  /** Ägda bilar (bilens namn) och deras uppgraderingsnivåer per kategori. */
+  /** Owned cars (the car's name) and their upgrade levels per category. */
   garage: Record<string, { upgrades: Record<string, number> }>;
-  /** Dagen (YYYY-MM-DD, lokal tid) då dagsbonusen senast hämtades. */
+  /** The day (YYYY-MM-DD, local time) the daily bonus was last collected. */
   bonusDay?: string;
-  /** Vad spelaren gjort, äldst först: åk, mästerskap och köp. Saknas i karriärer från före historiken. */
+  /** What the player has done, oldest first: runs, championships and purchases. Missing in careers from before the history. */
   history?: HistoryEntry[];
-  /** Vunna mästerskap (ChampionshipDef.id); låser upp nästa mästerskap och Fri körning. */
+  /** Won championships (ChampionshipDef.id); unlocks the next championship and Free drive. */
   won?: string[];
 }
 
-/** En rad i historiken. `amount` är prispengar (positivt) eller vad köpet kostade (negativt). */
+/** One row in the history. `amount` is prize money (positive) or what the purchase cost (negative). */
 export interface HistoryEntry {
   kind: 'stage' | 'championship' | 'upgrade' | 'car';
-  /** När det hände (ms sedan 1970). */
+  /** When it happened (ms since 1970). */
   at: number;
-  /** Etappen, mästerskapet, delen eller bilen. */
+  /** The stage, championship, part or car. */
   name: string;
-  /** Bilen som kördes eller uppgraderades. */
+  /** The car that was driven or upgraded. */
   car?: string;
-  /** Placering i mästerskapet, och av hur många. */
+  /** Position in the championship, and out of how many. */
   place?: number;
   of?: number;
-  /** Medaljen på en enstaka etapp, eller null utan medalj. */
+  /** The medal on a single stage, or null without a medal. */
   medal?: string | null;
-  /** Tiden på etappen eller totaltiden i mästerskapet (s). */
+  /** The stage time or the total championship time (s). */
   time?: number;
   amount: number;
 }
@@ -173,10 +173,10 @@ function parseCareer(value: string): CareerState | null {
   }
 }
 
-/** Parsar karriären ur sanerad data. */
+/** Parses the career from sanitized data. */
 export const careerOf = (stamped: Stamped | undefined) => (stamped ? parseCareer(stamped[0]) : null);
 
-/** Behåller bara giltiga nycklar och värden; resten kastas tyst. */
+/** Keeps only valid keys and values; the rest is silently dropped. */
 export function sanitize(input: unknown): AccountData {
   const out: AccountData = {};
   if (typeof input !== 'object' || input === null || Array.isArray(input)) return out;
@@ -191,15 +191,15 @@ export function sanitize(input: unknown): AccountData {
   return out;
 }
 
-/** Parsar ett rekord ur sanerad data. */
+/** Parses a record from sanitized data. */
 export const recordOf = (stamped: Stamped | undefined) => (stamped ? parseRecord(stamped[0]) : null);
 
 /**
- * Ska `incoming` ersätta `existing` under `key`? För rekord vinner lägsta tiden, oavsett vilken
- * enhet eller i vilken ordning de kommer, så ett rekord aldrig skrivs över av ett sämre åk.
- * För karriären vinner senaste ändringen.
- * shortcut: karriären slås inte ihop fält för fält; spelar två enheter samtidigt vinner den som
- * sparar sist. Byt till sammanslagning per fält om det blir ett problem.
+ * Should `incoming` replace `existing` under `key`? For records the lowest time wins, regardless of
+ * device or arrival order, so a record is never overwritten by a worse run.
+ * For the career the latest change wins.
+ * shortcut: the career is not merged field by field; if two devices play at the same time, the one
+ * that saves last wins. Switch to per-field merging if that becomes a problem.
  */
 export function replaces(key: string, incoming: Stamped, existing: Stamped | undefined): boolean {
   if (!existing) return true;

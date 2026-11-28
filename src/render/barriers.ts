@@ -3,7 +3,7 @@ import type { Barriers } from '../physics/barriers';
 
 const COLORS = { post: 0x2b2b2b, red: 0xd32f2f, white: 0xf5f5f5 };
 
-/** Avspärrningarnas delar, som följer fysiken i physics/barriers.ts. */
+/** The barrier parts, which follow the physics in physics/barriers.ts. */
 export function buildBarriers(barriers: Barriers) {
   const group = new THREE.Group();
   const mats = Object.fromEntries(Object.entries(COLORS).map(([k, color]) => [k, new THREE.MeshToonMaterial({ color })]));

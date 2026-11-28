@@ -16,27 +16,27 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-/** En trädstam: lodrät cylinder från marken. Bilen studsar mot den som mot en vägg. */
+/** A tree trunk: vertical cylinder from the ground. The car bounces off it like a wall. */
 export interface Trunk {
   x: number;
   z: number;
-  /** Markhöjd vid stammen. */
+  /** Ground height at the trunk. */
   y: number;
   r: number;
-  /** Storlek för grafiken; 1 = normalträd. */
+  /** Size for the graphics; 1 = normal tree. */
   scale: number;
-  /** Bara kollision: stolpe, räcke eller bal som ritas för sig, inget träd. */
+  /** Collision only: a post, rail or bale drawn separately, not a tree. */
   hidden?: boolean;
 }
 
 /**
- * Testbanan: en lekplats längs +Z med olika underlag och hinder.
- *  z   0..40   grus, accelerationssträcka
- *  z  40..100  asfaltsremsa, lera till höger och snö till vänster
- *  z 110..150  tvättbräda
- *  z 170..180  hopp
- *  z 220       betongpelare
- *  z 260       betongvägg (krocktest)
+ * The test track: a playground along +Z with different surfaces and obstacles.
+ *  z   0..40   gravel, acceleration strip
+ *  z  40..100  asphalt strip, mud to the right and snow to the left
+ *  z 110..150  washboard
+ *  z 170..180  jump
+ *  z 220       concrete pillars
+ *  z 260       concrete wall (crash test)
  */
 export class World {
   readonly boxes: Box[] = [
@@ -45,20 +45,20 @@ export class World {
     { minX: 6, maxX: 7.5, minY: -2, maxY: 2, minZ: 220, maxZ: 221.5 },
   ];
   readonly trunks: Trunk[] = [];
-  /** Vädret ändrar greppet per underlag, se WEATHER_GRIP. */
+  /** Weather changes grip per surface, see WEATHER_GRIP. */
   weather: Weather = 'clear';
 
   heightAt(x: number, z: number): number {
-    // Mjuka kullar, men platt i början så accelerationstester blir rena.
+    // Gentle hills, but flat at the start so acceleration tests stay clean.
     const w = Math.max(smooth(105, 150, z), smooth(40, 90, Math.abs(x)));
     let h = w * (0.28 * Math.sin(x * 0.013 + 1) * Math.cos(z * 0.011) + 0.14 * Math.sin(z * 0.031 + x * 0.017));
 
-    // Tvättbräda
+    // Washboard
     const inX = 1 - smooth(10, 14, Math.abs(x));
     const inZ = smooth(110, 114, z) * (1 - smooth(146, 150, z));
     h += 0.05 * Math.sin(((z - 110) / 1.6) * Math.PI * 2) * inX * inZ;
 
-    // Hopp: ramp upp, tvärt ned
+    // Jump: ramp up, sharp drop
     if (z >= 170 && z <= 181) {
       const across = 1 - smooth(4, 6, Math.abs(x));
       const up = z <= 178 ? ((z - 170) / 8) * 0.9 : 0.9 * (1 - (z - 178) / 3);

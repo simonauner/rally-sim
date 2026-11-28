@@ -10,14 +10,14 @@ const commit = (() => {
   }
 })();
 
-/** Versionen (commit) och byggtiden, som huvudmenyn visar. Bygget görs i samma körning som driftsättningen. */
+/** The version (commit) and build time, shown by the main menu. The build runs in the same job as the deployment. */
 export const buildInfo = {
   'import.meta.env.VITE_COMMIT': JSON.stringify(commit),
   'import.meta.env.VITE_BUILT_AT': JSON.stringify(new Date().toISOString()),
 };
 
 export default defineConfig({
-  // Relativa sökvägar, så bygget fungerar under /rally-sim/ på GitHub Pages och var som helst.
+  // Relative paths, so the build works under /rally-sim/ on GitHub Pages and anywhere else.
   base: './',
   build: { target: 'es2022' },
   define: buildInfo,

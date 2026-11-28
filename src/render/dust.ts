@@ -5,37 +5,37 @@ import type { World } from '../physics/world';
 
 interface DustStyle {
   color: number;
-  /** Partiklar per sekund och hjul per m/s fart. */
+  /** Particles per second and wheel per m/s of speed. */
   perSpeed: number;
-  /** Partiklar per sekund och hjul per m/s slip (spinn eller sladd). */
+  /** Particles per second and wheel per m/s of slip (wheelspin or slide). */
   perSlip: number;
-  /** Slip under detta (m/s) ger inget slipdamm. */
+  /** Slip below this (m/s) gives no slip dust. */
   slipMin: number;
   life: number;
   size: number;
-  /** Hur mycket puffen växer under sin livstid (m). */
+  /** How much the puff grows over its lifetime (m). */
   grow: number;
-  /** Positiv = faller, negativ = stiger. */
+  /** Positive = falls, negative = rises. */
   gravity: number;
   drag: number;
   lift: number;
 }
 
-/** Utseende per underlag: grus ger moln, lera stänk, snö puder och asfalt bara rök vid spinn. */
+/** Look per surface: gravel gives clouds, mud splashes, snow powder and asphalt only smoke on wheelspin. */
 const STYLES: Record<SurfaceId, DustStyle> = {
   gravel: { color: 0xcdb892, perSpeed: 0.7, perSlip: 4, slipMin: 0.5, life: 1.5, size: 0.12, grow: 0.55, gravity: -0.05, drag: 2, lift: 0.5 },
   mud: { color: 0x5a4130, perSpeed: 0.5, perSlip: 9, slipMin: 0.5, life: 0.8, size: 0.12, grow: 0.15, gravity: 9, drag: 0.8, lift: 2.5 },
   snow: { color: 0xf3f6f9, perSpeed: 0.8, perSlip: 4, slipMin: 0.5, life: 1.2, size: 0.1, grow: 0.45, gravity: 0.3, drag: 2, lift: 0.7 },
-  // Vallarna yr upp ett stort pudermoln, som när en bil plöjer i snökanten.
+  // The banks throw up a big powder cloud, like a car ploughing into the snow edge.
   snowbank: { color: 0xf3f6f9, perSpeed: 2.5, perSlip: 6, slipMin: 0.3, life: 1.8, size: 0.16, grow: 0.9, gravity: 0.2, drag: 2.2, lift: 1.6 },
-  // Vadställen sprutar vatten åt sidorna, mer ju fortare bilen kör.
+  // Fords spray water to the sides, more the faster the car goes.
   water: { color: 0xdfeef5, perSpeed: 2.5, perSlip: 5, slipMin: 0.3, life: 0.7, size: 0.1, grow: 0.25, gravity: 9, drag: 0.6, lift: 4 },
   asphalt: { color: 0xd9d9d9, perSpeed: 0, perSlip: 3, slipMin: 4, life: 1.4, size: 0.15, grow: 0.6, gravity: -0.2, drag: 1.6, lift: 0.3 },
 };
 
-/** Avgaspuffar vid tomgång: små, ljusgrå, stiger långsamt och tunnas ut. */
+/** Exhaust puffs at idle: small, light grey, rise slowly and thin out. */
 const EXHAUST: DustStyle = { color: 0xd4d8dc, perSpeed: 0, perSlip: 0, slipMin: 0, life: 1.2, size: 0.025, grow: 0.09, gravity: -0.5, drag: 1.8, lift: 0.1 };
-/** Puffar per sekund och rpm: ~1,5 i sekunden vid tomgång, glest men i takt med motorn. */
+/** Puffs per second and rpm: ~1.5 per second at idle, sparse but in time with the engine. */
 const PUFFS_PER_RPM = 1 / 600;
 
 const MAX = 1200;
@@ -46,7 +46,7 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-/** Damm, stänk och rök från hjulen. Ren grafik, påverkar inte fysiken. */
+/** Dust, splashes and smoke from the wheels. Pure graphics, doesn't affect the physics. */
 export class Dust {
   readonly mesh: THREE.InstancedMesh;
   private pos = new Float32Array(MAX * 3);
@@ -66,7 +66,7 @@ export class Dust {
 
   constructor() {
     this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshToonMaterial({ color: 0xffffff }), MAX);
-    // Partiklarna rör sig över hela banan; nätets egen gränssfär säger inget om var de är.
+    // The particles move across the whole stage; the mesh's own bounding sphere says nothing about where they are.
     this.mesh.frustumCulled = false;
     this.m.makeScale(0, 0, 0);
     for (let i = 0; i < MAX; i++) {
@@ -75,7 +75,7 @@ export class Dust {
     }
   }
 
-  /** `exhaust` ger avgasrörets mynning för puffarna vid tomgång (bilen kan sakna synligt rör). */
+  /** `exhaust` gives the tailpipe outlet for the idle puffs (the car may have no visible pipe). */
   update(car: Car, world: World, dt: number, exhaust?: { exhaustTip(out: THREE.Vector3): boolean }) {
     this.emit(car, dt);
     if (exhaust) this.puff(car, exhaust, dt);
@@ -103,13 +103,13 @@ export class Dust {
     });
   }
 
-  /** Avgaspuffar ur röret när bilen står still på tomgång, t.ex. i målgången. */
+  /** Exhaust puffs from the pipe when the car stands still at idle, e.g. after the finish. */
   private puff(car: Car, exhaust: { exhaustTip(out: THREE.Vector3): boolean }, dt: number) {
     if (car.speed > 0.5 || !exhaust.exhaustTip(this.tip)) {
       this.puffDebt = 0;
       return;
     }
-    // Lite ojämnt, som en motor som puttrar.
+    // Slightly uneven, like a burbling engine.
     this.puffDebt += car.drivetrain.rpm * PUFFS_PER_RPM * dt * (0.6 + Math.random() * 0.8);
     if (this.puffDebt < 1) return;
     this.puffDebt -= 1;
@@ -122,7 +122,7 @@ export class Dust {
   private spawn(st: DustStyle, at: THREE.Vector3, car: Car, slipLong: number) {
     const r = () => Math.random() * 2 - 1;
     const spread = 0.5 + Math.abs(slipLong) * 0.1;
-    // Behåll en del av bilens fart, kasta bakåt vid hjulspinn, sprid slumpmässigt och lyft.
+    // Keep part of the car's velocity, throw backwards on wheelspin, spread randomly and lift.
     this.v.copy(car.vel).multiplyScalar(0.3).addScaledVector(this.fwd, -slipLong * 0.35);
     this.v.set(this.v.x + r() * spread, this.v.y + st.lift * (0.6 + Math.random() * 0.8), this.v.z + r() * spread);
     this.put(st, this.s.set(at.x + r() * 0.15, at.y + 0.05, at.z + r() * 0.15), this.v);

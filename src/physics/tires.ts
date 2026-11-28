@@ -1,15 +1,15 @@
 import type { SurfaceParams } from './surfaces';
 
 /**
- * Förenklad "Pacejka-lite". Längs- och sidslip normaliseras mot sina toppvärden och
- * kombineras till en slipvektor. Kraften följer en magic-formula-lik kurva och
- * fördelas i slipvektorns riktning, vilket ger en friktionsellips utan extra parametrar.
+ * Simplified "Pacejka-lite". Longitudinal and lateral slip are normalised against their peak values and
+ * combined into a slip vector. The force follows a magic-formula-like curve and
+ * is applied along the slip vector, which gives a friction ellipse without extra parameters.
  */
 
 export interface TyreOut {
-  fx: number; // kraft på bilen, framåt positiv
-  fy: number; // kraft på bilen, vänster positiv
-  /** Använd andel av tillgängligt grepp, 0..1+ (för debug). */
+  fx: number; // force on the car, forward positive
+  fy: number; // force on the car, left positive
+  /** Used fraction of available grip, 0..1+ (for debugging). */
   usage: number;
 }
 
@@ -41,7 +41,7 @@ export function tyreForce(
   const C = surface.curveC;
   const B = Math.tan(Math.PI / (2 * C));
   const g = Math.sin(C * Math.atan(B * s));
-  // Lastkänslighet: mer last ger något lägre friktionstal.
+  // Load sensitivity: more load gives a slightly lower friction coefficient.
   const muEff = mu * Math.pow(Math.max(fz, 300) / NOMINAL_LOAD, -0.12);
   const f = muEff * fz * g;
   out.fx = (f * sx) / s;

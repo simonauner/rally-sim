@@ -35,7 +35,7 @@ jobs:
 
       - run: npm run build
         env:
-          # Synkserverns adress. Utan den finns kontot bara lokalt i webbläsaren.
+          # The sync server's address. Without it the account exists only locally in the browser.
           VITE_SYNC_URL: ${{ vars.SYNC_URL }}
 
       - if: github.event_name != 'pull_request'
@@ -57,8 +57,8 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v5
 
-  # Synkservern (sync/). Driftsätts vid varje push, så att dess inställningar, som vilka
-  # origins den tar emot, aldrig ligger efter spelet.
+  # The sync server (sync/). Deployed on every push, so that its settings, such as which
+  # origins it accepts, never lag behind the game.
   deploy-sync:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: build

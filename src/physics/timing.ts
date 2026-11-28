@@ -1,16 +1,16 @@
 export type TimerState = 'ready' | 'running' | 'finished';
 
-/** Längsta hopp i sträcka per steg som räknas som körning; större hopp är teleport. */
+/** Longest jump in distance per step that counts as driving; larger jumps are teleports. */
 const MAX_STEP_S = 5;
 
 /**
- * Tidtagning längs en etapp. Får bilens sträcka (s) varje fysiksteg och räknar i fysiktid,
- * så resultatet beror inte på bildfrekvensen.
+ * Timing along a stage. Receives the car's distance (s) every physics step and counts in physics time,
+ * so the result does not depend on the frame rate.
  */
 export class StageTimer {
   state: TimerState = 'ready';
   time = 0;
-  /** Tider vid mellantiderna, i ordning. */
+  /** Times at the split points, in order. */
   splits: number[] = [];
   readonly splitAt: number[];
   private lastS = NaN;
