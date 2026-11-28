@@ -564,6 +564,23 @@ def cylinder_z(name, mat, at, r, length, segs=20):
     return new_object(name, bm, [mat], at)
 
 
+def tube_z(bm, r, length, segs=20, wall=0.004):
+    """Öppet rör längs bilens z med centrum i origo: utsidan och mynningens kant får material 0, insidan 1.
+    Ger rörets hörn."""
+    prof = [(r, -length / 2), (r, length / 2), (r - wall, length / 2), (r - wall, -length / 2)]
+    rings = [[bm.verts.new(to_blender(rad * math.cos(a), rad * math.sin(a), z))
+              for a in (2 * math.pi * i / segs for i in range(segs))] for rad, z in prof]
+    faces = []
+    for k, (a, b) in enumerate(zip(rings, rings[1:] + rings[:1])):
+        for i in range(segs):
+            j = (i + 1) % segs
+            f = bm.faces.new((a[i], a[j], b[j], b[i]))
+            f.material_index = 1 if k == 2 else 0
+            faces.append(f)
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return [v for ring in rings for v in ring]
+
+
 # Strålkastarna: två runda lyktor per sida i den svarta panelen, en stor ytterst och en mindre innanför,
 # var och en i en svart ring. Grillen med täta vågräta lameller går mellan de yttre lyktorna, bakom de
 # inre. Mätt på en bild rakt framifrån.
@@ -881,10 +898,10 @@ def details(body):
     tilt = math.atan2(y1 - y0, z0 - PIPE_END)
     bm = bmesh.new()
     for dx in pipes_x:
-        res = bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=pipe_r, radius2=pipe_r, depth=length)
-        bmesh.ops.rotate(bm, cent=Vector(), matrix=Matrix.Rotation(math.pi / 2 + tilt, 3, 'X'), verts=res['verts'])
-        bmesh.ops.translate(bm, vec=Vector((dx, 0, 0)), verts=res['verts'])
-    objs.append(new_object('exhaust', bm, ['chrome'], (MUFFLER_X, (y0 + y1) / 2, (z0 + PIPE_END) / 2)))
+        verts = tube_z(bm, pipe_r, length)
+        bmesh.ops.rotate(bm, cent=Vector(), matrix=Matrix.Rotation(tilt, 3, 'X'), verts=verts)
+        bmesh.ops.translate(bm, vec=Vector((dx, 0, 0)), verts=verts)
+    objs.append(new_object('exhaust', bm, ['chrome', 'black'], (MUFFLER_X, (y0 + y1) / 2, (z0 + PIPE_END) / 2)))
     if KIT:
         # Luftintag framtill på taket.
         objs.append(assembly('scoop', (0, 0.9, -0.25), [('dark', (-0.14, 0.14), (0.84, 0.92), (-0.38, -0.12)),

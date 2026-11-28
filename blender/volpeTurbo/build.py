@@ -540,6 +540,23 @@ def cylinder_z(name, mat, at, r, length, segs=20):
     return new_object(name, bm, [mat], at)
 
 
+def tube_z(bm, r, length, segs=20, wall=0.004):
+    """Öppet rör längs bilens z med centrum i origo: utsidan och mynningens kant får material 0, insidan 1.
+    Ger rörets hörn."""
+    prof = [(r, -length / 2), (r, length / 2), (r - wall, length / 2), (r - wall, -length / 2)]
+    rings = [[bm.verts.new(to_blender(rad * math.cos(a), rad * math.sin(a), z))
+              for a in (2 * math.pi * i / segs for i in range(segs))] for rad, z in prof]
+    faces = []
+    for k, (a, b) in enumerate(zip(rings, rings[1:] + rings[:1])):
+        for i in range(segs):
+            j = (i + 1) % segs
+            f = bm.faces.new((a[i], a[j], b[j], b[i]))
+            f.material_index = 1 if k == 2 else 0
+            faces.append(f)
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return [v for ring in rings for v in ring]
+
+
 def surface_x(body, y, z):
     """Var karossens sida ligger (x) på höjden y vid z, mätt med en stråle utifrån."""
     hit, loc, _, _ = body.ray_cast(to_blender(2, y, z), Vector((-1, 0, 0)))
@@ -881,7 +898,9 @@ def details(body):
     top = min(floor_y(body, MUFFLER_X, z) for z in MUFFLER_Z)
     y = top - MUFFLER_R + 0.01
     objs.append(cylinder_z('muffler', 'dark', (MUFFLER_X, y, sum(MUFFLER_Z) / 2), MUFFLER_R, MUFFLER_Z[0] - MUFFLER_Z[1], 16))
-    objs.append(cylinder_z('exhaust', 'chrome', (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.07) / 2), 0.035, MUFFLER_Z[1] + 2.07))
+    bm = bmesh.new()
+    tube_z(bm, 0.035, MUFFLER_Z[1] + 2.07)
+    objs.append(new_object('exhaust', bm, ['chrome', 'black'], (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.07) / 2)))
     return objs
 
 

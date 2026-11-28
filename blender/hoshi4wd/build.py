@@ -482,7 +482,7 @@ def mark_sharp(obj):
 
 
 def part(name, build, mat, at, tilt=0.0):
-    """Ett eget objekt med origo i `at` (bilens koordinater), byggt av build(bm), lutat `tilt` rad framåt-nedåt."""
+    """Ett eget objekt med origo i `at` (bilens koordinater), byggt av build(bm) med materialet eller listan `mat`, lutat `tilt` rad framåt-nedåt."""
     bm = bmesh.new()
     build(bm)
     if tilt:
@@ -493,7 +493,8 @@ def part(name, build, mat, at, tilt=0.0):
     obj = bpy.data.objects.new(name, mesh)
     obj.location = to_blender(*at)
     bpy.context.scene.collection.objects.link(obj)
-    obj.data.materials.append(bpy.data.materials[mat])
+    for m in [mat] if isinstance(mat, str) else mat:
+        obj.data.materials.append(bpy.data.materials[m])
     return obj
 
 
@@ -513,6 +514,23 @@ def cylinder_z(r, length, segs=20, off=0.0):
         bmesh.ops.rotate(bm, cent=Vector(), matrix=Matrix.Rotation(math.pi / 2, 3, 'X'), verts=res['verts'])
         bmesh.ops.translate(bm, vec=to_blender(0, 0, off), verts=res['verts'])
     return build
+
+
+def tube_z(bm, r, length, segs=20, wall=0.004):
+    """Öppet rör längs bilens z med centrum i origo: utsidan och mynningens kant får material 0, insidan 1.
+    Ger rörets hörn."""
+    prof = [(r, -length / 2), (r, length / 2), (r - wall, length / 2), (r - wall, -length / 2)]
+    rings = [[bm.verts.new(to_blender(rad * math.cos(a), rad * math.sin(a), z))
+              for a in (2 * math.pi * i / segs for i in range(segs))] for rad, z in prof]
+    faces = []
+    for k, (a, b) in enumerate(zip(rings, rings[1:] + rings[:1])):
+        for i in range(segs):
+            j = (i + 1) % segs
+            f = bm.faces.new((a[i], a[j], b[j], b[i]))
+            f.material_index = 1 if k == 2 else 0
+            faces.append(f)
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return [v for ring in rings for v in ring]
 
 
 def hood_slope(z):
@@ -644,7 +662,7 @@ def details(body):
     top = min(floor_y(body, MUFFLER_X, z) for z in (MUFFLER_Z[0], MUFFLER_Z[1]))
     y = top - MUFFLER_R + 0.01
     objs.append(part('muffler', cylinder_z(MUFFLER_R, MUFFLER_Z[0] - MUFFLER_Z[1], 16), 'dark', (MUFFLER_X, y, sum(MUFFLER_Z) / 2)))
-    objs.append(part('exhaust', cylinder_z(0.04, MUFFLER_Z[1] + 2.42), 'chrome', (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.42) / 2)))
+    objs.append(part('exhaust', lambda bm: tube_z(bm, 0.04, MUFFLER_Z[1] + 2.42), ['chrome', 'black'], (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.42) / 2)))
     # Extraljusrampen (klass 2): fyra lampor i en lackad låda på huvens framkant, mellan strålkastarna.
     objs.append(part('pod_body', box(0.6, 0.1, 0.2), 'paint', (0, 0.27, 1.84)))
     for i, x in enumerate((0.225, 0.075, -0.075, -0.225)):

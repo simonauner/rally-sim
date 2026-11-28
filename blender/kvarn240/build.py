@@ -495,6 +495,23 @@ def cylinder_z(name, mat, at, r, length, segs=20):
     return new_object(name, bm, [mat], at)
 
 
+def tube_z(bm, r, length, segs=20, wall=0.004):
+    """Öppet rör längs bilens z med centrum i origo: utsidan och mynningens kant får material 0, insidan 1.
+    Ger rörets hörn."""
+    prof = [(r, -length / 2), (r, length / 2), (r - wall, length / 2), (r - wall, -length / 2)]
+    rings = [[bm.verts.new(to_blender(rad * math.cos(a), rad * math.sin(a), z))
+              for a in (2 * math.pi * i / segs for i in range(segs))] for rad, z in prof]
+    faces = []
+    for k, (a, b) in enumerate(zip(rings, rings[1:] + rings[:1])):
+        for i in range(segs):
+            j = (i + 1) % segs
+            f = bm.faces.new((a[i], a[j], b[j], b[i]))
+            f.material_index = 1 if k == 2 else 0
+            faces.append(f)
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return [v for ring in rings for v in ring]
+
+
 # Strålkastarna: stora rektangulära glas i en kromram, och hörnlyktor som viker runt hörnet, klara
 # upptill och gula nertill. Grillen mellan dem har samma höjd.
 LAMP_Y = (0.03, 0.25)
@@ -694,7 +711,9 @@ def details(body):
     top = min(floor_y(body, MUFFLER_X, z) for z in MUFFLER_Z)
     y = top - MUFFLER_R + 0.01
     objs.append(cylinder_z('muffler', 'dark', (MUFFLER_X, y, sum(MUFFLER_Z) / 2), MUFFLER_R, MUFFLER_Z[0] - MUFFLER_Z[1], 16))
-    objs.append(cylinder_z('exhaust', 'chrome', (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.58) / 2), 0.03, MUFFLER_Z[1] + 2.58))
+    bm = bmesh.new()
+    tube_z(bm, 0.03, MUFFLER_Z[1] + 2.58)
+    objs.append(new_object('exhaust', bm, ['chrome', 'black'], (MUFFLER_X, y - 0.02, (MUFFLER_Z[1] - 2.58) / 2)))
     return objs
 
 
