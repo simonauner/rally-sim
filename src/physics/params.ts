@@ -636,6 +636,21 @@ export interface Sponsor {
   bg?: string;
 }
 
+/** A racing livery: a base paint with bands along the sides, stripes over the top and a title sponsor. */
+export interface Livery {
+  name: string;
+  paint: number;
+  /**
+   * Bands along the sides, from `from` to `to` (fractions of the length from the nose, default the whole car). `top` and
+   * `bottom` are fractions of the side from the belt line (0) to the sill (1) at the start; at the end the band sits
+   * `rise` higher and its top another `flare` higher, and `bend` sags the middle (negative arches it up).
+   */
+  bands: { color: string; top: number; bottom: number; from?: number; to?: number; rise?: number; flare?: number; bend?: number }[];
+  /** Stripes from nose to tail over the hood, roof and boot lid: offset from the centre line (m, left positive) and width (m). */
+  stripes?: { color: string; x: number; w: number }[];
+  sponsor: Sponsor;
+}
+
 export interface CarModel {
   make: () => CarParams;
   /** The car's own body in src/render/bodies/ (same name as the file). */
@@ -646,6 +661,8 @@ export interface CarModel {
   paint: number;
   /** Decals from fitted parts, read when the car is built. Absent outside the career. */
   sponsors?: () => Sponsor[];
+  /** The career's livery, read when the car is built; it also sets `paint`. */
+  livery?: () => Livery | undefined;
 }
 
 /** The cars you can pick before a stage. */

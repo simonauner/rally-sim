@@ -4,7 +4,7 @@
  */
 
 import { MAX_HISTORY, type CareerState, type HistoryEntry } from '../account/protocol';
-import { CARS, type CarParams, type Sponsor } from '../physics/params';
+import { CARS, type CarParams, type Livery, type Sponsor } from '../physics/params';
 
 /**
  * Starting money, without a car. Enough for one of the cheap cars at the dealer:
@@ -657,33 +657,134 @@ export function buyCar(career: CareerState, car: string): BuyResult {
   return logged({ ...career, money: career.money - price, garage: { ...career.garage, [car]: { upgrades: {} } } }, { kind: 'car', name: car, amount: -price });
 }
 
-/** Paint colours in the garage: cosmetic only, a money sink once everything is bought. Class 2 pays double (TIER_PRIZE). */
+/** Paint colours in the garage: cosmetic only. Class 2 pays double (TIER_PRIZE). */
 export const PAINTS: { name: string; color: number; price: number }[] = [
-  { name: 'Polarvit', color: 0xf2f2ee, price: 5000 },
-  { name: 'Midnattsblå', color: 0x1c2a4a, price: 8000 },
-  { name: 'Racinggrön', color: 0x1f5a3a, price: 10000 },
-  { name: 'Signalgul', color: 0xf0c419, price: 12000 },
-  { name: 'Tävlingsröd', color: 0xc8141c, price: 12000 },
-  { name: 'Lavaorange', color: 0xe8661c, price: 15000 },
-  { name: 'Mattsvart', color: 0x18181a, price: 15000 },
-  { name: 'Guld', color: 0xc9a227, price: 25000 },
+  { name: 'Polarvit', color: 0xf2f2ee, price: 2000 },
+  { name: 'Midnattsblå', color: 0x1c2a4a, price: 2500 },
+  { name: 'Racinggrön', color: 0x1f5a3a, price: 3000 },
+  { name: 'Signalgul', color: 0xf0c419, price: 3500 },
+  { name: 'Tävlingsröd', color: 0xc8141c, price: 3500 },
+  { name: 'Lavaorange', color: 0xe8661c, price: 4000 },
+  { name: 'Mattsvart', color: 0x18181a, price: 5000 },
+  { name: 'Guld', color: 0xc9a227, price: 6000 },
 ];
 
 export const paintPrice = (car: string, paint: (typeof PAINTS)[number]) => paint.price * TIER_PRIZE[tierOf(car)];
 
-/** Paints the car; `color` null goes back to the factory paint for free. Earlier colours are not kept. */
+/** Each car's works livery, in the spirit of its era's rally colours but with fictional sponsors. The money sink late in the career. */
+export const LIVERIES: Record<string, Livery> = {
+  'Kvarn 240 GL': {
+    name: 'Fabriksteamet',
+    paint: 0xf2f2ee,
+    bands: [{ color: '#1d3f7a', top: 0.42, bottom: 0.74 }, { color: '#f0c419', top: 0.78, bottom: 0.85 }],
+    sponsor: { name: 'Kvarn Motorsport', fg: '#ffffff', bg: '#1d3f7a' },
+  },
+  'Kvarn 240 Turbo': {
+    name: 'Svarta turbon',
+    paint: 0x161618,
+    bands: [{ color: '#d0141c', top: 0.5, bottom: 0.6 }, { color: '#f2f2ee', top: 0.63, bottom: 0.67 }],
+    stripes: [{ color: '#d0141c', x: 0.18, w: 0.12 }, { color: '#d0141c', x: -0.18, w: 0.12 }],
+    sponsor: { name: 'TURBOLAGET', fg: '#ffffff', bg: '#d0141c' },
+  },
+  'Ljung 1600 S': {
+    name: 'Bruksteamet',
+    paint: 0xb8141a,
+    bands: [{ color: '#f2f2ee', top: 0.12, bottom: 0.3 }],
+    stripes: [{ color: '#f2f2ee', x: 0, w: 0.3 }],
+    sponsor: { name: 'Ljungby Bil', fg: '#b8141a', bg: '#f2f2ee' },
+  },
+  'Ljung 2000 16V': {
+    name: 'Kitcar',
+    paint: 0xf2f2ee,
+    bands: [{ color: '#1d3f7a', top: 0.6, bottom: 1.1, rise: 0.2 }, { color: '#d0141c', top: 0.5, bottom: 0.56, rise: 0.2 }],
+    stripes: [{ color: '#1d3f7a', x: 0, w: 0.24 }],
+    sponsor: { name: 'NORDVOLT', fg: '#ffffff', bg: '#1d3f7a' },
+  },
+  'Strand 1800': {
+    name: 'Klassiker',
+    paint: 0xf2f2ee,
+    bands: [{ color: '#1b2f6e', top: 0.3, bottom: 0.56 }, { color: '#d0141c', top: 0.6, bottom: 0.65 }],
+    stripes: [{ color: '#1b2f6e', x: 0.2, w: 0.14 }, { color: '#1b2f6e', x: -0.2, w: 0.14 }],
+    sponsor: { name: 'Nordolja', fg: '#ffffff', bg: '#1b2f6e' },
+  },
+  'Strand 2.0 Turbo 4x4': {
+    name: 'Grupp A',
+    paint: 0xf2f2ee,
+    bands: [{ color: '#1d5fa8', top: 0.35, bottom: 0.65, rise: 0.35 }, { color: '#d0141c', top: 0.69, bottom: 0.77, rise: 0.35 }],
+    sponsor: { name: 'SKOGSGAS', fg: '#ffffff', bg: '#1d5fa8' },
+  },
+  'Hoshi 2.0 4WD': {
+    name: 'Fabriksteamet',
+    paint: 0xf2f2ee,
+    // Green over red crescents around each wheel arch, pointed towards the doors.
+    bands: [
+      { color: '#1f9a48', top: 0.05, bottom: 0.45, to: 0.4, rise: -0.17, flare: -0.33, bend: 0.1 },
+      { color: '#e0202a', top: 0.45, bottom: 0.85, to: 0.48, rise: -0.05, flare: -0.3, bend: 0.08 },
+      { color: '#1f9a48', top: 0.35, bottom: 0.45, from: 0.45, rise: 0.05, flare: 0.3, bend: -0.12 },
+      { color: '#e0202a', top: 0.5, bottom: 0.62, from: 0.42, rise: -0.28, flare: 0.38, bend: 0.1 },
+    ],
+    sponsor: { name: 'HOSHI OIL', fg: '#1f7a3a', bg: '#ffffff' },
+  },
+  'Volpe 2.0 Turbo 16V': {
+    name: 'Tre ränder',
+    paint: 0xf2f2ee,
+    bands: [
+      { color: '#14234f', top: 0.3, bottom: 0.38 },
+      { color: '#3fa0d8', top: 0.4, bottom: 0.48 },
+      { color: '#d0141c', top: 0.5, bottom: 0.58 },
+    ],
+    stripes: [{ color: '#14234f', x: 0.14, w: 0.09 }, { color: '#3fa0d8', x: 0, w: 0.09 }, { color: '#d0141c', x: -0.14, w: 0.09 }],
+    sponsor: { name: 'ROSSETTO', fg: '#14234f', bg: '#ffffff' },
+  },
+  'Brenner 5T Coupé': {
+    name: 'Grupp B',
+    paint: 0xf2f2ee,
+    bands: [{ color: '#d0141c', top: 0.52, bottom: 0.85, rise: 0.25 }, { color: '#d9a520', top: 0.44, bottom: 0.49, rise: 0.25 }],
+    stripes: [{ color: '#d0141c', x: 0.22, w: 0.1 }, { color: '#d0141c', x: -0.22, w: 0.1 }],
+    sponsor: { name: 'Bergwerk', fg: '#ffffff', bg: '#d0141c' },
+  },
+  'Sora 2.0 Turbo': {
+    name: 'Stjärnblå',
+    paint: 0x1a3e9a,
+    // A swoosh that starts in a point on the front door and sweeps up wide over the rear wheel arch.
+    bands: [{ color: '#f0c419', top: 0.78, bottom: 0.86, from: 0.22, rise: 0.3, flare: 0.5, bend: 0.2 }],
+    sponsor: { name: 'STJÄRNAN', fg: '#1a3e9a', bg: '#f0c419' },
+  },
+};
+
+export const LIVERY_PRICE = 40000;
+export const liveryPrice = (car: string) => LIVERY_PRICE * TIER_PRIZE[tierOf(car)];
+
+/** Paints the car and hides its livery; `color` null goes back to the factory paint for free. Earlier colours are not kept. */
 export function buyPaint(career: CareerState, car: string, color: number | null): BuyResult {
   const owned = career.garage[car];
   const paint = PAINTS.find((p) => p.color === color);
   if (!owned || (color !== null && !paint)) return 'unknown';
-  if ((owned.paint ?? null) === color) return 'maxed';
+  if ((owned.paint ?? null) === color && !owned.livery) return 'maxed';
   const { paint: _, ...rest } = owned;
+  if (owned.livery) rest.livery = false;
   if (!paint) return { ...career, garage: { ...career.garage, [car]: rest } };
   const price = paintPrice(car, paint);
   if (career.money < price) return 'poor';
   // Logged as an upgrade so older clients, which only know the existing kinds, still accept the history.
   return logged({ ...career, money: career.money - price, garage: { ...career.garage, [car]: { ...rest, paint: color! } } }, { kind: 'upgrade', name: `Lack: ${paint.name}`, car, amount: -price });
 }
+
+/** Puts the car's livery on: paid once, free to put back after painting over it. */
+export function buyLivery(career: CareerState, car: string): BuyResult {
+  const owned = career.garage[car];
+  const livery = LIVERIES[car];
+  if (!owned || !livery) return 'unknown';
+  if (owned.livery) return 'maxed';
+  const garage = { ...career.garage, [car]: { ...owned, livery: true } };
+  if (owned.livery === false) return { ...career, garage };
+  const price = liveryPrice(car);
+  if (career.money < price) return 'poor';
+  return logged({ ...career, money: career.money - price, garage }, { kind: 'upgrade', name: `Tävlingsdekor: ${livery.name}`, car, amount: -price });
+}
+
+/** The livery the car shows, if any. */
+export const liveryOf = (owned: CareerState['garage'][string] | undefined, car: string) => (owned?.livery ? LIVERIES[car] : undefined);
 
 /** The daily bonus, once per day. `today` is YYYY-MM-DD in local time. */
 export function claimDailyBonus(career: CareerState, today: string): { career: CareerState; bonus: number } {

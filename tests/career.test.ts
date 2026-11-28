@@ -1,5 +1,5 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
-import { applyUpgrades, buyCar, buyPaint, PAINTS, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
+import { applyUpgrades, buyCar, buyLivery, buyPaint, LIVERIES, liveryPrice, PAINTS, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
 import { afterLeg, bestPlace, hasWon, wonDifficulties, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, startOrder, aheadOnRoad, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
@@ -198,6 +198,13 @@ const CAR = 'Kvarn 240 GL';
   check('paint: factory paint is free', !('paint' in factory.garage[CAR]!) && factory.money === painted.money, `${factory.money} kr`);
   const t2 = { ...c, garage: { ...c.garage, 'Sora 2.0 Turbo': { upgrades: {} } } };
   check('paint: class 2 costs double', (buyPaint(t2, 'Sora 2.0 Turbo', gold.color) as typeof c).money === c.money - 2 * gold.price, 'doubled');
+  check('livery: one per car', CARS.every((m) => !!LIVERIES[m.make().name]) && Object.keys(LIVERIES).length === CARS.length, `${Object.keys(LIVERIES).length} liveries`);
+  const dressed = buyLivery(painted, CAR) as typeof c;
+  check('livery: bought', dressed.garage[CAR]!.livery === true && dressed.money === painted.money - liveryPrice(CAR) && buyLivery(dressed, CAR) === 'maxed' && buyLivery({ ...c, money: 0 }, CAR) === 'poor' && isCareerState(dressed), `${dressed.money} kr`);
+  const over = buyPaint(dressed, CAR, PAINTS[0]!.color) as typeof c;
+  const back = buyLivery(over, CAR) as typeof c;
+  check('livery: painted over, put back free', over.garage[CAR]!.livery === false && back.garage[CAR]!.livery === true && back.money === over.money && buyPaint(back, CAR, PAINTS[0]!.color) !== 'maxed', `${back.money} kr`);
+  check('livery: sanitized', !isCareerState({ ...c, garage: { [CAR]: { upgrades: {}, livery: 1 } } }), 'rejected');
   check('paint: sanitized', [-1, 0x1000000, 1.5, '#fff'].every((paint) => !isCareerState({ ...c, garage: { [CAR]: { upgrades: {}, paint } } })), 'rejected');
 }
 
