@@ -728,12 +728,27 @@ export const LIVERIES: Record<string, Livery> = {
   'Volpe 2.0 Turbo 16V': {
     name: 'Tre ränder',
     paint: 0xf2f2ee,
+    // Red along the top of the sides and over the rear corner; navy and sky blue stripes under it that bend down to the rear wheel arch.
     bands: [
-      { color: '#14234f', top: 0.3, bottom: 0.38 },
-      { color: '#3fa0d8', top: 0.4, bottom: 0.48 },
-      { color: '#d0141c', top: 0.5, bottom: 0.58 },
+      { color: '#d8262f', top: 0, bottom: 0.28 },
+      { color: '#d8262f', top: 0, bottom: 0.6, from: 0.8 },
+      { color: '#14234f', top: 0.32, bottom: 0.37, to: 0.5 },
+      { color: '#14234f', top: 0.32, bottom: 0.37, from: 0.5, to: 0.8, rise: -0.4, bend: -0.1 },
+      { color: '#3fa6dc', top: 0.39, bottom: 0.44, to: 0.5 },
+      { color: '#3fa6dc', top: 0.39, bottom: 0.44, from: 0.5, to: 0.8, rise: -0.4, bend: -0.1 },
+      { color: '#14234f', top: 0.46, bottom: 0.51, to: 0.5 },
+      { color: '#14234f', top: 0.46, bottom: 0.51, from: 0.5, to: 0.8, rise: -0.4, bend: -0.1 },
+      { color: '#3fa6dc', top: 0.53, bottom: 0.58, to: 0.5 },
+      { color: '#3fa6dc', top: 0.53, bottom: 0.58, from: 0.5, to: 0.8, rise: -0.4, bend: -0.1 },
     ],
-    stripes: [{ color: '#14234f', x: 0.14, w: 0.09 }, { color: '#3fa0d8', x: 0, w: 0.09 }, { color: '#d0141c', x: -0.14, w: 0.09 }],
+    // Only the hood: the roof stays white.
+    stripes: [
+      { color: '#d8262f', x: 0, w: 0.5, hoodOnly: true },
+      { color: '#14234f', x: 0.3, w: 0.05, hoodOnly: true },
+      { color: '#3fa6dc', x: 0.37, w: 0.05, hoodOnly: true },
+      { color: '#14234f', x: -0.3, w: 0.05, hoodOnly: true },
+      { color: '#3fa6dc', x: -0.37, w: 0.05, hoodOnly: true },
+    ],
     sponsor: { name: 'ROSSETTO', fg: '#14234f', bg: '#ffffff' },
   },
   'Brenner 5T Coupé': {

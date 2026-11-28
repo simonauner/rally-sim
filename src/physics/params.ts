@@ -647,7 +647,7 @@ export interface Livery {
    */
   bands: { color: string; top: number; bottom: number; from?: number; to?: number; rise?: number; flare?: number; bend?: number }[];
   /** Stripes from nose to tail over the hood, roof and boot lid: offset from the centre line (m, left positive) and width (m). */
-  stripes?: { color: string; x: number; w: number }[];
+  stripes?: { color: string; x: number; w: number; hoodOnly?: boolean }[];
   sponsor: Sponsor;
 }
 

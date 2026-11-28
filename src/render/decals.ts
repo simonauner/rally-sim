@@ -108,7 +108,7 @@ export function decalTexture(b: BodyShape, wheelZ: Range, paint: THREE.Color, nu
     }
     // Stripes over the top fields; the boot lid and roof are drawn mirrored (read from behind).
     for (const st of livery.stripes ?? [])
-      for (const [cx, dir] of [[HOOD_X, 1], [TRUNK_X, -1], [ROOF_X, -1]] as const) {
+      for (const [cx, dir] of st.hoodOnly ? ([[HOOD_X, 1]] as const) : ([[HOOD_X, 1], [TRUNK_X, -1], [ROOF_X, -1]] as const)) {
         ctx.fillStyle = st.color;
         ctx.fillRect(cx + (dir * st.x - st.w / 2) * S, TOPS, st.w * S, H - TOPS);
       }
