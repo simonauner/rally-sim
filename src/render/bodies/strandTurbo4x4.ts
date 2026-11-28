@@ -1,33 +1,36 @@
 import type { BodyShape } from './shape';
 
-/** Strand 2.0 Turbo 4x4: four-door saloon from around 1990; for now the Kvarn's boxy shape until it gets a model of its own. */
+/**
+ * Strand 2.0 Turbo 4x4: four-door saloon from around 1990 in Group A rally trim. The body is drawn by the
+ * Blender model (blender/strandTurbo4x4/), so this shape is only used for the damage zones, the decals and
+ * the tail lamp glow, and follows the model's measurements.
+ */
 export const strandTurbo4x4: BodyShape = {
-  halfX: 0.85,
-  bottom: -0.31,
-  nose: 1.96,
-  tail: -2.53,
-  belt: 0.4,
-  roof: 0.83,
-  crease: 0.19,
-  screen: [0.546, 0.123],
-  backlight: [-1.67, -1.318],
-  hoodDrop: 0.08,
+  halfX: 0.8485,
+  bottom: -0.37,
+  nose: 1.897,
+  tail: -2.571,
+  belt: 0.31,
+  roof: 0.779,
+  crease: -0.085,
+  screen: [0.615, 0.01],
+  backlight: [-1.859, -1.298],
+  hoodDrop: 0.21,
   trunkDrop: 0.05,
-  cabinHalfX: 0.74,
-  archY: -0.24,
-  archR: [0.39, 0.38], // the rear wheel arch hugs the wheel more tightly
-  doorSeams: [-0.4, -1.22],
+  cabinHalfX: 0.76,
+  archY: -0.26,
+  archR: [0.36, 0.36],
+  doorSeams: [-0.565, -1.37],
   sideGlass: [
-    [-0.37, Infinity],
-    [-1.06, -0.45],
-    [-Infinity, -1.11],
+    [-0.53, Infinity],
+    [-Infinity, -0.6],
   ],
-  doorHandles: [-0.27, -1.1],
-  lampY: [0.03, 0.255],
-  grilleX: 0.39,
-  lampX: [0.43, 0.79],
-  tailY: [0.04, 0.24],
-  tailX: 0.46,
-  bumperY: [-0.1, -0.055],
-  rearBumperDepth: 0.46,
+  doorHandles: [-0.35, -1.2],
+  lampY: [-0.02, 0.135],
+  grilleX: 0.24,
+  lampX: [0.26, 0.79],
+  tailY: [0.0, 0.15],
+  tailX: 0.31,
+  bumperY: [-0.15, -0.15],
+  rearBumperDepth: 0.3,
 };

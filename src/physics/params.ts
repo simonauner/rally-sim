@@ -380,27 +380,31 @@ export function strand1800(): CarParams {
 
 /**
  * Class 2: a fictional four-door saloon from around 1990 with four-wheel drive and a big turbo, a Group A
- * car. Until it gets a model of its own it keeps the Kvarn's chassis dimensions.
+ * car. Dimensions follow the original: 4.468 × 1.697 × 1.359 m, wheelbase 2.608 m, track 1.468 m.
  * Lots of grip and the most power, but heavy and sluggish low down; forgiving but hard to slide.
  */
 export function strandTurbo4x4(): CarParams {
   const p = kvarn240();
   const mass = 1230;
-  const zF = p.wheelbase * 0.42;
-  const zR = -p.wheelbase * 0.58;
+  const wheelbase = 2.608;
+  const zF = wheelbase * 0.42;
+  const zR = -wheelbase * 0.58;
   const [, y] = p.wheels[0]!.mount;
   return {
     ...p,
     name: 'Strand 2.0 Turbo 4x4',
     mass,
-    inertia: boxInertia(mass, 4.7, 1.75, 1.4, 0.8),
+    inertia: boxInertia(mass, 4.468, 1.697, 1.359, 0.8),
     cgHeight: 0.52,
-    trackFront: 1.47,
+    wheelbase,
+    trackFront: 1.468,
+    // As the Blender model: nose 1.897 m forward, tail 2.571 m back, roof 0.779 m above the centre of gravity.
+    body: { halfX: 0.85, halfZ: 2.234, centerZ: -0.337, bottomY: -0.37, topY: 0.779 },
     wheels: [
-      { mount: [0.735, y, zF], front: true, left: true },
-      { mount: [-0.735, y, zF], front: true, left: false },
-      { mount: [0.74, y, zR], front: false, left: true },
-      { mount: [-0.74, y, zR], front: false, left: false },
+      { mount: [0.734, y, zF], front: true, left: true },
+      { mount: [-0.734, y, zF], front: true, left: false },
+      { mount: [0.734, y, zR], front: false, left: true },
+      { mount: [-0.734, y, zR], front: false, left: false },
     ],
     susp: { ...p.susp, kFront: 34000, kRear: 30000, bump: 2700, rebound: 4300, arbFront: 15000, arbRear: 11000 },
     brake: { total: 5600, bias: 0.64, handbrake: 3800 },
