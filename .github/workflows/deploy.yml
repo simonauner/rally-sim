@@ -71,8 +71,12 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: sync/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            sync/package-lock.json
 
+      # The worker bundles the shared game code in src/ (the weekly challenge's run check), which imports three.
+      - run: npm ci
       - run: npm ci --prefix sync
       - run: npm run deploy --prefix sync
         env:
