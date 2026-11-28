@@ -603,8 +603,9 @@ export function soraTurbo(): CarParams {
     wheelbase,
     trackFront: 1.47,
     wheels: wheelsAt(R - cg + 0.125, 0.735, 0.73, wheelbase * 0.44, -wheelbase * 0.56),
-    // Roof as on the rally version in the Blender model: 1.30 m above the ground.
-    body: { halfX: 0.845, halfZ: 2.175, bottomY: -0.3, topY: 0.79 },
+    // As the Blender model, bumpers included: 2.01 m forward, 2.37 m back, roof (lowered like the rally version) 0.835 m
+    // above the centre of gravity.
+    body: { halfX: 0.845, halfZ: 2.186, centerZ: -0.179, bottomY: -0.3, topY: 0.835 },
     susp: { ...p.susp, kFront: 30000, kRear: 27000, bump: 2500, rebound: 4000, arbFront: 13000, arbRear: 11000 },
     frontShare: 0.5,
     centerDiff: { lock: 0.5, preload: 100 },
