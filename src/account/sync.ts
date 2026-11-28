@@ -7,7 +7,7 @@
 import { STAGES } from '../physics/stage';
 import { loadRecord, saveRecord } from '../records';
 import { loadCareer, saveCareer } from '../career/store';
-import { CAREER_KEY, careerOf, isSecret, newSecret, recordKey, recordOf, replaces, sanitize, type AccountData, type SyncRequest, type SyncResponse } from './protocol';
+import { CAREER_KEY, careerOf, isSecret, newSecret, recordKey, recordOf, replaces, sanitize, type AccountData, type SyncRequest, type SyncResponse, type WeeklyError, type WeeklyRequest, type WeeklyResponse, WEEKLY_ERRORS } from './protocol';
 
 /** The sync server's address. Without it nothing is synced. */
 const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? '';
@@ -159,4 +159,25 @@ export function startSync() {
   addEventListener('online', syncIfVisible);
   setInterval(syncIfVisible, PULL_INTERVAL_MS);
   void syncNow();
+}
+
+/** The leaderboard, or why the server refused the run; 'failed' without a server or when it could not be reached. */
+export type WeeklyResult = { board: WeeklyResponse } | { error: WeeklyError | 'failed' };
+
+/** The weekly challenge's leaderboard, after submitting a run if `time` is set. */
+export async function weeklyBoard(request: WeeklyRequest): Promise<WeeklyResult> {
+  if (!syncAvailable) return { error: 'failed' };
+  try {
+    const res = await fetch(`${SYNC_URL}/v1/weekly`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${account().secret}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const body = (await res.json()) as WeeklyResponse | { error?: unknown };
+    if (res.ok) return { board: body as WeeklyResponse };
+    const error = (body as { error?: unknown }).error;
+    return { error: WEEKLY_ERRORS.find((e) => e === error) ?? 'failed' };
+  } catch {
+    return { error: 'failed' };
+  }
 }

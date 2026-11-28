@@ -98,6 +98,10 @@ export interface CareerState {
   history?: HistoryEntry[];
   /** Won championships (ChampionshipDef.id); unlocks the next championship and Free drive. */
   won?: string[];
+  /** The name on the weekly challenge's leaderboard. */
+  driver?: string;
+  /** The last week whose weekly challenge result has been paid out (weekOf). */
+  weeklyPaid?: number;
 }
 
 /** One row in the history. `amount` is prize money (positive) or what the purchase cost (negative). */
@@ -150,6 +154,8 @@ export function isCareerState(value: unknown): value is CareerState {
   if (c.bonusDay !== undefined && !(typeof c.bonusDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.bonusDay))) return false;
   if (c.history !== undefined && !(Array.isArray(c.history) && c.history.length <= MAX_HISTORY && c.history.every(isHistoryEntry))) return false;
   if (c.won !== undefined && !(Array.isArray(c.won) && c.won.length <= 20 && c.won.every((id) => str(id, false)))) return false;
+  if (c.driver !== undefined && !isDriverName(c.driver)) return false;
+  if (c.weeklyPaid !== undefined && !(Number.isInteger(c.weeklyPaid) && c.weeklyPaid >= 0)) return false;
   if (typeof c.garage !== 'object' || c.garage === null) return false;
   const cars = Object.entries(c.garage);
   if (cars.length > 50) return false;
@@ -209,3 +215,30 @@ export function replaces(key: string, incoming: Stamped, existing: Stamped | und
   if (!a) return false;
   return !b || a.time < b.time;
 }
+
+/** Weeks for the weekly challenge, Monday to Monday in UTC, numbered from the Monday 1970-01-05. */
+const WEEK_ZERO = Date.UTC(1970, 0, 5);
+const WEEK_MS = 7 * 86_400_000;
+export const weekOf = (at = Date.now()) => Math.floor((at - WEEK_ZERO) / WEEK_MS);
+/** When the week ends (ms since 1970). */
+export const weekEnd = (week: number) => WEEK_ZERO + (week + 1) * WEEK_MS;
+
+/** A name on the leaderboard: letters, digits, spaces and . _ -, starting with a letter or digit. Never contains HTML. */
+export const isDriverName = (v: unknown): v is string => typeof v === 'string' && /^[\p{L}\p{N}][\p{L}\p{N} ._-]{1,15}$/u.test(v);
+/** A plausible stage time in seconds. */
+export const isRunTime = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 30 && v < 3600;
+
+export interface WeeklyEntry {
+  name: string;
+  time: number;
+}
+/**
+ * POST /v1/weekly with `Authorization: Bearer <secret>`: reads the week's leaderboard, and with `time`, `name` and
+ * `trace` (traceOf in career/weekly.ts) submits a run in the current week first, after checking it (checkRun).
+ * Only the account's best time counts.
+ */
+export type WeeklyRequest = { week: number; time?: number; name?: string; trace?: number[] };
+/** Why the server refused a run; sent as `error` with status 409, 422 or 429. */
+export const WEEKLY_ERRORS = ['week-over', 'too-fast', 'bad-trace', 'too-often'] as const;
+export type WeeklyError = (typeof WEEKLY_ERRORS)[number];
+export type WeeklyResponse = { week: number; top: WeeklyEntry[]; count: number; you: { place: number; time: number } | null };

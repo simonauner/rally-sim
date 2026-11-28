@@ -6,6 +6,10 @@ import { STAGE_TARGETS } from '../src/career/career';
 import { CARS, kvarn240, strandTurbo4x4 } from '../src/physics/params';
 import { STAGES } from '../src/physics/stage';
 import { carSpecs } from '../src/physics/specs';
+import { checkRun, settleWeek, traceOf, TRACE_HZ, weeklyChallenge, weeklyPrize } from '../src/career/weekly';
+import { Stage, START_S } from '../src/physics/stage';
+import { stageTargets } from '../src/career/career';
+import { isDriverName, weekEnd, weekOf } from '../src/account/protocol';
 
 let failures = 0;
 function check(name: string, ok: boolean, detail: string) {
@@ -260,6 +264,40 @@ const CAR = 'Kvarn 240 GL';
   const raced = { ...newCareer(), history: [entry(4), entry(2), entry(5)] };
   const won = withWin(newCareer(), ch);
   check('best position', bestPlace(newCareer(), ch) === null && bestPlace(raced, ch) === 2 && bestPlace(won, ch) === 1, `${bestPlace(raced, ch)}, ${bestPlace(won, ch)}`);
+}
+
+// Weekly challenge: the same for everyone, varies between weeks, paid out once.
+{
+  const week = weekOf(Date.UTC(2026, 10, 30, 12));
+  const a = weeklyChallenge(week);
+  const b = weeklyChallenge(week);
+  const weeks = Array.from({ length: 20 }, (_, i) => weeklyChallenge(week + i));
+  check('weekly: same challenge for the same week', a.stage === b.stage && a.model === b.model && a.weather === b.weather, `${a.stage.name}, ${a.model.make().name}, ${a.weather}`);
+  check('weekly: varies between weeks', new Set(weeks.map((w) => w.stage.name)).size >= 8 && new Set(weeks.map((w) => w.model)).size >= 5, `${new Set(weeks.map((w) => w.stage.name)).size} stages, ${new Set(weeks.map((w) => w.model)).size} cars in 20 weeks`);
+  check('weekly: weeks run Monday to Monday UTC', weekOf(Date.UTC(2026, 10, 30)) === weekOf(Date.UTC(2026, 11, 6, 23, 59)) && weekOf(Date.UTC(2026, 11, 7)) === week + 1 && weekEnd(week) === Date.UTC(2026, 11, 7), `week ${week}`);
+  const career = { money: 1000, garage: {} };
+  const won = settleWeek(career, week, { place: 1, time: 200 }, 12, 0);
+  const away = settleWeek(career, week, null, 12, 0);
+  check('weekly: placing pays out once', won.money === 1000 + weeklyPrize(1) && won.weeklyPaid === week && won.history?.length === 1 && away.money === 1000 && away.weeklyPaid === week && weeklyPrize(4) === 3000 && weeklyPrize(11) === 1500 && isCareerState(won), `win +${won.money - 1000} kr, away +0`);
+  // A run along the road at a steady pace, recorded as the game does (20 Hz ghost frames).
+  const road = new Stage(a.stage);
+  const runAt = (pace: number, shift = 0) => {
+    const time = (road.finish - START_S) / pace;
+    const frames: number[] = [];
+    for (let t = 0; t <= time; t += 1 / 20) {
+      const i = Math.min(road.xs.length - 1, Math.round(START_S + pace * t));
+      frames.push(road.xs[i]! + shift, 0, road.zs[i]!, 0, 0, 0, 1);
+    }
+    return { time, trace: traceOf({ hz: 20, frames }) };
+  };
+  const gold = stageTargets(a.stage.name, tierOf(a.model.make().name))![0];
+  const fair = runAt((road.finish - START_S) / (gold * 1.05));
+  const fast = runAt((road.finish - START_S) / (gold * 0.7));
+  const offRoad = runAt((road.finish - START_S) / (gold * 1.05), 80);
+  const cut = { ...fair, trace: fair.trace.map((v, i) => (i === 2 * 100 ? v + 3000 : i === 2 * 101 ? v - 3000 : v)) };
+  const short = { ...fair, trace: fair.trace.slice(0, fair.trace.length / 2) };
+  check('weekly: run check', checkRun(a, fair.time, fair.trace) === 'ok' && checkRun(a, fast.time, fast.trace) === 'too-fast' && checkRun(a, offRoad.time, offRoad.trace) === 'bad-trace' && checkRun(a, short.time, short.trace) === 'bad-trace' && checkRun(a, fair.time + 30, fair.trace) === 'bad-trace' && checkRun(a, fair.time, [1.5, 2]) === 'bad-trace' && checkRun(a, cut.time, cut.trace) === 'bad-trace', `${(JSON.stringify(fair.trace).length / 1024).toFixed(1)} kB for ${fair.time.toFixed(0)} s at ${TRACE_HZ} Hz`);
+  check('weekly: driver names never contain HTML', isDriverName('Simon') && isDriverName('Åsa 2') && !isDriverName('<b>x</b>') && !isDriverName(' x') && !isDriverName('a') && !isDriverName('a'.repeat(17)) && !isCareerState({ ...career, driver: '<i>' }), 'checked');
 }
 
 if (failures) {

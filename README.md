@@ -201,7 +201,7 @@ Karriär in the main menu has a wallet that is synced with the account. Money co
   for free afterwards, so the cars in the garage never take damage.
 - **Championships** (Skogsrallyt, Myrkullarallyt, Vinterrallyt and Forsrallyt, three to five stages each, some at dusk, dawn or night; the prize money grows with the number of stages): you race against seven
   randomized fictional drivers, and the standings are shown after each stage. The placing decides
-  the prize money, which is larger than for single races and scales with difficulty (easy ×0.75, hard ×1.25, `DIFFICULTY_PRIZE`). The field's best drives at gold time; if you have
+  the prize money, which is larger than for single races and scales with difficulty (easy ×0.75, hard ×1.25, `DIFFICULTY_PRIZE`); a championship already won pays 40 % (`REPEAT_PRIZE`). The field's best drives at gold time; if you have
   your own records on the stages, the two fastest are placed close to your pace, and if you are faster than the whole
   field, one or two of them find the same speed for the next stage (`src/career/rivals.ts`). Damage carries over between stages; at service you repair with your own
   money or drive on damaged. There is no restart. If you retire, the car is repaired for free
@@ -216,6 +216,16 @@ Karriär in the main menu has a wallet that is synced with the account. Money co
   (Tallmoklassikern, Ljunghedsrallyt and Israllyt). The medal thresholds and the field are
   8 % faster and the prize money doubled (`TIER_PACE` and `TIER_PRIZE` in `src/career/career.ts`).
   Each class races only its own championships.
+
+- **Weekly challenge** (Veckans utmaning in the main menu, `src/career/weekly.ts`): the week number (Monday to
+  Monday, UTC) picks a stage, a factory car of any class and the weather, the same for everyone. Restarts are free and the
+  best time counts on a shared leaderboard (the `Weekly` Durable Object in `sync/`, one per week, keyed by account
+  with a public driver name). After the week the placing pays out once to the career: 10 000 / 7 000 / 5 000 kr for
+  the podium, 3 000 kr for the top ten and 1 500 kr for taking part. Needs the sync server.
+  Each run is sent with a trace (`traceOf`: x and z in decimetres at 4 Hz as differences, about 5 kB), which the
+  server checks before it counts (`checkRun`): no faster than 80 % of the class's gold time, a trace as long as the
+  time that stays by the road from start to finish without advancing faster than 70 m/s, and at most one run per
+  account every 20 s. A made-up trace at a believable pace still passes; replaying the inputs would be next.
 
 The money buys upgrades in the garage (engine, drivetrain, brakes, suspension, body and tyres, once per car) and
 cars at the car dealer. You start with the Kvarn 240 GL. Rules and prices are in

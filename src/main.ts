@@ -16,6 +16,10 @@ import { Car } from './physics/car';
 import { CARS, type CarModel } from './physics/params';
 import { START_S, Stage, STAGE_ASJON, STAGE_GRINSBOL, STAGES, type StageDef } from './physics/stage';
 import { pickStage, stagePreviewHtml } from './stageMenu';
+import { RUN_RESULT_PENDING, showRunResult, weeklyMenu } from './weeklyMenu';
+import { traceOf, weeklyChallenge, type WeeklyChallenge } from './career/weekly';
+import { weekOf } from './account/protocol';
+import { weeklyBoard, type WeeklyResult } from './account/sync';
 import { forcedWeather, isTyre, pickTyre } from './tyreMenu';
 import type { TyreType } from './physics/surfaces';
 import { aheadOnRoad, CHAMPIONSHIPS, championshipById, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
@@ -173,7 +177,7 @@ async function main() {
     showMenu({ title: 'Kontroller', body: CONTROLS_TABLE, items: [{ label: '← Tillbaka', value: 0 }], cancel: 0, solid });
 
   // The world is only built once the player has chosen in the main menu. ?testbana jumps straight to the playground.
-  type MainChoice = 'stage' | 'test' | 'settings' | 'controls' | 'account' | 'career';
+  type MainChoice = 'stage' | 'test' | 'settings' | 'controls' | 'account' | 'career' | 'weekly';
   let choice: MainChoice = query.has('testbana') ? 'test' : query.has('karriar') ? 'career' : 'controls';
   /** ?karriar=<kr>: back from a championship; the cash counts up with the prize money. */
   let gained = Number(query.get('karriar')) || 0;
@@ -183,6 +187,8 @@ async function main() {
   let stageDef: StageDef = STAGE_GRINSBOL;
   /** Career runs give prize money; free driving doesn't. */
   let careerMode = false;
+  /** The weekly challenge being driven; its times go to the week's leaderboard. */
+  let weekly: WeeklyChallenge | null = null;
   /** Ongoing championship; ?mastarskap=<tyre> loads its next stage directly with the tyres chosen before the reload. */
   let champ: ChampionshipProgress | null = null;
   let weather: Weather = 'clear';
@@ -206,6 +212,10 @@ async function main() {
   const freeCars = () => {
     const owned = Object.keys(loadCareer().career.garage);
     return owned.length ? owned : ['Kvarn 240 GL'];
+  };
+  const thisWeek = () => {
+    const w = weeklyChallenge(weekOf());
+    return `${w.stage.name} · ${w.model.make().name}`;
   };
   const freeDriveDetail = () => {
     const career = loadCareer().career;
@@ -260,6 +270,7 @@ async function main() {
         side: true,
         items: [
           { label: 'Karriär', detail: formatMoney(loadCareer().career.money), value: 'career' },
+          { label: 'Veckans utmaning', detail: thisWeek(), value: 'weekly' },
           { label: 'Fri körning', detail: freeDriveDetail(), value: 'stage' },
           { label: 'Testbana', detail: 'hinder och underlag', value: 'test' },
           { label: 'Inställningar', value: 'settings' },
@@ -271,6 +282,22 @@ async function main() {
       if (choice === 'settings') await showSettings(true);
       if (choice === 'controls') await showControls(true);
       if (choice === 'account') await showAccount();
+    }
+    if (choice === 'weekly') {
+      for (let w; (w = await weeklyMenu()); ) {
+        if ((tyre = await pickTyre(w.stage, w.weather))) {
+          ({ model, stage: stageDef, weather } = w);
+          weekly = w;
+          break;
+        }
+      }
+      if (weekly) {
+        hideScenery();
+        choice = 'stage';
+        break;
+      }
+      choice = 'controls';
+      continue;
     }
     // Free driving picks a stage with the main menu's corner behind it.
     if (choice !== 'career' && choice !== 'stage') hideScenery();
@@ -572,21 +599,25 @@ async function main() {
 
   /** The prize money from the latest run, for the finish screen. */
   let prizeHtml = '';
+  /** The leaderboard after the latest weekly challenge run was submitted. */
+  let weeklyResult: Promise<WeeklyResult> | null = null;
   const showFinish = async () => {
     if (!stage || !timer) return;
     if (champ) {
       const next = await championshipLegDone(champ, timer.time, resultHtml(timer, previousBest), damageAtFinish ?? readDamage(), (d) => showCar(model, d));
       return 'tyre' in next ? goToNextLeg(next.tyre) : goToCareer(next.prize);
     }
-    const c = await showMenu<'again' | 'menu'>({
+    const finishMenu = showMenu<'again' | 'menu'>({
       title: 'Mål',
       side: true,
-      body: resultHtml(timer, previousBest) + prizeHtml,
+      body: resultHtml(timer, previousBest) + prizeHtml + (weeklyResult ? RUN_RESULT_PENDING : ''),
       items: [
         { label: 'Kör igen', value: 'again' },
         { label: 'Huvudmeny', value: 'menu' },
       ],
     });
+    if (weeklyResult) showRunResult(document.querySelector('#menu .body'), weeklyResult, timer.time);
+    const c = await finishMenu;
     if (c === 'menu') return goToMainMenu();
     restart();
   };
@@ -693,6 +724,7 @@ async function main() {
       damageAtFinish = readDamage();
       previousBest = best;
       prizeHtml = careerMode ? awardPrize(stage.def.name, timer.time, car.params.name) : '';
+      if (weekly) weeklyResult = weeklyBoard({ week: weekly.week, time: timer.time, name: loadCareer().career.driver, trace: traceOf(recorder.data()) });
       if (!best || timer.time < best.time) {
         best = { time: timer.time, splits: [...timer.splits], ghost: recorder.data() };
         saveRecord(stage.def, best);

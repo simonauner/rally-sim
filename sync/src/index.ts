@@ -6,7 +6,8 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import { accountIdFor, isSecret, replaces, sanitize, type AccountData, type Stamped, type SyncResponse } from '../../src/account/protocol';
+import { accountIdFor, isDriverName, isRunTime, isSecret, replaces, sanitize, weekOf, type AccountData, type Stamped, type SyncResponse, type WeeklyResponse } from '../../src/account/protocol';
+import { checkRun, weeklyChallenge } from '../../src/career/weekly';
 
 /** Far more tracks than the game has, but stops an account from growing without bound. */
 const MAX_ENTRIES = 1000;
@@ -75,6 +76,40 @@ export class Account extends DurableObject<Env> {
   }
 }
 
+/** How many leaderboard rows are sent. */
+const TOP = 50;
+/** The shortest time between two submitted runs from one account; no stage is this short. */
+const MIN_SUBMIT_GAP_MS = 20_000;
+
+/** One week's leaderboard for the weekly challenge, one row per account with its best time. Runs are checked before they get here. */
+export class Weekly extends DurableObject<Env> {
+  /** The leaderboard, after storing `run` if given; 'too-often' if the account submitted a run just before. */
+  board(week: number, account: string, run?: { time: number; name: string }): WeeklyResponse | 'too-often' {
+    const sql = this.ctx.storage.sql;
+    return this.ctx.storage.transactionSync(() => {
+      sql.exec('CREATE TABLE IF NOT EXISTS runs (account TEXT PRIMARY KEY, name TEXT NOT NULL, time REAL NOT NULL, submitted_at INTEGER NOT NULL)');
+      if (run) {
+        const now = Date.now();
+        const [last] = sql.exec<{ submitted_at: number }>('SELECT submitted_at FROM runs WHERE account = ?', account).toArray();
+        if (last && now - last.submitted_at < MIN_SUBMIT_GAP_MS) return 'too-often';
+        sql.exec(
+          `INSERT INTO runs (account, name, time, submitted_at) VALUES (?, ?, ?, ?)
+           ON CONFLICT (account) DO UPDATE SET name = excluded.name, time = MIN(time, excluded.time), submitted_at = excluded.submitted_at`,
+          account,
+          run.name,
+          run.time,
+          now,
+        );
+      }
+      const top = sql.exec<{ name: string; time: number }>('SELECT name, time FROM runs ORDER BY time LIMIT ?', TOP).toArray();
+      const [{ count }] = sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM runs').toArray();
+      const [mine] = sql.exec<{ time: number }>('SELECT time FROM runs WHERE account = ?', account).toArray();
+      const you = mine ? { time: mine.time, place: sql.exec<{ n: number }>('SELECT COUNT(*) AS n FROM runs WHERE time < ?', mine.time).one().n + 1 } : null;
+      return { week, top, count, you };
+    });
+  }
+}
+
 function corsHeaders(request: Request, env: Env): HeadersInit {
   const origin = request.headers.get('Origin');
   const allowed = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim());
@@ -116,6 +151,25 @@ async function handle(request: Request, env: Env): Promise<unknown> {
     const since = typeof body.since === 'number' && Number.isInteger(body.since) && body.since >= 0 ? body.since : 0;
     const id = await accountIdFor(secret);
     return env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).sync(since, sanitize(body.changes));
+  }
+  if (pathname === '/v1/weekly' && request.method === 'POST') {
+    const secret = secretOf(request);
+    const body = await readJson(request);
+    const week = body.week;
+    const current = weekOf();
+    if (!(typeof week === 'number' && Number.isInteger(week) && week >= 0 && week <= current)) throw new HttpError(400, 'Bad week');
+    let run: { time: number; name: string } | undefined;
+    if (body.time !== undefined) {
+      if (week !== current) throw new HttpError(409, 'week-over');
+      if (!isRunTime(body.time) || !isDriverName(body.name)) throw new HttpError(400, 'Bad run');
+      const verdict = checkRun(weeklyChallenge(week), body.time, body.trace);
+      if (verdict !== 'ok') throw new HttpError(422, verdict);
+      run = { time: body.time, name: body.name };
+    }
+    const id = await accountIdFor(secret);
+    const board = await env.WEEKLY.get(env.WEEKLY.idFromName(String(week))).board(week, id, run);
+    if (board === 'too-often') throw new HttpError(429, 'too-often');
+    return board;
   }
   throw new HttpError(404, 'Not found');
 }
