@@ -3,7 +3,7 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { abs, attribute, color, fract, positionGeometry, select, uniform, vec3 } from 'three/tsl';
 import { LAMP_BROKEN, type Car, type DamageState } from '../physics/car';
 import type { DamageEvent } from '../physics/collision';
-import type { CarModel } from '../physics/params';
+import type { CarModel, WheelDef } from '../physics/params';
 import { tierOf } from '../career/career';
 import { bodyDecals, decalTexture, roofDecals, startNumber } from './decals';
 import type { BodyShape, Range } from './bodies/shape';
@@ -647,6 +647,53 @@ function buildDetails(b: BodyShape, wheelZ: Range, paint: THREE.Color): THREE.Gr
   return g;
 }
 
+/**
+ * A simple underside for every car: dark floor pan, engine and gearbox, crossmember, axles to the hubs
+ * (at rest height), propshaft and diff when the rear is driven, fuel tank and an exhaust pipe unless the model has one.
+ */
+function buildUnderbody(b: BodyShape, wheels: WheelDef[], frontShare: number, exhaust: boolean): THREE.Group {
+  const g = new THREE.Group();
+  const floor = new THREE.MeshToonMaterial({ color: 0x262626 });
+  const metal = new THREE.MeshToonMaterial({ color: 0x3e3f40 });
+  const pipe = new THREE.MeshToonMaterial({ color: 0x55524e });
+  const y0 = b.bottom;
+  const box = (w: number, h: number, l: number, x: number, y: number, z: number, m: THREE.Material) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), m);
+    mesh.position.set(x, y, z);
+    g.add(mesh);
+  };
+  // A rod of radius r from a to b.
+  const rod = (r: number, a: THREE.Vector3, c: THREE.Vector3, m: THREE.Material) => {
+    const d = c.clone().sub(a);
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 10), m);
+    mesh.position.copy(a).add(c).multiplyScalar(0.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    g.add(mesh);
+  };
+  const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+  const front = wheels.filter((w) => w.front);
+  const rear = wheels.filter((w) => !w.front);
+  const zF = front[0]!.mount[2];
+  const zR = rear[0]!.mount[2];
+  // The hub sits about 0.125 m below the mount at rest (see yMount in params.ts).
+  const hubY = wheels[0]!.mount[1] - 0.125;
+
+  box(2 * b.halfX - 0.14, 0.02, b.nose - b.tail - 0.2, 0, y0 - 0.012, (b.nose + b.tail) / 2, floor);
+  box(0.5, 0.14, 0.55, 0, y0 - 0.07, zF - 0.05, metal); // engine sump
+  box(0.28, 0.12, 0.5, 0, y0 - 0.06, zF - 0.55, metal); // gearbox
+  box(2 * b.halfX - 0.5, 0.06, 0.1, 0, y0 - 0.04, zF + 0.05, metal); // front crossmember
+  for (const w of front) rod(0.025, v(0, hubY, zF), v(w.mount[0] * 0.9, hubY, zF), frontShare > 0 ? metal : pipe);
+  // Rear axle tube between the hubs; a diff and a propshaft when the rear is driven.
+  rod(0.035, v(rear[0]!.mount[0] * 0.9, hubY, zR), v(rear[1]!.mount[0] * 0.9, hubY, zR), metal);
+  if (frontShare < 1) {
+    box(0.26, 0.2, 0.24, 0, hubY, zR, metal);
+    rod(0.035, v(0, y0 - 0.06, zF - 0.8), v(0, hubY, zR + 0.12), pipe);
+  }
+  box(0.8, 0.16, 0.42, 0, y0 - 0.07, (zR + b.tail) / 2 + 0.05, metal); // fuel tank
+  if (exhaust) rod(0.03, v(-0.32, y0 - 0.05, zF - 0.3), v(-0.32, y0 - 0.05, b.tail - 0.05), pipe);
+  return g;
+}
+
 /** A hollow tyre around a modelled rim (inner radius 0.205 m), so the recessed spokes show. */
 function buildModelWheel(radius: number, rim: THREE.Mesh): THREE.Group {
   const inner = 0.205;
@@ -779,6 +826,7 @@ export class CarMesh {
       tip.divideScalar(n).add(pipe.home);
       this.exhaust = { detail: pipe, tip };
     }
+    this.group.add(buildUnderbody(b, wheels, car.params.frontShare, !pipe));
     // Just behind the tail, so the body lies behind the light cone.
     // A pair of lights per tail light, in line with the lamp out at the corner.
     const tailLightY = (b.tailY[0] + b.tailY[1]) / 2;
