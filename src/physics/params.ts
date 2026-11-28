@@ -696,7 +696,7 @@ export const CARS: CarModel[] = [
   {
     make: henryTurbo4x4,
     body: 'henryTurbo4x4',
-    paint: 0x1a1a1e,
+    paint: 0x9ca3b4, // blue-tinged silver grey, as the reference car in its usual factory colour
     blurb: 'Fyrhjulsdriven turbosedan i Grupp A-stil. Mest effekt och grepp, men tung och seg under 3 000 rpm.',
   },
   {
