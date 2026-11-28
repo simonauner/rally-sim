@@ -254,7 +254,8 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     panel.getAnimations().forEach((a) => a.cancel());
     body.innerHTML = bodyHtml(cars[current]!);
     const to = panel.offsetHeight;
-    if (from !== to) panel.animate({ height: [`${from}px`, `${to}px`] }, { duration: 200, easing: 'ease-out' });
+    // Hide overflow while it runs: the new content overflows the shorter height and would flash a scrollbar.
+    if (from !== to) panel.animate({ height: [`${from}px`, `${to}px`], overflow: ['hidden', 'hidden'] }, { duration: 200, easing: 'ease-out' });
   };
   const pickLabel = (m: CarModel) => (locked(m) ? ((typeof opts.lockedLabel === 'function' ? opts.lockedLabel(m) : opts.lockedLabel) ?? 'Lås upp i Karriär-läget') : (opts.action?.label ?? 'Kör'));
   let shown: CarModel | null = null;
