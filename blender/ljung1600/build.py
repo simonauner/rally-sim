@@ -35,7 +35,7 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from simplify import simplify  # noqa: E402
+from simplify import SHARP  # noqa: E402
 
 GROUND = -0.503
 WHEELS = [(0.912, -0.203), (-1.488, -0.229)]  # (z, y) front and rear
@@ -129,77 +129,59 @@ def body_halfwidth(z):
     return w
 
 
-def clip_range(profile, z, front):
-    """The height range where the panel reaches forward (back) to z, from the side outline."""
-    ys = [y / 200 for y in range(-70, 120)]
-    inside = [y for y in ys if (piecewise(profile, y) >= z if front else piecewise(profile, y) <= z)]
-    return (min(inside), max(inside)) if inside else None
-
-
-def rounded_rect_ring(hw, bottom, top, rt, rb, k, squeeze=lambda y: 1.0, crown=0.0):
-    """Closed ring in a cross-section: straight top and side with rounded corners (radius rt at the top, rb
+def section(hw, bottom, top, rt, rb, side_ys=(), squeeze=lambda y: 1.0, crown=0.0, n_top=4, n_rt=5, n_rb=3):
+    """Closed cross-section: straight top, side and bottom with rounded corners (radius rt at the top, rb
     at the bottom).
 
-    squeeze(y) scales x at height y (the sides lean inwards), crown cambers the top. The points are spread
-    evenly along the perimeter, k of them, starting in the middle of the top.
+    Points go only where the shape needs them: n_top on the top, n_rt and n_rb per corner arc, and on the
+    side only the heights in side_ys, where the side bends. Every section has the same number of points,
+    mirrored about x = 0 and starting at the middle of the top. squeeze(y) scales x at height y, crown
+    arches the top.
     """
     h = top - bottom
     rt, rb = min(rt, h / 2, hw), min(rb, h / 2, hw)
-    segs = [
-        ('line', (0, top), (hw - rt, top)),
-        ('arc', (hw - rt, top - rt), rt, math.pi / 2, 0),
-        ('line', (hw, top - rt), (hw, bottom + rb)),
-        ('arc', (hw - rb, bottom + rb), rb, 0, -math.pi / 2),
-        ('line', (hw - rb, bottom), (0, bottom)),
-    ]
-    lens = [math.dist(sg[1], sg[2]) if sg[0] == 'line' else sg[2] * math.pi / 2 for sg in segs]
-    total = sum(lens)
-    half = k // 2
-
-    def at(d):
-        for sg, ln in zip(segs, lens):
-            if d <= ln or sg is segs[-1]:
-                t = d / ln if ln > 0 else 0
-                if sg[0] == 'line':
-                    return lerp(sg[1][0], sg[2][0], t), lerp(sg[1][1], sg[2][1], t)
-                a = lerp(sg[3], sg[4], t)
-                return sg[1][0] + sg[2] * math.cos(a), sg[1][1] + sg[2] * math.sin(a)
-            d -= ln
-        return segs[-1][2]
-
-    right = [at(total * i / half) for i in range(half + 1)]
-    left = [(-x, y) for x, y in reversed(right[1:-1])]
+    lo, hi = bottom + rb, top - rt
+    right = [((hw - rt) * i / n_top, top) for i in range(n_top)]
+    right += [(hw - rt + rt * math.cos(a), hi + rt * math.sin(a)) for a in (math.pi / 2 * (1 - i / n_rt) for i in range(n_rt))]
+    right += [(hw, y) for y in sorted((min(hi, max(lo, y)) for y in (hi, *side_ys)), reverse=True)]
+    right += [(hw - rb + rb * math.cos(a), lo + rb * math.sin(a)) for a in (-math.pi / 2 * i / n_rb for i in range(n_rb))]
+    right += [(hw - rb, bottom), (0, bottom)]
     pts = []
-    for x, y in right + left:
-        if hw > 0:
-            y += crown * max(0.0, 1 - (x / hw) ** 2) * clamp01((y - (top - 0.05)) / 0.05)
+    for x, y in right:
+        y += crown * max(0.0, 1 - (x / hw) ** 2) * clamp01((y - (top - 0.05)) / 0.05)
         pts.append((x * squeeze(y), y))
-    return pts
+    return pts + [(-x, y) for x, y in reversed(pts[1:-1])]
 
 
-def stations(z0, z1, fine_ends):
-    """Sections along the car, denser near the ends where the shape changes quickly."""
-    zs = []
-    z = z0
-    while z < z1:
-        zs.append(z)
-        near = min(z - z0, z1 - z)
-        z += 0.012 if near < fine_ends else 0.05
-    zs.append(z1)
-    return zs
+def fill(zs, step):
+    """Fills in sections so no gap is larger than step; the panels need vertices for the dents."""
+    zs = sorted(zs)
+    out = [zs[0]]
+    for z in zs[1:]:
+        n = math.ceil((z - out[-1]) / step - 1e-9)
+        out += [lerp(out[-1], z, i / n) for i in range(1, n + 1)]
+    return out
 
 
 def loft(name, rings):
-    """A closed shell from rings (the same number of points), with caps at both ends."""
+    """A closed shell of rings [(x, y, z), ...] (same number of points, mirrored as in section).
+
+    The end caps are built from horizontal bands between the points and their mirror points, so they
+    follow a curved front instead of becoming one flat n-gon. Coincident points (squeezed sections) are
+    merged."""
     bm = bmesh.new()
-    loops = [[bm.verts.new(to_blender(x, y, z)) for x, y in ring] for z, ring in rings]
+    loops = [[bm.verts.new(to_blender(*p)) for p in ring] for ring in rings]
     k = len(loops[0])
     for a, b in zip(loops, loops[1:]):
         for i in range(k):
             j = (i + 1) % k
             bm.faces.new((a[i], a[j], b[j], b[i]))
-    bm.faces.new(loops[0])
-    bm.faces.new(list(reversed(loops[-1])))
+    for ring in (loops[0], loops[-1]):
+        for i in range(k // 2):
+            vs = [ring[i], ring[i + 1], ring[(k - i - 1) % k], ring[(k - i) % k]]
+            bm.faces.new([v for n, v in enumerate(vs) if v not in vs[:n]])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.001)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.001)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
@@ -209,19 +191,38 @@ def loft(name, rings):
     return obj
 
 
+# Front and rear panel: the last sections bend forward (back) from FRONT_FROM (REAR_FROM) out to the
+# side outline, so the hood's leading edge, the front panel and the rear panel become smooth surfaces
+# instead of steps. Sections are densest where the corners round off seen from above.
+FRONT_FROM, REAR_FROM = 1.35, -1.85
+END_STEPS = (0, 0.3, 0.5, 0.65, 0.76, 0.85, 0.91, 0.95, 0.98, 1)
+# The outlines' break points become rows along the whole side, so the front and rear panel get their
+# shapes; merge_flat joins them up again in the middle.
+PROFILE_ROWS = sorted({y for y, _ in FRONT + REAR})
+
+
 def lower_body():
+    zs = {lerp(REAR_FROM, TAIL, s) for s in END_STEPS} | {lerp(FRONT_FROM, NOSE, s) for s in END_STEPS}
+    zs |= {-1.95, -1.8, BELT_REAR, COWL, 0.627, 1.108, 1.3}
     rings = []
-    for z in stations(TAIL, NOSE, 0.16):
-        top, bottom = body_top(z), body_bottom(z)
-        r = clip_range(FRONT, z, True) if z > 1.45 else clip_range(REAR, z, False) if z < -1.92 else None
-        if r:
-            bottom, top = max(bottom, r[0]), min(top, r[1])
-        if top - bottom < 0.01:
-            mid = (top + bottom) / 2
-            top, bottom = mid + 0.005, mid - 0.005
+    for zn in fill([z for z in zs if TAIL <= z <= NOSE], 0.25):
+
+        def z_at(y, zn=zn):
+            if zn > FRONT_FROM:
+                return lerp(FRONT_FROM, piecewise(FRONT, y), (zn - FRONT_FROM) / (NOSE - FRONT_FROM))
+            if zn < REAR_FROM:
+                return lerp(REAR_FROM, piecewise(REAR, y), (zn - REAR_FROM) / (TAIL - REAR_FROM))
+            return zn
+
+        # Top and bottom where those vertices end up after bending, not at the section's own z; otherwise
+        # the underside rises too early under the rear panel.
+        top, bottom = body_top(zn), body_bottom(zn)
+        top, bottom = body_top(z_at(top)), body_bottom(z_at(bottom))
         # The sides are nearly vertical; the shoulder above the side strip pulls in towards the bonnet and belt line.
         shoulder = lambda y, t=top: 1 - 0.03 * clamp01((y - (t - 0.14)) / 0.14)  # noqa: E731
-        rings.append((z, rounded_rect_ring(body_halfwidth(z), bottom, top, 0.05, 0.06, 64, shoulder, crown=0.015)))
+        ring = section(body_halfwidth(zn), bottom, top, 0.05, 0.06, (top - 0.14, *PROFILE_ROWS), shoulder,
+                       crown=0.015, n_top=3, n_rt=4)
+        rings.append([(x, y, z_at(y)) for x, y in ring])
     return loft('lower', rings)
 
 
@@ -236,9 +237,12 @@ ROOF_FRONT, ROOF_REAR = -0.036, -1.546
 
 def greenhouse():
     rings = []
-    for z in stations(TAIL, COWL, 0.0):
+    # The roof, the cabin's taper and the windows' slope are straight between the break points, so the
+    # sections go there. The front end continues down into the hood, so the union cuts cleanly there; the
+    # rear end stops just inside the tail, since end caps in the same plane break the union.
+    for z in fill([TAIL + 0.003, *(z for z, _ in ROOF[1:]), -2.0, -1.5, -0.1, COWL + 0.04], 0.3):
         base = body_top(z) - 0.04
-        top = piecewise(ROOF, z)
+        top = piecewise(ROOF, z) if z <= COWL else body_top(z) - 0.015
         if top - base < 0.02:
             top = base + 0.02
         # The side windows clearly lean inwards; the cabin narrows a little towards the windscreen but widens at the tailgate, so
@@ -248,7 +252,7 @@ def greenhouse():
         wb = 0.75 - 0.03 * front + 0.03 * rear
         wt = 0.62 - 0.04 * front + 0.07 * rear
         squeeze = lambda y, b=base, t=top, wb=wb, wt=wt: lerp(1, wt / wb, clamp01((y - b) / (t - b)))  # noqa: E731
-        rings.append((z, rounded_rect_ring(wb, base, top, 0.07, 0.0, 48, squeeze, crown=0.015)))
+        rings.append([(x, y, z) for x, y in section(wb, base, top, 0.07, 0.0, (), squeeze, crown=0.015, n_top=3, n_rt=4, n_rb=1)])
     return loft('greenhouse', rings)
 
 
@@ -274,31 +278,23 @@ def apply_all(obj):
         bpy.ops.object.modifier_apply(modifier=m.name)
 
 
+def boolean(obj, other, op):
+    mod = obj.modifiers.new(op.lower(), 'BOOLEAN')
+    mod.operation = op
+    mod.solver = 'EXACT'
+    mod.object = other
+    apply_all(obj)
+    bpy.data.objects.remove(other)
+
+
 def build_body():
-    lower = lower_body()
-    cabin = greenhouse()
-    bpy.ops.object.select_all(action='DESELECT')
-    lower.select_set(True)
-    cabin.select_set(True)
-    bpy.context.view_layer.objects.active = lower
-    bpy.ops.object.join()
-    lower.name = 'body'
-    rem = lower.modifiers.new('remesh', 'REMESH')
-    rem.mode = 'VOXEL'
-    rem.voxel_size = 0.02
-    dec = lower.modifiers.new('decimate', 'DECIMATE')
-    dec.ratio = 0.16
-    apply_all(lower)
-    # The wheel arches and the tail lights' pockets are cut out after reshaping, so the edges become clean.
+    body = lower_body()
+    body.name = 'body'
+    boolean(body, greenhouse(), 'UNION')
+    # The wheel arches and the tail lamps' pockets are cut afterwards, so their edges are clean.
     for c in [*arch_cutters(), *tail_pockets()]:
-        mod = lower.modifiers.new('arch', 'BOOLEAN')
-        mod.operation = 'DIFFERENCE'
-        mod.solver = 'EXACT'
-        mod.object = c
-        apply_all(lower)
-        bpy.data.objects.remove(c)
-    bpy.ops.object.shade_smooth()
-    return lower
+        boolean(body, c, 'DIFFERENCE')
+    return body
 
 
 # --- Colours: material per face --------------------------------------------------------------
@@ -380,8 +376,8 @@ SCREEN_ZONE = lambda c: CABIN_ZONE(c) and c[2] > ROOF_FRONT - 0.12  # noqa: E731
 BACKLIGHT_ZONE = lambda c: CABIN_ZONE(c) and c[2] < ROOF_REAR + 0.02  # noqa: E731
 
 CUTS = [
-    # The window planes only cut where the windows are: planes that continue over the roof give thin slivers that
-    # the thinning (simplify) merges into spikes.
+    # The window planes cut only where the windows are: planes that continue over the roof leave thin
+    # slivers.
     (CABIN_ZONE, [BELT, Z(ROOF_FRONT), Z(ROOF_REAR)]),
     (SIDE_GLASS_ZONE, [Y(WINDOW_TOP), Y(WINDOW_TOP + 0.012), A_LINE, A_FRAME, C_LINE, C_GLASS, *(Z(v) for v in (*B_PILLAR, *B_FRAME))]),
     (SCREEN_ZONE, [pl for sc in (SCREEN_SIDE, SCREEN_FRAME) for pl in (sc, flip_x(sc))]),
@@ -455,7 +451,7 @@ def face_material(p, n):
         if pane is not None:
             return pane
     # The black panel in the front behind the lights and grille.
-    if FRONT_ZONE(p) and z > 1.5 and PANEL_Y[0] < y < PANEL_Y[1] and ax < PANEL_X and n.z > 0.5:
+    if FRONT_ZONE(p) and z > 1.5 and PANEL_Y[0] < y < PANEL_Y[1] and ax < PANEL_X and n.z > 0.7:
         return M['black']
     if SIDE_ZONE(p) and abs(n.x) > 0.4:
         if y < SILL_Y:
@@ -495,6 +491,34 @@ def assign_materials(obj, rule):
         c = to_car(mw @ poly.center)
         n = Vector(to_car(mw.to_3x3() @ poly.normal))
         poly.material_index = rule(c, n)
+
+
+def merge_flat(obj):
+    """Merges faces that lie in one plane and share a colour. The colour-field cuts (cut_planes) and the
+    outline rows (PROFILE_ROWS) run through whole zones and otherwise leave rows of vertices where
+    neither colour nor shape changes."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    # Two cuts in the same plane (e.g. two colour fields ending at the same height) leave doubled
+    # vertices with flat strips between them, which split the surface in the shading.
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.0001)
+    bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(1), verts=bm.verts, edges=bm.edges, delimit={'MATERIAL'})
+    bm.to_mesh(obj.data)
+    bm.free()
+
+
+def mark_sharp(obj):
+    """Smooth shading, but creases (edges steeper than SHARP) sharp, like pressed sheet metal. export.py
+    gives the corners on a crease their own vertices, so the game doesn't round them off."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    for f in bm.faces:
+        f.smooth = True
+    for e in bm.edges:
+        e.smooth = len(e.link_faces) == 2 and e.calc_face_angle() <= SHARP
+    bm.to_mesh(obj.data)
+    bm.free()
 
 
 # --- Loose details ---------------------------------------------------------------------------
@@ -1038,7 +1062,8 @@ def main():
     body = build_body()
     cut_planes(body)
     assign_materials(body, face_material)
-    simplify(body, 0.3)
+    merge_flat(body)
+    mark_sharp(body)
     wheel_rim = rim()
     parts = [body, *details(body)]
     if name != 'ljung1600':
