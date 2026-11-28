@@ -52,9 +52,9 @@ export interface PickOptions {
   /**
    * Replaces Kör: run opens a submenu while the car stays on the turntable, and then
    * the car selector is shown again with the car rebuilt (e.g. with new upgrades).
-   * If run returns true the selector closes and the car is returned.
+   * If run returns true the selector closes and the car is returned. `preview` shows another model on the turntable meanwhile, e.g. a new paint.
    */
-  action?: { label: string; denied?: (m: CarModel) => boolean; confirm?: (m: CarModel) => string; run: (m: CarModel) => Promise<boolean | void> };
+  action?: { label: string; denied?: (m: CarModel) => boolean; confirm?: (m: CarModel) => string; run: (m: CarModel, preview: (m: CarModel) => void) => Promise<boolean | void> };
   /** Small text next to the car name, e.g. the price. */
   detail?: (m: CarModel) => string;
   /** Locked cars can be browsed to but not driven; Kör then becomes a pointer to the career. */
@@ -333,7 +333,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     // The car you browsed to, not the one shown when the menu opened.
     const m = cars[current]!;
     view = null;
-    const close = await opts.action.run(m);
+    const close = await opts.action.run(m, (p) => show(p));
     view = 'browse';
     if (close) break;
     data.clear();

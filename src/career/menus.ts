@@ -463,11 +463,12 @@ async function garage(pick: Pick) {
   await pick(ownedModels(loadCareer().career), {
     title: "Garage",
     subtitle: () => `Kassa: ${formatMoney(loadCareer().career.money)}`,
-    action: { label: "Uppgradera", run: (m) => upgrades(nameOf(m)) },
+    action: { label: "Uppgradera", run: (m, preview) => upgrades(m, preview) },
   });
 }
 
-async function upgrades(car: string) {
+async function upgrades(model: CarModel, preview: (m: CarModel) => void) {
+  const car = nameOf(model);
   for (;;) {
     const career = loadCareer().career;
     const groups = [...new Set(upgradesFor(car).map((u) => u.group))];
@@ -494,7 +495,7 @@ async function upgrades(car: string) {
       cancel: "",
     });
     if (!group) return;
-    if (group === "paint") await paints(car);
+    if (group === "paint") await paints(model, preview);
     else await parts(car, group);
   }
 }
@@ -552,8 +553,9 @@ async function parts(car: string, group: string) {
 const swatch = (color: number) =>
   `<span style="display:inline-block;width:0.9em;height:0.9em;margin-right:0.5em;vertical-align:-0.1em;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25);background:#${color.toString(16).padStart(6, "0")}"></span>`;
 
-/** The car's livery and paint colours: cosmetic only. */
-async function paints(car: string) {
+/** The car's livery and paint colours: cosmetic only. The highlighted choice is shown on the turntable. */
+async function paints(model: CarModel, preview: (m: CarModel) => void) {
+  const car = nameOf(model);
   const factory = CARS.find((m) => nameOf(m) === car)!.paint;
   const livery = LIVERIES[car];
   const LIVERY = 100;
@@ -568,7 +570,12 @@ async function paints(car: string) {
     const liveryCost = owned?.livery === undefined ? liveryPrice(car) : 0;
     const pick = await showMenu<number>({
       title: "Lack",
-      initial: chosen,
+      initial: chosen ?? (current === LIVERY ? LIVERY : choices.findIndex((p) => p.color === current)),
+      onSelect: (v) => {
+        if (v === LIVERY) preview({ ...model, paint: livery!.paint, livery: () => livery });
+        else if (v >= 0) preview({ ...model, paint: choices[v]!.color ?? factory, livery: () => undefined });
+        else preview(model);
+      },
       subtitle: `${car} · Kassa: ${formatMoney(career.money)}`,
       side: true,
       body: message,
@@ -596,7 +603,7 @@ async function paints(car: string) {
       ],
       cancel: -1,
     });
-    if (pick < 0) return;
+    if (pick < 0) return preview(model);
     chosen = pick;
     const p = pick === LIVERY ? { name: livery!.name, price: liveryCost } : choices[pick]!;
     const result = pick === LIVERY ? buyLivery(career, car) : buyPaint(career, car, choices[pick]!.color);
