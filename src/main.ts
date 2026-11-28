@@ -740,7 +740,7 @@ async function main() {
       const s = stage.project(car.pos.x, car.pos.z).s;
       const called = caller.update(s, car.speed);
       if (called.length && !sound.muted) codriver.say(called);
-      hud.updateNotes(caller.active(s), settings.voice && codriver.missingVoice);
+      hud.updateNotes(finished ? [] : caller.active(s), settings.voice && codriver.missingVoice);
     }
     pipeline.render();
     hideLoading?.();

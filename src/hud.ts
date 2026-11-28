@@ -63,9 +63,10 @@ export class Hud {
     this.help.style.display = this.help.style.display === 'none' ? '' : 'none';
   }
 
-  /** Döljer hastighetsmätaren och varvräknaren, t.ex. på målskärmen. */
+  /** Döljer hastighetsmätaren, varvräknaren och tidtagaruret, t.ex. på målskärmen. */
   showGauges(on: boolean) {
     this.gauges.style.visibility = on ? '' : 'hidden';
+    this.timer.style.visibility = on ? '' : 'hidden';
   }
 
   update(car: Car, input: Input, cameraName: string) {
