@@ -867,16 +867,23 @@ def details(body):
                                                           ('plate', (-0.25, 0.25), (0.315, 0.425), (-2.078, -2.066))]))
     # Ljuddämparen under golvet framför bakstötfångaren; avgasröret går ut under stötfångaren.
     # Röret följer golvet uppåt bakåt och mynnar strax under stötfångaren.
+    # Kitcaren har en oval, bredare ljuddämpare och dubbla slutrör sida vid sida.
+    rx, ry = (0.11, 0.06) if KIT else (MUFFLER_R, MUFFLER_R)
+    pipe_r, pipes_x = (0.023, (-0.045, 0.045)) if KIT else (PIPE_R, (0.0,))
     top = min(floor_y(body, MUFFLER_X, z) for z in MUFFLER_Z)
-    y = top - MUFFLER_R + 0.005
-    objs.append(cylinder_z('muffler', 'dark', (MUFFLER_X, y, sum(MUFFLER_Z) / 2), MUFFLER_R, MUFFLER_Z[0] - MUFFLER_Z[1], 16))
-    y0, z0 = top - PIPE_R - 0.005, MUFFLER_Z[1]
-    y1 = floor_y(body, MUFFLER_X, -2.05) - PIPE_R - 0.035
+    y = top - ry + 0.005
+    muffler = cylinder_z('muffler', 'dark', (MUFFLER_X, y, sum(MUFFLER_Z) / 2), MUFFLER_R, MUFFLER_Z[0] - MUFFLER_Z[1], 16)
+    muffler.data.transform(Matrix.Diagonal((rx / MUFFLER_R, 1, ry / MUFFLER_R, 1)))
+    objs.append(muffler)
+    y0, z0 = top - pipe_r - 0.005, MUFFLER_Z[1]
+    y1 = floor_y(body, MUFFLER_X, -2.05) - pipe_r - 0.035
     length = math.hypot(y1 - y0, z0 - PIPE_END)
-    bm = bmesh.new()
-    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=PIPE_R, radius2=PIPE_R, depth=length)
     tilt = math.atan2(y1 - y0, z0 - PIPE_END)
-    bmesh.ops.rotate(bm, cent=Vector(), matrix=Matrix.Rotation(math.pi / 2 + tilt, 3, 'X'), verts=res['verts'])
+    bm = bmesh.new()
+    for dx in pipes_x:
+        res = bmesh.ops.create_cone(bm, cap_ends=True, segments=20, radius1=pipe_r, radius2=pipe_r, depth=length)
+        bmesh.ops.rotate(bm, cent=Vector(), matrix=Matrix.Rotation(math.pi / 2 + tilt, 3, 'X'), verts=res['verts'])
+        bmesh.ops.translate(bm, vec=Vector((dx, 0, 0)), verts=res['verts'])
     objs.append(new_object('exhaust', bm, ['chrome'], (MUFFLER_X, (y0 + y1) / 2, (z0 + PIPE_END) / 2)))
     if KIT:
         # Luftintag framtill på taket.
