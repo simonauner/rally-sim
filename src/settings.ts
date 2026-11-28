@@ -41,7 +41,7 @@ const savedSteerAssist = Number(read(STEER_ASSIST_KEY) ?? 0.5);
 let steerAssist = STEER_ASSISTS.includes(savedSteerAssist) ? savedSteerAssist : 0.5;
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
-const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'lätt', medium: 'medel', hard: 'svår' };
+export const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'lätt', medium: 'medel', hard: 'svår' };
 
 export const settings = {
   /** Whether the co-driver reads the notes aloud; they are shown on screen anyway. */

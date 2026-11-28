@@ -50,6 +50,8 @@ import {
   tierUnlocked,
   unlockHint,
   withWin,
+  wonDifficulties,
+  DIFFICULTIES,
   legWeather,
   newProgress,
   raceRivals,
@@ -64,7 +66,7 @@ import {
   type ChampionshipProgress,
 } from "./championship";
 import { RIVAL_COUNT, standings, type Standing } from "./rivals";
-import { settings } from "../settings";
+import { DIFFICULTY_LABEL, settings } from "../settings";
 import { formatTime, lampStatus } from "../hud";
 import {
   loadCareer,
@@ -354,6 +356,7 @@ function championshipNote(career: CareerState, def: ChampionshipDef) {
     `Totalt: ${km} km`,
     championshipUnlocked(career, def) ? `Prispengar: ${formatMoney(championshipMedals(def, settings.difficulty, hasWon(career, def, settings.difficulty))[0]!.prize)} ${trophy(1)}` : unlockHint(career, def),
     place && `<b>${trophy(place)}bäst ${place}:a</b>`,
+    place === 1 && `Vunnet: ${difficultyTrophies(career, def, true)}`,
   ]
     .filter(Boolean)
     .map((line) => `<span>${line}</span>`)
@@ -394,13 +397,18 @@ function describe(e: HistoryEntry): [string, string] {
   return [`Köpte ${e.name}`, money];
 }
 
-/** One trophy per championship where the best position is on the podium, for the career overview. */
+/** A trophy per difficulty the championship is won on: bronze = easy, silver = medium, gold = hard. `all` shows the missing ones dimmed. */
+function difficultyTrophies(career: CareerState, def: ChampionshipDef, all = false) {
+  const on = wonDifficulties(career, def);
+  return DIFFICULTIES.filter((d) => all || on.includes(d))
+    .map((d) => `<span class="${on.includes(d) ? "" : "missing"}" title="${def.name}: ${on.includes(d) ? "vunnet" : "inte vunnet"} på ${DIFFICULTY_LABEL[d]}">${trophy(3 - DIFFICULTIES.indexOf(d))}</span>`)
+    .join("");
+}
+
+/** The won championships' trophies per difficulty, for the career overview. */
 function trophyShelf(career: CareerState) {
-  const won = CHAMPIONSHIPS.flatMap((ch) => {
-    const place = bestPlace(career, ch);
-    return place && place <= 3 ? [`<span title="${ch.name}: ${place}:a">${trophy(place)}</span>`] : [];
-  });
-  return won.length ? `<div class="trophies">${won.join("")}</div>` : "";
+  const won = CHAMPIONSHIPS.map((ch) => difficultyTrophies(career, ch)).filter(Boolean);
+  return won.length ? `<div class="trophies">${won.map((t) => `<span class="trophy-group">${t}</span>`).join("")}</div>` : "";
 }
 
 const dateOf = (at: number) =>
@@ -735,7 +743,7 @@ async function startChampionship(
     (c = await showMenu<"go" | "legs" | "back">({
       title: def.name,
       solid: true,
-      body: `<img class="banner" src="${CHAMPIONSHIP_IMAGES[def.id]}" alt=""><div>Klass ${def.tier}. Etapper: ${def.legs.join(", ")}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen. Omstart finns inte.</div>${hasWon(career, def, settings.difficulty) ? `<div>Redan vunnet: prispengarna är ${REPEAT_PRIZE * 100} % av första gången.</div>` : ""}<table class="specs">${championshipMedals(
+      body: `<img class="banner" src="${CHAMPIONSHIP_IMAGES[def.id]}" alt=""><div>Klass ${def.tier}. Etapper: ${def.legs.join(", ")}.</div><div>Du kör mot ${RIVAL_COUNT} andra förare, och totaltiden avgör placeringen. Omstart finns inte.</div>${hasWon(career, def, settings.difficulty) ? `<div>Redan vunnet på ${DIFFICULTY_LABEL[settings.difficulty]}: prispengarna är ${REPEAT_PRIZE * 100} % av första gången.</div>` : ""}<table class="specs">${championshipMedals(
         def,
         settings.difficulty,
         hasWon(career, def, settings.difficulty),
