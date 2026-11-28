@@ -29,7 +29,7 @@ dem bara medvetet.
 - Banor är verkliga vägar från öppen kartdata (OpenStreetMap, ODbL, i `src/physics/real/`) som
   anger källan i `StageDef.credit`. Använd ortsnamn, aldrig ett rallys varumärke som etappnamn.
   Testerna har två fiktiva etapper som fixturer (`tests/stages.ts`).
-- Språk i UI och kommentarer: svenska.
+- Språk: UI-texter på svenska. Kod, kommentarer, dokumentation och commit-meddelanden på engelska.
 - Grafik: WebGPU enbart. `?webgl` finns bara för felsökning i miljöer utan WebGPU.
 
 ## Tips
