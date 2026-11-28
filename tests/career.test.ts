@@ -3,7 +3,7 @@ import { applyUpgrades, buyCar, buyLivery, buyPaint, LIVERIES, liveryPrice, PAIN
 import { afterLeg, bestPlace, hasWon, wonDifficulties, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, startOrder, aheadOnRoad, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
-import { CARS, kvarn240, strandTurbo4x4 } from '../src/physics/params';
+import { CARS, kvarn240, henryTurbo4x4 } from '../src/physics/params';
 import { STAGES } from '../src/physics/stage';
 import { carSpecs } from '../src/physics/specs';
 import { checkRun, settleWeek, traceOf, TRACE_HZ, weeklyChallenge, weeklyPrize } from '../src/career/weekly';
@@ -73,16 +73,16 @@ const CAR = 'Kvarn 240 GL';
 {
   const old = {
     ...newCareer(),
-    garage: { 'Kvarn Turbo 4x4': { upgrades: {} }, 'Strand 2.0 GT': { upgrades: {} } },
+    garage: { 'Strand 2.0 Turbo 4x4': { upgrades: {} }, 'Strand 2.0 GT': { upgrades: {} } },
     history: [
       { kind: 'car' as const, at: 1, name: 'Kvarn Turbo 4x4', amount: -50000 },
-      { kind: 'stage' as const, at: 2, name: 'Myrkulla', car: 'Strand 2.0 GT', amount: 900 },
+      { kind: 'stage' as const, at: 2, name: 'Myrkulla', car: 'Strand 1800', amount: 900 },
     ],
   };
   const m = migrateCareer(old);
   const ok =
-    JSON.stringify(Object.keys(m.garage)) === '["Strand 2.0 Turbo 4x4","Strand 1800"]' &&
-    m.history![0]!.name === 'Strand 2.0 Turbo 4x4' && m.history![1]!.car === 'Strand 1800' && m.history![1]!.name === 'Myrkulla' &&
+    JSON.stringify(Object.keys(m.garage)) === '["Henry 2.0 Turbo 4x4","Henry 1800"]' &&
+    m.history![0]!.name === 'Henry 2.0 Turbo 4x4' && m.history![1]!.car === 'Henry 1800' && m.history![1]!.name === 'Myrkulla' &&
     m.money === old.money && migrateCareer(m) === m;
   check('renamed cars move over', ok, Object.keys(m.garage).join(', '));
 }
@@ -193,7 +193,7 @@ const CAR = 'Kvarn 240 GL';
   check('paint: bought', painted.garage[CAR]!.paint === gold.color && painted.money === c.money - gold.price && painted.history!.at(-1)!.amount === -gold.price && isCareerState(painted), `${painted.money} kr`);
   check('paint: same colour and unknown rejected', buyPaint(painted, CAR, gold.color) === 'maxed' && buyPaint(c, CAR, 0x123456) === 'unknown' && buyPaint(c, 'Ingen bil', gold.color) === 'unknown' && buyPaint({ ...c, money: 0 }, CAR, gold.color) === 'poor', 'rejected');
   const kept = buyUpgrade(painted, CAR, 'pads') as typeof c;
-  check('paint: kept through upgrades and migration', kept.garage[CAR]!.paint === gold.color && migrateCareer({ ...kept, garage: { 'Strand 2.0 GT': kept.garage[CAR]! } }).garage['Strand 1800']!.paint === gold.color, 'kept');
+  check('paint: kept through upgrades and migration', kept.garage[CAR]!.paint === gold.color && migrateCareer({ ...kept, garage: { 'Strand 2.0 GT': kept.garage[CAR]! } }).garage['Henry 1800']!.paint === gold.color, 'kept');
   const factory = buyPaint(painted, CAR, null) as typeof c;
   check('paint: factory paint is free', !('paint' in factory.garage[CAR]!) && factory.money === painted.money, `${factory.money} kr`);
   const t2 = { ...c, garage: { ...c.garage, 'Sora 2.0 Turbo': { upgrades: {} } } };
@@ -256,28 +256,28 @@ const CAR = 'Kvarn 240 GL';
   check('unlock hint: first in class names class 1', unlockHint(newCareer(), tall) === 'vinn Vinterrallyt' && unlockHint(almost, tall) === 'vinn Vinterrallyt' && unlockHint(allOne, tier2[1]!) === `vinn ${tall.name}` && unlockHint(newCareer(), CHAMPIONSHIPS[1]!) === 'vinn Skogsrallyt', unlockHint(newCareer(), tall));
   const allTwo = tier2.reduce((c, ch) => withWin(c, ch), allOne);
   const allTwoHarder = tier2.reduce((c, ch, i) => withWin(c, ch, i ? 'medium' : 'hard'), allOne);
-  check('late cars: require class 2 won on medium or hard', carUnlocked(allOne, 'Strand 2.0 Turbo 4x4') && !carUnlocked(allOne, 'Sora 2.0 Turbo') && !carUnlocked(withWin(allOne, tier2[0]!, 'hard'), 'Hoshi 2.0 4WD') && !carUnlocked(allTwo, 'Sora 2.0 Turbo') && carUnlocked(allTwoHarder, 'Sora 2.0 Turbo') && carUnlocked(allTwoHarder, 'Brenner 5T Coupé') && carUnlocked(withWin(allTwoHarder, tier2[0]!, 'easy'), 'Volpe 2.0 Turbo 16V') && !carUnlocked(almost, 'Volpe 2.0 Turbo 16V'), `${tier2.length} championships in class 2`);
+  check('late cars: require class 2 won on medium or hard', carUnlocked(allOne, 'Henry 2.0 Turbo 4x4') && !carUnlocked(allOne, 'Sora 2.0 Turbo') && !carUnlocked(withWin(allOne, tier2[0]!, 'hard'), 'Hoshi 2.0 4WD') && !carUnlocked(allTwo, 'Sora 2.0 Turbo') && carUnlocked(allTwoHarder, 'Sora 2.0 Turbo') && carUnlocked(allTwoHarder, 'Brenner 5T Coupé') && carUnlocked(withWin(allTwoHarder, tier2[0]!, 'easy'), 'Volpe 2.0 Turbo 16V') && !carUnlocked(almost, 'Volpe 2.0 Turbo 16V'), `${tier2.length} championships in class 2`);
   const names = CARS.map((m) => m.make().name);
   check('class 2: seven cars', names.filter((n) => tierOf(n) === 2).length === 7 && names.every((n) => tierOf(n) === 1 || tierOf(n) === 2), names.map((n) => `${n} ${tierOf(n)}`).join(', '));
-  const T2 = 'Strand 2.0 Turbo 4x4';
+  const T2 = 'Henry 2.0 Turbo 4x4';
   const rich = buyCar(buyCar({ ...newCareer(), money: 200_000 }, T2) as ReturnType<typeof newCareer>, CAR) as ReturnType<typeof newCareer>;
   const own = upgradesFor(T2).map((u) => u.id);
   const ids = new Set([...upgradesFor(CAR), ...upgradesFor(T2)].map((u) => u.id));
   const ok = own.length >= 8 && ids.size === upgradesFor(CAR).length + own.length && buyUpgrade(rich, T2, 'exhaust') === 'unknown' && buyUpgrade(rich, CAR, 'dogbox') === 'unknown' && typeof buyUpgrade(rich, T2, 'dogbox') === 'object';
   check('class 2: own parts', ok, own.join(', '));
-  const base = strandTurbo4x4();
+  const base = henryTurbo4x4();
   const built = applyUpgrades(base, Object.fromEntries(own.map((id) => [id, 1])));
   check('class 2: parts take effect', built.mass === base.mass - 50 && built.gearbox.shiftTime < base.gearbox.shiftTime && built.brake.handbrake > base.brake.handbrake && built.engine.inertia < base.engine.inertia && built.gripScale > base.gripScale, `${base.mass} → ${built.mass} kg`);
   // Parts by drivetrain, engine and car.
   const has = (car: string, id: string) => upgradesFor(car).some((u) => u.id === id);
   const B = 'Brenner 5T Coupé';
   const fit =
-    !has(B, 'platelsd') && has('Strand 1800', 'platelsd') && has(B, 'centerdiff') && !has('Strand 1800', 'centerdiff') &&
+    !has(B, 'platelsd') && has('Henry 1800', 'platelsd') && has(B, 'centerdiff') && !has('Henry 1800', 'centerdiff') &&
     has('Hoshi 2.0 4WD', 'antilag') && !has('Ljung 2000 16V', 'antilag') && has('Ljung 2000 16V', 'throttles') && !has(B, 'throttles') &&
     has(B, 'bigturbo') && has(B, 'kevlar') && !has('Sora 2.0 Turbo', 'bigturbo');
   const single = (id: string, car: string) => CARS.map((m) => m.make().name).filter((n) => has(n, id)).join() === car;
   const fitMore =
-    has('Kvarn 240 Turbo', 'wastegate') && !has(CAR, 'wastegate') && !has('Strand 2.0 Turbo 4x4', 'wastegate') &&
+    has('Kvarn 240 Turbo', 'wastegate') && !has(CAR, 'wastegate') && !has('Henry 2.0 Turbo 4x4', 'wastegate') &&
     single('headers', 'Sora 2.0 Turbo') && single('shortfinal', 'Hoshi 2.0 4WD') && single('lightrear', 'Volpe 2.0 Turbo 16V') && single('sequential', 'Ljung 2000 16V');
   check('single-car and turbo parts in class 1', fitMore, upgradesFor('Kvarn 240 Turbo').map((u) => u.id).join(', '));
   check('class 2: parts by car', fit, upgradesFor(B).map((u) => u.id).join(', '));

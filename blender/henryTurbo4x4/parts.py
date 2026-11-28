@@ -1,5 +1,5 @@
 """
-The Strand 2.0 Turbo 4x4's loose parts, each an object of its own: boot spoiler, exhaust, wheels, mirrors,
+The Henry 2.0 Turbo 4x4's loose parts, each an object of its own: boot spoiler, exhaust, wheels, mirrors,
 spot lamps, number plate and mud flaps. The parts are built in car coordinates round their own origin.
 """
 

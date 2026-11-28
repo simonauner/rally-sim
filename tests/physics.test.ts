@@ -1,6 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
 import { Car, LAMP_BROKEN } from '../src/physics/car';
-import { CARS, kvarn240, kvarn240Turbo, strandTurbo4x4 } from '../src/physics/params';
+import { CARS, kvarn240, kvarn240Turbo, henryTurbo4x4 } from '../src/physics/params';
 import { Drivetrain, splitDiff } from '../src/physics/drivetrain';
 import { tierOf } from '../src/career/career';
 import { Barriers } from '../src/physics/barriers';
@@ -108,7 +108,7 @@ for (const m of CARS) {
   const [f1, r1] = splitDiff(1000, 60, 50, d, 0.4);
   const [l, r] = splitDiff(800, 50, 50, d);
   check('centre diff', f0 === 400 && r0 === 600 && f1 < 400 && r1 > 600 && f1 + r1 === 1000 && l === 400 && r === 400, `equal ${f0}/${r0}, front axle spinning ${f1}/${r1}`);
-  const awd = strandTurbo4x4();
+  const awd = henryTurbo4x4();
   const s = carSpecs(awd);
   const fixed = carSpecs({ ...awd, centerDiff: undefined });
   check('four-wheel drive: quickest off the line', s.zeroTo100 < carSpecs(kvarn240Turbo()).zeroTo100 - 2 && Math.abs(s.zeroTo100 - fixed.zeroTo100) < 1, `0–100 ${s.zeroTo100.toFixed(1)} s (fixed split ${fixed.zeroTo100.toFixed(1)} s)`);
@@ -494,7 +494,7 @@ for (const checks of await stageChecks) for (const c of checks) check(c.name, c.
 
 // 16b. Turbo: boost builds after applying throttle, drops when lifting, and anti-lag holds it.
 {
-  const p = strandTurbo4x4();
+  const p = henryTurbo4x4();
   const torqueAfter = (antilag: number, offFor: number) => {
     const d = new Drivetrain({ ...p.engine, turbo: { ...p.engine.turbo!, antilag } }, p.gearbox);
     d.autoShift = false;

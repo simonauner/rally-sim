@@ -8,11 +8,11 @@ import { bodyDecals, decalTexture, roofDecals, startNumber } from './decals';
 import type { BodyShape, Range } from './bodies/shape';
 import { kvarn240 } from './bodies/kvarn240';
 import { kvarn240Turbo } from './bodies/kvarn240Turbo';
-import { strandTurbo4x4 } from './bodies/strandTurbo4x4';
+import { henryTurbo4x4 } from './bodies/henryTurbo4x4';
 import { soraTurbo } from './bodies/soraTurbo';
 import { ljung1600 } from './bodies/ljung1600';
 import { ljung2000 } from './bodies/ljung2000';
-import { strand1800 } from './bodies/strand1800';
+import { henry1800 } from './bodies/henry1800';
 import { brenner5t } from './bodies/brenner5t';
 import { volpeTurbo } from './bodies/volpeTurbo';
 import { hoshi4wd } from './bodies/hoshi4wd';
@@ -128,11 +128,11 @@ class DeformablePart {
 const BODIES: Record<CarModel['body'], BodyShape> = {
   kvarn240,
   kvarn240Turbo,
-  strandTurbo4x4,
+  henryTurbo4x4,
   soraTurbo,
   ljung1600,
   ljung2000,
-  strand1800,
+  henry1800,
   brenner5t,
   volpeTurbo,
   hoshi4wd,
@@ -149,8 +149,8 @@ const MODEL_LOADERS: Record<CarModel['body'], () => Promise<ModelData>> = {
   ljung1600: () => import('./models/ljung1600').then((m) => m.ljung1600),
   ljung2000: () => import('./models/ljung2000').then((m) => m.ljung2000),
   brenner5t: () => import('./models/brenner5t').then((m) => m.brenner5t),
-  strand1800: () => import('./models/strand1800').then((m) => m.strand1800),
-  strandTurbo4x4: () => import('./models/strandTurbo4x4').then((m) => m.strandTurbo4x4),
+  henry1800: () => import('./models/henry1800').then((m) => m.henry1800),
+  henryTurbo4x4: () => import('./models/henryTurbo4x4').then((m) => m.henryTurbo4x4),
 };
 const MODELS: Partial<Record<CarModel['body'], ModelData>> = {};
 const loading: Partial<Record<CarModel['body'], Promise<void>>> = {};

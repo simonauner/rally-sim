@@ -315,7 +315,7 @@ export function ljung2000(): CarParams {
  * high-revving four-cylinder set far back in the engine bay. Short wheelbase and lots of power, so it
  * turns easily; for those who like to slide.
  */
-export function strand1800(): CarParams {
+export function henry1800(): CarParams {
   const mass = 1050;
   const R = 0.31;
   const cg = 0.48;
@@ -324,7 +324,7 @@ export function strand1800(): CarParams {
   const zR = -wheelbase * 0.52;
   const yMount = R - cg + 0.125;
   return {
-    name: 'Strand 1800',
+    name: 'Henry 1800',
     mass,
     // Low yaw inertia: heavy parts near the middle and a short body.
     inertia: boxInertia(mass, 4.1, 1.7, 1.3, 0.72),
@@ -388,7 +388,7 @@ export function strand1800(): CarParams {
  * car. Dimensions follow the original: 4.468 × 1.697 × 1.359 m, wheelbase 2.608 m, track 1.468 m.
  * Lots of grip and the most power, but heavy and sluggish low down; forgiving but hard to slide.
  */
-export function strandTurbo4x4(): CarParams {
+export function henryTurbo4x4(): CarParams {
   const p = kvarn240();
   const mass = 1230;
   const wheelbase = 2.608;
@@ -397,7 +397,7 @@ export function strandTurbo4x4(): CarParams {
   const [, y] = p.wheels[0]!.mount;
   return {
     ...p,
-    name: 'Strand 2.0 Turbo 4x4',
+    name: 'Henry 2.0 Turbo 4x4',
     mass,
     inertia: boxInertia(mass, 4.468, 1.697, 1.359, 0.8),
     cgHeight: 0.52,
@@ -458,7 +458,7 @@ const wheelsAt = (y: number, xF: number, xR: number, zF: number, zR: number): Wh
  * but reluctant to turn in; even torque split with a viscous centre diff.
  */
 export function hoshi4wd(): CarParams {
-  const p = strandTurbo4x4();
+  const p = henryTurbo4x4();
   const mass = 1200;
   const R = 0.31;
   const cg = 0.48;
@@ -499,7 +499,7 @@ export function hoshi4wd(): CarParams {
  * Turns in willingly but is nervous over crests; for those who want to slide on four wheels.
  */
 export function volpeTurbo(): CarParams {
-  const p = strandTurbo4x4();
+  const p = henryTurbo4x4();
   const mass = 1200;
   const R = 0.31;
   const cg = 0.52;
@@ -543,7 +543,7 @@ export function volpeTurbo(): CarParams {
  * that understeers; brake early and get on the throttle late.
  */
 export function brenner5t(): CarParams {
-  const p = strandTurbo4x4();
+  const p = henryTurbo4x4();
   const mass = 1250;
   const R = 0.31;
   const cg = 0.53;
@@ -589,7 +589,7 @@ export function brenner5t(): CarParams {
  * 6,500 rpm and 352 Nm at 4,000 rpm, tyres 205/50 R16.
  */
 export function soraTurbo(): CarParams {
-  const p = strandTurbo4x4();
+  const p = henryTurbo4x4();
   const mass = 1260;
   const R = 0.31;
   const cg = 0.47;
@@ -654,7 +654,7 @@ export interface Livery {
 export interface CarModel {
   make: () => CarParams;
   /** The car's own body in src/render/bodies/ (same name as the file). */
-  body: 'kvarn240' | 'kvarn240Turbo' | 'strandTurbo4x4' | 'soraTurbo' | 'ljung1600' | 'ljung2000' | 'strand1800' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
+  body: 'kvarn240' | 'kvarn240Turbo' | 'henryTurbo4x4' | 'soraTurbo' | 'ljung1600' | 'ljung2000' | 'henry1800' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
   /** A one-line description of the car in the car picker. */
   blurb: string;
   /** Paint colour. */
@@ -688,14 +688,14 @@ export const CARS: CarModel[] = [
     blurb: 'Kitcar på Ljungens kaross. Varvglad och nervös, och spärren fram drar i ratten när du gasar.',
   },
   {
-    make: strand1800,
-    body: 'strand1800',
+    make: henry1800,
+    body: 'henry1800',
     paint: 0x2f7d4f,
     blurb: 'Lätt bakhjulsdriven tvådörrars sedan med kort hjulbas. Mycket gas och vrider sig lätt; för den som vill sladda.',
   },
   {
-    make: strandTurbo4x4,
-    body: 'strandTurbo4x4',
+    make: henryTurbo4x4,
+    body: 'henryTurbo4x4',
     paint: 0x1a1a1e,
     blurb: 'Fyrhjulsdriven turbosedan i Grupp A-stil. Mest effekt och grepp, men tung och seg under 3 000 rpm.',
   },

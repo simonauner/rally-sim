@@ -1,11 +1,11 @@
 import type { BodyShape } from './shape';
 
 /**
- * Strand 2.0 Turbo 4x4: four-door saloon from around 1990 in Group A rally trim. The body is drawn by the
- * Blender model (blender/strandTurbo4x4/), so this shape is only used for the damage zones, the decals and
+ * Henry 2.0 Turbo 4x4: four-door saloon from around 1990 in Group A rally trim. The body is drawn by the
+ * Blender model (blender/henryTurbo4x4/), so this shape is only used for the damage zones, the decals and
  * the tail lamp glow, and follows the model's measurements.
  */
-export const strandTurbo4x4: BodyShape = {
+export const henryTurbo4x4: BodyShape = {
   halfX: 0.8485,
   bottom: -0.37,
   nose: 1.897,

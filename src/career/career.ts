@@ -18,8 +18,8 @@ export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 Turbo': 15000,
   'Ljung 1600 S': 9000,
   'Ljung 2000 16V': 50000,
-  'Strand 1800': 58000,
-  'Strand 2.0 Turbo 4x4': 70000,
+  'Henry 1800': 58000,
+  'Henry 2.0 Turbo 4x4': 70000,
   'Brenner 5T Coupé': 65000,
   'Sora 2.0 Turbo': 72000,
   'Hoshi 2.0 4WD': 75000,
@@ -33,8 +33,8 @@ export const CAR_PRICES: Record<string, number> = {
 export type Tier = 1 | 2;
 const CAR_TIERS: Record<string, Tier> = {
   'Ljung 2000 16V': 2,
-  'Strand 1800': 2,
-  'Strand 2.0 Turbo 4x4': 2,
+  'Henry 1800': 2,
+  'Henry 2.0 Turbo 4x4': 2,
   'Hoshi 2.0 4WD': 2,
   'Volpe 2.0 Turbo 16V': 2,
   'Brenner 5T Coupé': 2,
@@ -575,7 +575,12 @@ const OLD_UPGRADES: Record<string, number[]> = {
 };
 
 /** Cars that changed name: old name → new. Careers and championships saved before are moved over on load. */
-export const RENAMED_CARS: Record<string, string> = { 'Strand 2.0 GT': 'Strand 1800', 'Kvarn Turbo 4x4': 'Strand 2.0 Turbo 4x4' };
+export const RENAMED_CARS: Record<string, string> = {
+  'Strand 2.0 GT': 'Henry 1800',
+  'Strand 1800': 'Henry 1800',
+  'Kvarn Turbo 4x4': 'Henry 2.0 Turbo 4x4',
+  'Strand 2.0 Turbo 4x4': 'Henry 2.0 Turbo 4x4',
+};
 export const currentCarName = (car: string) => RENAMED_CARS[car] ?? car;
 
 /**
@@ -700,14 +705,14 @@ export const LIVERIES: Record<string, Livery> = {
     stripes: [{ color: '#1d3f7a', x: 0, w: 0.24 }],
     sponsor: { name: 'NORDVOLT', fg: '#ffffff', bg: '#1d3f7a' },
   },
-  'Strand 1800': {
+  'Henry 1800': {
     name: 'Klassiker',
     paint: 0xf2f2ee,
     bands: [{ color: '#1b2f6e', top: 0.3, bottom: 0.56 }, { color: '#d0141c', top: 0.6, bottom: 0.65 }],
     stripes: [{ color: '#1b2f6e', x: 0.2, w: 0.14 }, { color: '#1b2f6e', x: -0.2, w: 0.14 }],
     sponsor: { name: 'Nordolja', fg: '#ffffff', bg: '#1b2f6e' },
   },
-  'Strand 2.0 Turbo 4x4': {
+  'Henry 2.0 Turbo 4x4': {
     name: 'Grupp A',
     paint: 0xf2f2ee,
     bands: [{ color: '#1d5fa8', top: 0.35, bottom: 0.65, rise: 0.35 }, { color: '#d0141c', top: 0.69, bottom: 0.77, rise: 0.35 }],

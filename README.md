@@ -157,9 +157,9 @@ The Kvarn's lamps, grille and bumpers are separate parts (`headlamp…`, `grille
 The Volpe also has a roof spoiler, bonnet vents and auxiliary lights as separate parts (`spoiler`, `vents…`, `pod`).
 The Brenner is built from the same modules as the Sora (`blender/brenner5t/`): box flares that end at the door seams, a
 sharp shoulder crease, a lamp band with a grille, a black ribbed tail panel, a spoiler on the deck (`wing`), twin tailpipes and silver rims with twenty spokes.
-The Strand is built from the same modules: round headlamps (`headlight…`) and split black bumpers (`bumper…`) as loose
+The Henry is built from the same modules: round headlamps (`headlight…`) and split black bumpers (`bumper…`) as loose
 parts, painted bolt-on arch extensions (`flare…`), a lip spoiler on the boot (`wing`) and white eight-spoke rims.
-The Strand 2.0 Turbo 4x4 is built from the Brenner's modules: four doors that dent separately (`body_door_front…`,
+The Henry 2.0 Turbo 4x4 is built from the Brenner's modules: four doors that dent separately (`body_door_front…`,
 `body_door_rear…`), louvred bonnet vents, a small black boot spoiler (`wing`) and gold eight-spoke rims.
 The Ljung has round twin headlights and black plastic flares around the wheel arches (`flare…`). The Ljung 2000 16V is built by
 the same script (`blender/ljung1600/build.py -- ljung2000`): same body and wheelbase, widened over the kit car's wider track,
@@ -208,8 +208,8 @@ Karriär in the main menu has a wallet that is synced with the account. Money co
   but you get no prize money. Progress is saved in the browser, since the page reloads between
   stages (`?mastarskap=<tyre>` loads the next stage with the tyres chosen before the reload).
 - **Class 2:** once all three championships in class 1 are won, the car dealer sells seven faster
-  cars (Ljung 2000 16V with front-wheel drive, Strand 1800 with rear-wheel drive and five with
-  four-wheel drive and a centre diff: Strand 2.0 Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé and
+  cars (Ljung 2000 16V with front-wheel drive, Henry 1800 with rear-wheel drive and five with
+  four-wheel drive and a centre diff: Henry 2.0 Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé and
   Sora 2.0 Turbo). They have their own parts in the garage, by drivetrain and engine (centre diff for
   four-wheel drive, boost and anti-lag for turbo, throttle bodies for naturally aspirated engines, some parts for a single
   car, and the Brenner has its own Group B parts), and their own championships

@@ -1,5 +1,5 @@
 """
-Shared by the Strand 2.0 Turbo 4x4's build scripts: measurements, materials, coordinates and small mesh tools.
+Shared by the Henry 2.0 Turbo 4x4's build scripts: measurements, materials, coordinates and small mesh tools.
 
 Everything is in the car's frame (x = left, y = up, z = forward, origin at the centre of gravity) and goes
 into Blender as X = x, Y = -z, Z = y, so the car points to -Y as in Blender's front view.

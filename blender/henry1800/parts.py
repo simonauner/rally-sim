@@ -1,5 +1,5 @@
 """
-The Strand's loose parts, each an object of its own: headlamps, bumpers, spoiler, exhaust, wheels,
+The Henry's loose parts, each an object of its own: headlamps, bumpers, spoiler, exhaust, wheels,
 mirrors, spot lamps, number plates and mud flaps. The parts are built in car coordinates round their own origin.
 """
 

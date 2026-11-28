@@ -1,7 +1,7 @@
 """
-Builds the Strand 2.0 Turbo 4x4 in Blender and saves strandTurbo4x4.blend next to this script.
+Builds the Henry 2.0 Turbo 4x4 in Blender and saves henryTurbo4x4.blend next to this script.
 
-    blender -b --factory-startup -P blender/strandTurbo4x4/build.py
+    blender -b --factory-startup -P blender/henryTurbo4x4/build.py
 
 Each part is built on its own: the shell (shell.py) is split into body, four doors, bumpers and boot lid
 that dent separately, the lamps are lifted out as units of their own, and spoiler, exhaust, wheels and
@@ -93,7 +93,7 @@ def main():
             c.objects.unlink(obj)
         export.objects.link(obj)
     reference(next(o for o in objs if o.name == 'wheel'))
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'strandTurbo4x4.blend')
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'henryTurbo4x4.blend')
     bpy.ops.wm.save_as_mainfile(filepath=out)
     for obj in objs:
         print(f'{obj.name}: {len(obj.data.vertices)} vertices')
