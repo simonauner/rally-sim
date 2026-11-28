@@ -215,7 +215,8 @@ Karriär in the main menu has a wallet that is synced with the account. Money co
   car, and the Brenner has its own Group B parts), and their own championships
   (Tallmoklassikern, Ljunghedsrallyt and Israllyt). The medal thresholds and the field are
   8 % faster and the prize money doubled (`TIER_PACE` and `TIER_PRIZE` in `src/career/career.ts`).
-  Each class races only its own championships.
+  Each class races only its own championships. The Sora, Hoshi, Volpe and Brenner (`LATE_CARS`) are only sold once
+  all class 2 championships are won on medium or hard.
 
 - **Weekly challenge** (Veckans utmaning in the main menu, `src/career/weekly.ts`): the week number (Monday to
   Monday, UTC) picks a stage, a factory car of any class and the weather, the same for everyone. Restarts are free and the

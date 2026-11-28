@@ -69,15 +69,15 @@ const earlierInTier = (def: ChampionshipDef) => CHAMPIONSHIPS.slice(0, CHAMPIONS
 export const tierUnlocked = (career: CareerState, tier: Tier) =>
   CHAMPIONSHIPS.slice(0, CHAMPIONSHIPS.findIndex((c) => c.tier === tier)).every((c) => hasWon(career, c));
 
-/** Class 2 cars that are only sold once all class 2 championships are won. */
+/** Class 2 cars that are only sold once all class 2 championships are won on medium or hard. */
 const LATE_CARS = ['Sora 2.0 Turbo', 'Hoshi 2.0 4WD', 'Volpe 2.0 Turbo 16V', 'Brenner 5T Coupé'];
 
-/** Whether the dealer sells the car: the class must be unlocked, and the late cars require all of class 2 won. */
+/** Whether the dealer sells the car: the class must be unlocked, and the late cars require all of class 2 won on medium or hard. */
 export const carUnlocked = (career: CareerState, car: string) =>
-  tierUnlocked(career, tierOf(car)) && (!LATE_CARS.includes(car) || CHAMPIONSHIPS.filter((c) => c.tier === 2).every((c) => hasWon(career, c)));
+  tierUnlocked(career, tierOf(car)) && (!LATE_CARS.includes(car) || CHAMPIONSHIPS.filter((c) => c.tier === 2).every((c) => hasWon(career, c, 'medium') || hasWon(career, c, 'hard')));
 
 /** What unlocks the car, for the dealer's button. */
-export const carUnlockHint = (car: string) => (LATE_CARS.includes(car) ? 'Vinn alla mästerskap i klass 2' : 'Vinn alla mästerskap i klass 1');
+export const carUnlockHint = (car: string) => (LATE_CARS.includes(car) ? 'Vinn alla mästerskap i klass 2 på medel eller svår' : 'Vinn alla mästerskap i klass 1');
 
 /** Skogsrallyt is always open; after that the class must be unlocked and the class's earlier championships won. */
 export const championshipUnlocked = (career: CareerState, def: ChampionshipDef) =>
