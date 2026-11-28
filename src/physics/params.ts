@@ -169,7 +169,7 @@ export function ljung1600(): CarParams {
   const mass = 880;
   const R = 0.29;
   const cg = 0.5;
-  const wheelbase = 2.4;
+  const wheelbase = 2.475;
   // Heavy front: the engine sits transversely ahead of the front axle.
   const zF = wheelbase * 0.38;
   const zR = -wheelbase * 0.62;
@@ -182,14 +182,15 @@ export function ljung1600(): CarParams {
     wheelRadius: R,
     wheelInertia: 1.0,
     wheelbase,
-    trackFront: 1.4,
+    trackFront: 1.427,
     wheels: [
-      { mount: [0.7, yMount, zF], front: true, left: true },
-      { mount: [-0.7, yMount, zF], front: true, left: false },
-      { mount: [0.69, yMount, zR], front: false, left: true },
-      { mount: [-0.69, yMount, zR], front: false, left: false },
+      { mount: [0.7135, yMount, zF], front: true, left: true },
+      { mount: [-0.7135, yMount, zF], front: true, left: false },
+      { mount: [0.711, yMount, zR], front: false, left: true },
+      { mount: [-0.711, yMount, zR], front: false, left: false },
     ],
-    body: { halfX: 0.82, halfZ: 1.9, bottomY: -0.3, topY: 0.86 },
+    // As the Blender model, bumpers included: 1.71 m forward, 2.27 m back, roof 0.89 m above the centre of gravity.
+    body: { halfX: 0.82, halfZ: 1.99, centerZ: -0.277, bottomY: -0.3, topY: 0.892 },
     susp: {
       kFront: 22000,
       kRear: 17000,
@@ -243,7 +244,7 @@ export function ljung2000(): CarParams {
   const R = 0.3;
   const cg = 0.48;
   // Same body and wheelbase as the Ljung 1600 S; the kit car gets a wider track under the arch extensions.
-  const wheelbase = 2.4;
+  const wheelbase = 2.475;
   const zF = wheelbase * 0.39;
   const zR = -wheelbase * 0.61;
   const yMount = R - cg + 0.125;
@@ -255,14 +256,15 @@ export function ljung2000(): CarParams {
     wheelRadius: R,
     wheelInertia: 1.05,
     wheelbase,
-    trackFront: 1.48,
+    trackFront: 1.508,
     wheels: [
-      { mount: [0.74, yMount, zF], front: true, left: true },
-      { mount: [-0.74, yMount, zF], front: true, left: false },
-      { mount: [0.73, yMount, zR], front: false, left: true },
-      { mount: [-0.73, yMount, zR], front: false, left: false },
+      { mount: [0.754, yMount, zF], front: true, left: true },
+      { mount: [-0.754, yMount, zF], front: true, left: false },
+      { mount: [0.744, yMount, zR], front: false, left: true },
+      { mount: [-0.744, yMount, zR], front: false, left: false },
     ],
-    body: { halfX: 0.86, halfZ: 1.95, bottomY: -0.3, topY: 0.86 },
+    // As the Blender model, bumpers included: 1.74 m forward, 2.24 m back, roof scoop 0.91 m above the centre of gravity.
+    body: { halfX: 0.867, halfZ: 1.99, centerZ: -0.251, bottomY: -0.3, topY: 0.914 },
     susp: {
       kFront: 30000,
       kRear: 23000,

@@ -5,7 +5,7 @@ Builds the Ljung 1600 S in Blender and saves ljung1600.blend next to the script.
     blender -b --factory-startup -P blender/ljung1600/build.py -- ljung2000   # blender/ljung2000/ljung2000.blend
 
 The Ljung 2000 16V is the kit car on the same body and wheelbase: widened so the wheel arches sit over its
-wider track (1.48 m instead of 1.40 m), 3 cm lower, with larger wheel arches and flares, one large yellow
+wider track (1.51 m instead of 1.43 m), 3 cm lower, with larger wheel arches and flares, one large yellow
 light per side instead of two, a grille across the whole front, a black bumper with holes and a painted
 spoiler with air intakes, painted mirrors, dark rims with five holes and an air intake on the roof. The
 differences are controlled by KIT below.
@@ -20,8 +20,8 @@ rest in the game.
 
 The original is a small three-door hatchback from the 80s: short bonnet sloping towards the front, long
 door, wide C-pillar and a nearly vertical tailgate. Lengths and heights are measured from a straight side
-view, scaled by the game's wheelbase of 2.40 m (slightly shorter than the original's), so the car is
-3.74 m long over the bumpers and 1.61 m wide. The body is the shell; lights, grille, bumpers and rims are
+view, scaled by a wheelbase of 2.40 m, so it came out 3.74 m long over the bumpers and 1.61 m wide. Last,
+real_size() stretches it to the original's size: wheelbase 2.475 m, 3.985 m long, 1.69 m wide over the flares. The body is the shell; lights, grille, bumpers and rims are
 parts of their own.
 """
 
@@ -1049,6 +1049,37 @@ def apply_warp(objs, f):
         obj.matrix_world = Matrix.Translation(to_blender(*at))
 
 
+# The body above is drawn from a side view scaled by a 2.40 m wheelbase, which made it smaller than the original
+# (wheelbase 2.475 m, 3.985 m long, 1.68 m wide over the arch flares, 1.40 m high). real_size() stretches it to
+# that: the wheelbase by REAL_WHEELBASE, the overhangs beyond ARCH_ZONE from the axles by OVERHANG (so the wheel
+# arches keep their shape), the width by WIDEN and the height above the ground by RAISE.
+REAL_WHEELBASE = 2.475
+ARCH_ZONE = 0.46
+OVERHANG = 1.228
+WIDEN = 1.019
+RAISE = 1.015
+
+
+def real_size(wheels, track, ground):
+    """The mapping to the original's size, and the wheels and track it moves `wheels`/`track` to. The axles are
+    scaled about the centre of mass, so they keep their share of the wheelbase."""
+    (zf, yf), (zr, yr) = wheels
+    a = REAL_WHEELBASE / (zf - zr)
+    front, rear = zf + ARCH_ZONE, zr - ARCH_ZONE
+
+    def g(z):
+        if z > front:
+            return a * front + (z - front) * OVERHANG
+        if z < rear:
+            return a * rear + (z - rear) * OVERHANG
+        return a * z
+
+    def f(p):
+        x, y, z = p
+        return Vector((WIDEN * x, ground + (y - ground) * RAISE, g(z)))
+    return f, [(a * zf, yf), (a * zr, yr)], [WIDEN * t for t in track]
+
+
 def main():
     args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     name = args[0] if args else 'ljung1600'
@@ -1068,7 +1099,9 @@ def main():
     parts = [body, *details(body)]
     if name != 'ljung1600':
         apply_warp(parts, warp(wheels, track, KIT_DROP if KIT else 0.0))
-        wheel_rim.location = to_blender(track[0], wheels[0][1], wheels[0][0])
+    f, wheels, track = real_size(wheels, track, ground)
+    apply_warp(parts, f)
+    wheel_rim.location = to_blender(track[0], wheels[0][1], wheels[0][0])
     for obj in [*parts, wheel_rim]:
         bpy.context.scene.collection.objects.unlink(obj)
         export.objects.link(obj)
