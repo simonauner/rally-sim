@@ -420,6 +420,10 @@ def merge_flat(obj):
     annars rader av hörn där inget byter färg eller form. Körs sist: tröskeln och dörrarna väljs ur snitten."""
     bm = bmesh.new()
     bm.from_mesh(obj.data)
+    # Två snitt i samma plan (t.ex. två färgfält som slutar på samma höjd) ger dubbla hörn och platta
+    # remsor emellan, som delar ytan i skuggningen.
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.0001)
     bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(1), verts=bm.verts, edges=bm.edges, delimit={'MATERIAL'})
     bm.to_mesh(obj.data)
     bm.free()
