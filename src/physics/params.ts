@@ -512,9 +512,10 @@ export function volpeTurbo(): CarParams {
     cgHeight: cg,
     wheelRadius: R,
     wheelbase,
-    trackFront: 1.5,
-    wheels: wheelsAt(R - cg + 0.125, 0.75, 0.76, wheelbase * 0.43, -wheelbase * 0.57),
-    body: { halfX: 0.88, halfZ: 1.95, bottomY: -0.3, topY: 0.92 },
+    trackFront: 1.51,
+    wheels: wheelsAt(R - cg + 0.125, 0.755, 0.75, wheelbase * 0.43, -wheelbase * 0.57),
+    // As the Blender model, bumpers included: 1.80 m forward, 2.07 m back, roof spoiler 0.885 m above the centre of gravity.
+    body: { halfX: 0.885, halfZ: 1.935, centerZ: -0.137, bottomY: -0.3, topY: 0.885 },
     susp: { ...p.susp, kFront: 34000, kRear: 32000, arbFront: 12000, arbRear: 14000 },
     steer: { ...p.steer, rate: 2.2, centerRate: 3.6 },
     // 47/53 as in the original: epicyclic centre diff with a viscous coupling.
