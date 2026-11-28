@@ -229,9 +229,11 @@ Karriär in the main menu has a wallet that is synced with the account. Money co
   account every 20 s. A made-up trace at a believable pace still passes; replaying the inputs would be next.
 
 The money buys upgrades in the garage (engine, drivetrain, brakes, suspension, body and tyres, once per car) and
-cars at the car dealer. The garage also sells paint, a money sink for late in the career (Lack, `PAINTS`): eight colours per car
-from 5 000 to 25 000 kr (double for class 2), purely cosmetic and shown in the game and on the turntable; going back to the
-factory paint is free. You start with the Kvarn 240 GL. Rules and prices are in
+cars at the car dealer. The garage also sells paint, a money sink for late in the career (Lack): eight colours per car
+from 2 000 to 6 000 kr (`PAINTS`), and a works livery per car for 40 000 kr (`LIVERIES`): bands along the sides,
+stripes over the top and a title sponsor, in the spirit of the car's era but with fictional sponsors. Class 2 pays
+double. Both are purely cosmetic and shown in the game and on the turntable; the factory paint is free, and a
+livery that was painted over goes back on for free. You start with the Kvarn 240 GL. Rules and prices are in
 `src/career/career.ts`. Fri körning is still there with all cars and without money.
 
 ## Deployment

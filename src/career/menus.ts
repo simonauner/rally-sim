@@ -16,7 +16,11 @@ import {
   applyUpgrades,
   sponsorsOf,
   buyCar,
+  buyLivery,
   buyPaint,
+  LIVERIES,
+  liveryOf,
+  liveryPrice,
   buyUpgrade,
   PAINTS,
   paintPrice,
@@ -92,8 +96,10 @@ function ownedModels(career: CareerState): CarModel[] {
     sponsors: () => sponsorsOf(loadCareer().career.garage[nameOf(m)]!.upgrades),
     // Read when the car is built, like the upgrades, so a new paint shows up immediately.
     get paint() {
-      return loadCareer().career.garage[nameOf(m)]?.paint ?? m.paint;
+      const owned = loadCareer().career.garage[nameOf(m)];
+      return liveryOf(owned, nameOf(m))?.paint ?? owned?.paint ?? m.paint;
     },
+    livery: () => liveryOf(loadCareer().career.garage[nameOf(m)], nameOf(m)),
   }));
 }
 
@@ -480,7 +486,7 @@ async function upgrades(car: string) {
         }),
         {
           label: "Lack",
-          detail: PAINTS.find((p) => p.color === career.garage[car]?.paint)?.name ?? "fabrikslack",
+          detail: liveryOf(career.garage[car], car)?.name ?? PAINTS.find((p) => p.color === career.garage[car]?.paint)?.name ?? "fabrikslack",
           value: "paint",
         },
         { label: "← Tillbaka", value: "" },
@@ -546,15 +552,20 @@ async function parts(car: string, group: string) {
 const swatch = (color: number) =>
   `<span style="display:inline-block;width:0.9em;height:0.9em;margin-right:0.5em;vertical-align:-0.1em;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25);background:#${color.toString(16).padStart(6, "0")}"></span>`;
 
-/** Paint colours for the car: cosmetic only. */
+/** The car's livery and paint colours: cosmetic only. */
 async function paints(car: string) {
   const factory = CARS.find((m) => nameOf(m) === car)!.paint;
+  const livery = LIVERIES[car];
+  const LIVERY = 100;
   let message = "";
   let chosen: number | undefined;
   for (;;) {
     const career = loadCareer().career;
-    const current = career.garage[car]?.paint ?? null;
+    const owned = career.garage[car];
+    const current = owned?.livery ? LIVERY : (owned?.paint ?? null);
     const choices = [{ name: "Fabrikslack", color: null, price: 0 }, ...PAINTS.map((p) => ({ ...p, price: paintPrice(car, p) }))];
+    // Paid once: putting the livery back after painting over it is free.
+    const liveryCost = owned?.livery === undefined ? liveryPrice(car) : 0;
     const pick = await showMenu<number>({
       title: "Lack",
       initial: chosen,
@@ -562,6 +573,18 @@ async function paints(car: string) {
       side: true,
       body: message,
       items: [
+        ...(livery
+          ? [
+              {
+                label: swatch(livery.paint) + livery.name,
+                note: "Tävlingsdekor med ränder och huvudsponsor",
+                detail: current === LIVERY ? "på bilen" : liveryCost ? formatMoney(liveryCost) : "köpt",
+                value: LIVERY,
+                denied: () => buyLivery(career, car) === "poor",
+                confirm: current === LIVERY || !liveryCost ? undefined : () => `Köpa för ${formatMoney(liveryCost)}?`,
+              },
+            ]
+          : []),
         ...choices.map((p, i) => ({
           label: swatch(p.color ?? factory) + p.name,
           detail: p.color === current ? "lackerad" : p.price ? formatMoney(p.price) : "gratis",
@@ -575,13 +598,17 @@ async function paints(car: string) {
     });
     if (pick < 0) return;
     chosen = pick;
-    const p = choices[pick]!;
-    const result = buyPaint(career, car, p.color);
+    const p = pick === LIVERY ? { name: livery!.name, price: liveryCost } : choices[pick]!;
+    const result = pick === LIVERY ? buyLivery(career, car) : buyPaint(career, car, choices[pick]!.color);
     if (typeof result === "object") {
       commit(result);
       if (p.price) coins();
     }
-    message = buyMessage(result, p.price, `<div class="ahead">${car} är nu lackerad i ${p.name.toLowerCase()}.</div>`);
+    message = buyMessage(
+      result,
+      p.price,
+      `<div class="ahead">${car} har nu ${pick === LIVERY ? `tävlingsdekoren ${p.name}` : p.name.toLowerCase()}.</div>`,
+    );
   }
 }
 
