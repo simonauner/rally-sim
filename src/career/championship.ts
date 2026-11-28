@@ -40,9 +40,17 @@ export const CHAMPIONSHIPS: ChampionshipDef[] = [
 /** The field's pace in class 1 gold times: class 2 drives faster. */
 const fieldPace = (def: ChampionshipDef) => def.pace * TIER_PACE[def.tier];
 
-/** Won; wins from before `won` are read from the history. */
-export const hasWon = (career: CareerState, def: ChampionshipDef) =>
+/** Won on any difficulty; wins from before `won` are read from the history. */
+const wonAny = (career: CareerState, def: ChampionshipDef) =>
   !!career.won?.includes(def.id) || !!career.history?.some((e) => e.kind === 'championship' && e.place === 1 && e.name === def.name);
+
+/** The difficulties the championship is won on; wins from before `wonOn` count as easy. */
+export const wonDifficulties = (career: CareerState, def: ChampionshipDef): Difficulty[] =>
+  career.wonOn?.[def.id] ?? (wonAny(career, def) ? ['easy'] : []);
+
+/** Won on the difficulty, or on any difficulty without one. */
+export const hasWon = (career: CareerState, def: ChampionshipDef, difficulty?: Difficulty) =>
+  difficulty ? wonDifficulties(career, def).includes(difficulty) : wonAny(career, def);
 
 /**
  * The best position in the championship, or null if it was never driven.
@@ -84,9 +92,12 @@ export const unlockHint = (career: CareerState, def: ChampionshipDef) => {
   return `vinn ${[...opensTier, ...earlierInTier(def)].filter((c) => !hasWon(career, c)).at(-1)?.name}`;
 };
 
-/** The career with the championship won. */
-export const withWin = (career: CareerState, def: ChampionshipDef): CareerState =>
-  career.won?.includes(def.id) ? career : { ...career, won: [...(career.won ?? []), def.id] };
+/** The career with the championship won on the difficulty; `won` keeps any-difficulty wins for unlocking. */
+export const withWin = (career: CareerState, def: ChampionshipDef, difficulty: Difficulty = 'easy'): CareerState => {
+  if (hasWon(career, def, difficulty) && career.won?.includes(def.id)) return career;
+  const on = DIFFICULTIES.filter((d) => d === difficulty || hasWon(career, def, d));
+  return { ...career, won: career.won?.includes(def.id) ? career.won : [...(career.won ?? []), def.id], wonOn: { ...career.wonOn, [def.id]: on } };
+};
 
 /** What carries over with the car between stages. */
 export interface CarDamage {
@@ -118,11 +129,12 @@ export interface ChampionshipProgress {
 /** The field's pace per difficulty, as a factor on the championship's base pace (lower = faster). */
 export const DIFFICULTY_PACE = { easy: 1, medium: 0.97, hard: 0.94 } as const;
 export type Difficulty = keyof typeof DIFFICULTY_PACE;
+export const DIFFICULTIES = Object.keys(DIFFICULTY_PACE) as Difficulty[];
 /** Medal money per difficulty: harder fields pay more, easier less (Skogsrallyt: 15 500 / 20 500 / 25 500). */
 export const DIFFICULTY_PRIZE: Record<Difficulty, number> = { easy: 0.75, medium: 1, hard: 1.25 };
 /** The difficulty the championship was started with; progress saved before it counts as easy. */
 export const difficultyOf = (p: ChampionshipProgress) =>
-  (Object.keys(DIFFICULTY_PACE) as Difficulty[]).find((k) => DIFFICULTY_PACE[k] === (p.difficulty ?? 1))!;
+  DIFFICULTIES.find((k) => DIFFICULTY_PACE[k] === (p.difficulty ?? 1))!;
 
 /** Prize money per kilometre and position: considerably more than for single stages. */
 const CHAMPIONSHIP_MEDALS = [
@@ -131,13 +143,13 @@ const CHAMPIONSHIP_MEDALS = [
   { name: 'brons', prize: 625 },
 ] as const;
 export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
-/** Medal money for a championship already won: the first win pays in full, so repeating it is no shortcut to money. */
+/** Medal money for a championship already won on the difficulty: the first win on each difficulty pays in full, so repeating it is no shortcut to money. */
 export const REPEAT_PRIZE = 0.4;
 
 /** The championship's stages combined (km), from the precomputed lengths. */
 export const championshipKm = (def: ChampionshipDef) => def.legs.reduce((sum, leg) => sum + (STAGE_LENGTHS[leg] ?? 0), 0) / 1000;
 
-/** The medals with prize money that grows with distance, so long championships pay for their repairs. `won`: already won before. */
+/** The medals with prize money that grows with distance, so long championships pay for their repairs. `won`: already won on this difficulty. */
 export const championshipMedals = (def: ChampionshipDef, difficulty: Difficulty, won = false) =>
   CHAMPIONSHIP_MEDALS.map((m) => ({
     name: m.name,
@@ -153,7 +165,7 @@ export function championshipTargets(def: ChampionshipDef): [number, number, numb
   return [0, 1, 2].map((i) => Math.round(all.reduce((sum, t) => sum + t![i]!, 0) * TIER_PACE[def.tier])) as [number, number, number];
 }
 
-/** The prize money by championship position (1 = win); `won` if the championship was already won before. */
+/** The prize money by championship position (1 = win); `won` if already won on this difficulty. */
 export function championshipPrize(def: ChampionshipDef, place: number, difficulty: Difficulty, won = false): { medal: string | null; prize: number } {
   const medal = championshipMedals(def, difficulty, won)[place - 1];
   return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE * TIER_PRIZE[def.tier] };

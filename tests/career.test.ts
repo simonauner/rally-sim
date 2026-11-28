@@ -1,6 +1,6 @@
 import { CAREER_KEY, isCareerState, MAX_HISTORY, replaces, sanitize, type Stamped } from '../src/account/protocol';
 import { applyUpgrades, buyCar, buyPaint, PAINTS, logged, migrateCareer, buyUpgrade, claimDailyBonus, DAILY_BONUS, FINISH_PRIZE, MEDALS, newCareer, prizeFor, START_MONEY, tierOf, upgradesFor } from '../src/career/career';
-import { afterLeg, bestPlace, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, startOrder, aheadOnRoad, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
+import { afterLeg, bestPlace, hasWon, wonDifficulties, carUnlocked, CHAMPIONSHIPS, championshipPrize, championshipUnlocked, difficultyOf, tierUnlocked, unlockHint, withWin, championshipTargets, isProgress, startOrder, aheadOnRoad, legWeather, newProgress, raceRivals, repairCost, repairPart, type CarDamage } from '../src/career/championship';
 import { raceLeg, RIVAL_COUNT, standings } from '../src/career/rivals';
 import { STAGE_TARGETS } from '../src/career/career';
 import { CARS, kvarn240, strandTurbo4x4 } from '../src/physics/params';
@@ -214,23 +214,40 @@ const CAR = 'Kvarn 240 GL';
   const second = logged(fresh, { kind: 'championship', name: skog.name, car: CAR, place: 2, of: 8, time: 300, amount: 6000 });
   const ok = open(fresh) === '1000000' && open(one) === '1100000' && open(myrOnly) === '1000000' && open(both) === '1110000' && open(old) === '1100000' && open(second) === '1000000';
   check('championship: unlocking', ok && withWin(one, skog) === one && isCareerState(both) && !isCareerState({ ...fresh, won: [''] }), `${open(fresh)} ${open(one)} ${open(both)}`);
+  const legacy = { ...fresh, won: [skog.id] };
+  const hard = withWin(legacy, skog, 'hard');
+  const hardOnly = withWin(fresh, skog, 'hard');
+  check(
+    'trophies: wins per difficulty, old saves count as easy',
+    wonDifficulties(legacy, skog).join() === 'easy' &&
+      wonDifficulties(old, skog).join() === 'easy' &&
+      wonDifficulties(hard, skog).join() === 'easy,hard' &&
+      withWin(hard, skog, 'easy') === hard &&
+      hasWon(hardOnly, skog) && !hasWon(hardOnly, skog, 'easy') && hasWon(hardOnly, skog, 'hard') &&
+      open(hardOnly) === '1100000' &&
+      isCareerState(hard) && !isCareerState({ ...fresh, wonOn: { [skog.id]: ['brutal'] } }) && !isCareerState({ ...fresh, wonOn: { [skog.id]: [skog.id] } as never }),
+    wonDifficulties(hard, skog).join(),
+  );
+  // The repeat prize is per difficulty: an easy win does not cut the first hard win's prize.
+  const repeat = (c: typeof fresh, d: 'easy' | 'hard') => championshipPrize(skog, 1, d, hasWon(c, skog, d)).prize;
+  check('trophies: first win on a harder difficulty pays in full', repeat(legacy, 'hard') === championshipPrize(skog, 1, 'hard').prize && repeat(hard, 'hard') < repeat(legacy, 'hard') && repeat(legacy, 'easy') === 6000, `${repeat(legacy, 'hard')} → ${repeat(hard, 'hard')}`);
 }
 
 // Class 2: unlocked by all class 1 championships, has its own parts, tighter thresholds and bigger prizes.
 {
   const tier1 = CHAMPIONSHIPS.filter((c) => c.tier === 1);
   const tier2 = CHAMPIONSHIPS.filter((c) => c.tier === 2);
-  const allOne = tier1.reduce(withWin, newCareer());
-  const almost = tier1.slice(0, 2).reduce(withWin, newCareer());
+  const allOne = tier1.reduce((c, ch) => withWin(c, ch), newCareer());
+  const almost = tier1.slice(0, 2).reduce((c, ch) => withWin(c, ch), newCareer());
   const openTwo = (c: ReturnType<typeof newCareer>) => tier2.map((ch) => (championshipUnlocked(c, ch) ? 1 : 0)).join('');
   // Forsrallyt was added after class 2 and is not needed to unlock it.
-  const firstThree = tier1.slice(0, 3).reduce(withWin, newCareer());
+  const firstThree = tier1.slice(0, 3).reduce((c, ch) => withWin(c, ch), newCareer());
   const fors = CHAMPIONSHIPS.find((c) => c.id === 'forsrallyt')!;
   check('forsrallyt: unlocked by vinterrallyt', !championshipUnlocked(almost, fors) && championshipUnlocked(firstThree, fors) && tierUnlocked(firstThree, 2), `${tier1.length} championships in class 1`);
   check('class 2: unlocking', !tierUnlocked(almost, 2) && tierUnlocked(allOne, 2) && tierUnlocked(newCareer(), 1) && openTwo(almost) === '000' && openTwo(allOne) === '100' && openTwo(withWin(allOne, tier2[0]!)) === '110', `${openTwo(almost)} → ${openTwo(allOne)}`);
   const tall = tier2[0]!;
   check('unlock hint: first in class names class 1', unlockHint(newCareer(), tall) === 'vinn Vinterrallyt' && unlockHint(almost, tall) === 'vinn Vinterrallyt' && unlockHint(allOne, tier2[1]!) === `vinn ${tall.name}` && unlockHint(newCareer(), CHAMPIONSHIPS[1]!) === 'vinn Skogsrallyt', unlockHint(newCareer(), tall));
-  const allTwo = tier2.reduce(withWin, allOne);
+  const allTwo = tier2.reduce((c, ch) => withWin(c, ch), allOne);
   check('late cars: require class 2 won', carUnlocked(allOne, 'Strand 2.0 Turbo 4x4') && !carUnlocked(allOne, 'Sora 2.0 Turbo') && !carUnlocked(withWin(allOne, tier2[0]!), 'Hoshi 2.0 4WD') && carUnlocked(allTwo, 'Sora 2.0 Turbo') && carUnlocked(allTwo, 'Brenner 5T Coupé') && !carUnlocked(almost, 'Volpe 2.0 Turbo 16V'), `${tier2.length} championships in class 2`);
   const names = CARS.map((m) => m.make().name);
   check('class 2: seven cars', names.filter((n) => tierOf(n) === 2).length === 7 && names.every((n) => tierOf(n) === 1 || tierOf(n) === 2), names.map((n) => `${n} ${tierOf(n)}`).join(', '));

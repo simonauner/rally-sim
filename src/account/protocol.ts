@@ -98,6 +98,8 @@ export interface CareerState {
   history?: HistoryEntry[];
   /** Won championships (ChampionshipDef.id); unlocks the next championship and Free drive. */
   won?: string[];
+  /** The difficulties each championship is won on (id → easy/medium/hard); missing ids count as won on easy if in `won`. */
+  wonOn?: Record<string, ('easy' | 'medium' | 'hard')[]>;
   /** The name on the weekly challenge's leaderboard. */
   driver?: string;
   /** The last week whose weekly challenge result has been paid out (weekOf). */
@@ -154,6 +156,16 @@ export function isCareerState(value: unknown): value is CareerState {
   if (c.bonusDay !== undefined && !(typeof c.bonusDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.bonusDay))) return false;
   if (c.history !== undefined && !(Array.isArray(c.history) && c.history.length <= MAX_HISTORY && c.history.every(isHistoryEntry))) return false;
   if (c.won !== undefined && !(Array.isArray(c.won) && c.won.length <= 20 && c.won.every((id) => str(id, false)))) return false;
+  if (
+    c.wonOn !== undefined &&
+    !(
+      typeof c.wonOn === 'object' &&
+      c.wonOn !== null &&
+      Object.keys(c.wonOn).length <= 20 &&
+      Object.entries(c.wonOn).every(([id, on]) => str(id, false) && Array.isArray(on) && on.length <= 3 && on.every((d) => ['easy', 'medium', 'hard'].includes(d)))
+    )
+  )
+    return false;
   if (c.driver !== undefined && !isDriverName(c.driver)) return false;
   if (c.weeklyPaid !== undefined && !(Number.isInteger(c.weeklyPaid) && c.weeklyPaid >= 0)) return false;
   if (typeof c.garage !== 'object' || c.garage === null) return false;
