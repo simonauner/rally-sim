@@ -201,7 +201,7 @@ Karriär in the main menu has a wallet that is synced with the account. Money co
   for free afterwards, so the cars in the garage never take damage.
 - **Championships** (Skogsrallyt, Myrkullarallyt, Vinterrallyt and Forsrallyt, three to five stages each, some at dusk, dawn or night; the prize money grows with the number of stages): you race against seven
   randomized fictional drivers, and the standings are shown after each stage. The placing decides
-  the prize money, which is larger than for single races and scales with difficulty (easy ×0.75, hard ×1.25, `DIFFICULTY_PRIZE`); a championship already won pays 40 % (`REPEAT_PRIZE`). The field's best drives at gold time; if you have
+  the prize money, which is larger than for single races and scales with difficulty (easy ×0.75, hard ×1.25, `DIFFICULTY_PRIZE`); a championship already won on the same difficulty pays 40 % (`REPEAT_PRIZE`). Wins are kept per difficulty (`wonOn`) and shown as trophies: bronze = easy, silver = medium, gold = hard; any difficulty unlocks the next championship. The field's best drives at gold time; if you have
   your own records on the stages, the two fastest are placed close to your pace, and if you are faster than the whole
   field, one or two of them find the same speed for the next stage (`src/career/rivals.ts`). Damage carries over between stages; at service you repair with your own
   money or drive on damaged. There is no restart. If you retire, the car is repaired for free
