@@ -1,246 +1,246 @@
 # Rally
 
-Webbläsarspel i tidig utveckling. Målet är en rallysimulator med Colin McRae 2005-känsla:
-realistisk bilfysik, karriär med pengar och uppgraderingar, fiktiva bilar och märken.
-Den här prototypen bevisar bara en sak: **känns bilen rätt att köra?**
+Browser game in early development. The goal is a rally simulator with a Colin McRae 2005 feel:
+realistic car physics, a career with money and upgrades, fictional cars and brands.
+This prototype proves only one thing: **does the car feel right to drive?**
 
-## Köra
+## Running
 
 ```sh
 npm install
 npm run dev          # http://localhost:5173
-npm run test:physics # fysiktester utan webbläsare
-npm run build        # typecheck + produktionsbygge i dist/
-npm run build:single # en enda HTML-fil i dist-single/
+npm run test:physics # physics tests without a browser
+npm run build        # typecheck + production build in dist/
+npm run build:single # a single HTML file in dist-single/
 ```
 
-Kräver WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM-Mac) eller Safari 26.
-`?webgl` på adressen tvingar WebGL2-backend och är bara till för felsökning.
+Requires WebGPU: Chrome/Edge, Firefox 141+ (Windows, ARM Mac) or Safari 26.
+`?webgl` in the address forces the WebGL2 backend and is only meant for debugging.
 
-## Styrning
+## Controls
 
-| Tangent | Funktion |
+| Key | Function |
 | --- | --- |
-| W / S | Gas / broms (S backar vid stopp) |
-| A / D | Styr |
-| Mellanslag | Handbroms |
-| R | Tillbaka på vägen där bilen är (klockan går vidare; på testbanan: till startplatsen) |
-| T | Starta om etappen (reparerar bilen) |
-| G | Ghost av/på |
-| Esc | Pausmeny (fortsätt, starta om, kontroller, huvudmeny) |
-| C | Byt kamera (bakifrån nära och långt, motorhuv, förarvy, uppifrån, sidovy för skador); valet sparas |
-| M, E / Q | Manuell växellåda |
-| F1 | Felsökning av/på: telemetri, skador, g-kraft och trimningspanelen (dolda från start) |
-| F3 | Kraftvektorer av/på (röd = däckkraft, blå = hjullast, grön = färdriktning) |
-| H | Dölj/visa hjälptext |
+| W / S | Throttle / brake (S reverses when stopped) |
+| A / D | Steer |
+| Space | Handbrake |
+| R | Back on the road where the car is (the clock keeps running; on the test track: to the start) |
+| T | Restart the stage (repairs the car) |
+| G | Ghost on/off |
+| Esc | Pause menu (continue, restart, controls, main menu) |
+| C | Change camera (chase near and far, bonnet, driver view, top-down, side view for damage); the choice is saved |
+| M, E / Q | Manual gearbox |
+| F1 | Debug on/off: telemetry, damage, g-force and the tuning panel (hidden at start) |
+| F3 | Force vectors on/off (red = tyre force, blue = wheel load, green = direction of travel) |
+| H | Hide/show help text |
 
-Gamepad: vänsterspak, RT/LT, A = handbroms. Trimningspanelen (F1) trimmar bilen medan du kör.
+Gamepad: left stick, RT/LT, A = handbrake. The tuning panel (F1) tunes the car while you drive.
 
-## Menyer
+## Menus
 
-Spelet startar i en huvudmeny: kör etappen, testbanan eller se kontrollerna. Världen byggs först
-när man valt. Esc öppnar pausmenyn; "Huvudmeny" laddar om sidan, eftersom byte av värld under
-körning inte finns. `?testbana` hoppar över menyn och går direkt till testbanan.
+The game starts in a main menu: drive the stage, the test track, or view the controls. The world is built only
+once you have chosen. Esc opens the pause menu; "Huvudmeny" reloads the page, since switching worlds while
+driving is not supported. `?testbana` skips the menu and goes straight to the test track.
 
-## Etapperna
+## The stages
 
-Alla etapper är verkliga vägar (`src/physics/real/`): specialsträckor ur Rally Sweden (snö) och
-Royal Rally of Scandinavia (grus), delade i etapper på 3,4–6 km och uppkallade efter orter längs
-vägen. Geometrin kommer ur OpenStreetMap och höjden ur EU-DEM.
+All stages are real roads (`src/physics/real/`): special stages from Rally Sweden (snow) and
+Royal Rally of Scandinavia (gravel), split into stages of 3.4–6 km and named after places along
+the road. The geometry comes from OpenStreetMap and the elevation from EU-DEM.
 
-| Mästerskap | Klass | Sträcka | Etapper |
+| Championship | Class | Special stage | Stages |
 |---|---|---|---|
-| Skogsrallyt | 1 | Värmskog (grus) | Grinsbol, Tollesrud, Åsterud i skymning |
-| Myrkullarallyt | 1 | Gårdsjö och Colins (grus) | Botten i gryning, Rannsjön, Larssäter, Stor-Jangen |
-| Vinterrallyt | 1 | Bygdsiljum (snö) | Åsjön, Altarliden, Bergtjärnen, Torpet, Trollberget på natten |
-| Forsrallyt | 1 | Bäck (snö) | Näs, Rickleån, Valsfäboda i skymning |
-| Tallmoklassikern | 2 | Royal Forest (grus) | Södra Hulteby, Ämten, Lindås, Lungsund |
-| Ljunghedsrallyt | 2 | Ängebäckstorp och Ölme (grus) | Sundstorp, Bäckelid, Niklasdamm, Broby i skymning |
-| Israllyt | 2 | Andersvattnet (snö) | Storberget, Hösjöälven, Röjmyrberget, Flarkån i skymning |
+| Skogsrallyt | 1 | Värmskog (gravel) | Grinsbol, Tollesrud, Åsterud at dusk |
+| Myrkullarallyt | 1 | Gårdsjö and Colins (gravel) | Botten at dawn, Rannsjön, Larssäter, Stor-Jangen |
+| Vinterrallyt | 1 | Bygdsiljum (snow) | Åsjön, Altarliden, Bergtjärnen, Torpet, Trollberget at night |
+| Forsrallyt | 1 | Bäck (snow) | Näs, Rickleån, Valsfäboda at dusk |
+| Tallmoklassikern | 2 | Royal Forest (gravel) | Södra Hulteby, Ämten, Lindås, Lungsund |
+| Ljunghedsrallyt | 2 | Ängebäckstorp and Ölme (gravel) | Sundstorp, Bäckelid, Niklasdamm, Broby at dusk |
+| Israllyt | 2 | Andersvattnet (snow) | Storberget, Hösjöälven, Röjmyrberget, Flarkån at dusk |
 
-Rally Swedens sträckkartor har GPS-punkter; Royal Rallys sträckor är hittade på rallyts
-översiktskarta (ca 26 m per pixel) och kan avvika ±50 m. Där en skogsväg saknas i OpenStreetMap är
-den avritad från kartan. Hörn i korsningar är utjämnade och breddade så att bilen kommer runt,
-lutningen på grusetapperna är begränsad till 12 % (höjddatan tar annars med branter bredvid
-vägen), och efter mål finns 240 m att stanna på. Utanför vägkanten följer terrängen ett medel av
-vägen runt omkring, så det blir inga kanter på insidan av snäva kurvor. Vägdata © OpenStreetMap
-contributors, ODbL 1.0; den härledda datan i `src/physics/real/` delas under samma licens.
-Längs vägen står det som kartan visar: åkrar med gärdsgård och balar, röda gårdar, sjöar och
-tjärnar, kraftledningar, broar över åar och publiken vid Colin's Crest (`src/physics/real/landmarks.ts`).
-Skripten som genererar etapperna, med var på kartan varje sträcka ligger, finns i
-`tools/stages/` (se README där).
-Testerna kör dessutom två fiktiva etapper med kända korsningar och underlag (`tests/stages.ts`).
+Rally Sweden's stage maps have GPS points; Royal Rally's stages are traced from the rally's
+overview map (about 26 m per pixel) and can be off by ±50 m. Where a forest road is missing from OpenStreetMap it is
+traced from the map. Corners at junctions are smoothed and widened so the car gets round,
+the gradient on the gravel stages is capped at 12 % (otherwise the elevation data picks up steep banks beside the
+road), and after the finish there are 240 m to stop in. Beyond the road edge the terrain follows an average of
+the surrounding road, so there are no ledges on the inside of tight corners. Road data © OpenStreetMap
+contributors, ODbL 1.0; the derived data in `src/physics/real/` is shared under the same licence.
+Along the road stands what the map shows: fields with fences and bales, red farmhouses, lakes and
+ponds, power lines, bridges over streams and the crowd at Colin's Crest (`src/physics/real/landmarks.ts`).
+The scripts that generate the stages, including where on the map each special stage lies, are in
+`tools/stages/` (see the README there).
+The tests also run two fictional stages with known junctions and surfaces (`tests/stages.ts`).
 
-Vinteretapperna kantas av snövallar i stället för dike: kör man i dem gräver hjulen ner sig, bilen
-bromsas kraftigt och tar en mild skada. Etapper i skymning, gryning och natt (`light` på
-etappen) körs med bilens strålkastare. En hård smäll framifrån slår sönder lyktan på den sidan,
-och en trasig lykta lyser inte (`Car.lamps`). Baklyktorna lyser alltid och starkare vid
-inbromsning. I Fri körning väljer man först mästerskap och sedan etapp.
+The winter stages are lined with snowbanks instead of a ditch: drive into them and the wheels dig in, the car
+is braked hard and takes mild damage. Stages at dusk, dawn and night (`light` on
+the stage) are driven with the car's headlights. A hard frontal hit breaks the lamp on that side,
+and a broken lamp gives no light (`Car.lamps`). The tail lights are always on and brighter when
+braking. In Fri körning you first choose a championship and then a stage.
 
-Underlaget `water` (vadställen där vägen dyker ner i en bäck: vattnet bromsar bilen, greppar
-sämre och sprutar åt sidorna) finns kvar, men ingen etapp har vadställen just nu.
+The `water` surface (fords where the road dips into a stream: the water slows the car, grips
+worse and sprays to the sides) is still there, but no stage has fords right now.
 
-Vädret slumpas per etapp (`src/physics/weather.ts`): oftast uppehåll, men ibland regn eller dimma,
-och på vinteretapper snöfall eller dimma. Regn gör asfalt, grus och lera halare och snöfall gör
-snön halare; dimma kortar sikten. Däckmenyn visar vädret och greppet med vädret inräknat, och
-mästerskapets motståndare kör långsammare i dåligt väder. `?vader=regn|dimma|snöfall` tvingar
-fram ett väder vid felsökning.
-Före varje start väljer man däck (grus, asfalt eller vinter); menyn visar etappens underlag och
-förväljer det däck som greppar bäst i snitt (`bestTyre` i `src/physics/stage.ts`).
-Vägen är en spline genom stödpunkter, och varje punkt har höjd, bredd och underlag
-(underlaget gäller fram till nästa punkt). Utanför vägen kommer ett dike och sedan lera.
+The weather is randomized per stage (`src/physics/weather.ts`): mostly dry, but sometimes rain or fog,
+and on winter stages snowfall or fog. Rain makes tarmac, gravel and mud more slippery and snowfall makes
+snow more slippery; fog shortens the view distance. The tyre menu shows the weather and the grip with the weather included, and
+the championship's opponents drive slower in bad weather. `?vader=regn|dimma|snöfall` forces
+a weather for debugging.
+Before each start you choose tyres (gravel, tarmac or winter); the menu shows the stage's surfaces and
+preselects the tyre with the best average grip (`bestTyre` in `src/physics/stage.ts`).
+The road is a spline through control points, and each point has elevation, width and surface
+(the surface applies until the next point). Off the road there is a ditch and then mud.
 
-Klockan startar när bilen passerar startportalen och stannar vid målportalen, med två mellantider.
-Efter mål tar en autopilot över och bromsar in bilen längs vägen (det finns 80 m utrullning), och
-en målskärm visar tid, mellantider och jämförelse mot rekordet, med valen Kör igen och Huvudmeny.
-Målskärmen har en karta över etappen ovanifrån där varje 25 m-bit färgas grön eller röd efter hur
-mycket tid åket tjänade eller tappade mot förra rekordets ghost, plus var man tappade och tjänade mest.
-Bästa tiden sparas i webbläsaren (localStorage) tills konto och sparning finns, tillsammans med
-en ghost: bästa åket inspelat i 20 Hz, som körs som en genomskinlig bil bredvid dig.
+The clock starts when the car passes the start gate and stops at the finish gate, with two splits.
+After the finish an autopilot takes over and brakes the car along the road (there is an 80 m run-out), and
+a finish screen shows the time, splits and comparison with the record, with the choices Kör igen and Huvudmeny.
+The finish screen has a top-down map of the stage where each 25 m piece is coloured green or red by how
+much time the run gained or lost against the previous record's ghost, plus where you lost and gained the most.
+The best time is saved in the browser (localStorage) until accounts and saving exist, together with
+a ghost: the best run recorded at 20 Hz, which is driven as a translucent car beside you.
 
-Kartläsaren läser pacenotes med webbläsarens svenska talsyntes, ungefär tre sekunder före varje not.
-Noterna räknas fram ur splinen: kurvor 1–6 (1 snävast) med riktning och "lång", krön, byte av underlag,
-mål och avstånd mellan noterna. De visas också överst på skärmen.
+The co-driver reads pace notes with the browser's Swedish speech synthesis, about three seconds before each note.
+The notes are computed from the spline: corners 1–6 (1 tightest) with direction and "lång", crests, surface changes,
+finish and distance between the notes. They are also shown at the top of the screen.
 
-## Testbanan (`?testbana`)
+## The test track (`?testbana`)
 
-Längs +Z från start: grus (0–40 m), asfaltsremsa med lera till höger och snö till vänster (40–100),
-tvättbräda (110–150), hopp (170–180), två betongpelare (220), betongvägg för krocktest (260).
-"Testplatser" i panelen flyttar bilen dit.
+Along +Z from the start: gravel (0–40 m), a strip of tarmac with mud on the right and snow on the left (40–100),
+washboard (110–150), jump (170–180), two concrete pillars (220), concrete wall for crash testing (260).
+"Testplatser" in the panel moves the car there.
 
-## Arkitektur
+## Architecture
 
 ```
-src/physics/   ren TypeScript, ingen webbläsarkod (körs även i Node)
-  car.ts         stel kropp (6 frihetsgrader), fjädring per hjul, hjulvarv, hjälpmedel
-  tires.ts       "Pacejka-lite": normaliserad slipvektor ger friktionsellips
-  surfaces.ts    underlag och däcktyper som ren data (grepp per kombination)
-  drivetrain.ts  motorkurva, turbons laddtryck, koppling, växellåda (auto/manuell), differential
-  collision.ts   sekventiella impulser mot statiska boxar och mark
-  params.ts      bilarna (fiktiva), i klass 1 och klass 2
-  world.ts       testbanans höjd, underlag och hinder
-  stage.ts       etapp som spline med höjd, bredd och underlag per stödpunkt
-src/account/   konto: protokoll (delas med sync/), återställningsnyckel, synk i webbläsaren
-sync/          synkservern (Cloudflare Worker, Durable Objects)
-src/render/    Three.js (WebGPU), clay-look, deformerbar kaross, terräng, damm per underlag, debug
-  bodies/        karossens form per bil, byggs i kod
-  models/        bilar modellerade i Blender (genererade filer, se nedan)
-blender/       Blender-källor: ett byggskript och en .blend per modellerad bil
-src/main.ts    spelloop: fast fysiksteg 240 Hz, rendering frikopplad
-tests/         fysiktester med förväntade intervall
+src/physics/   pure TypeScript, no browser code (also runs in Node)
+  car.ts         rigid body (6 degrees of freedom), suspension per wheel, wheel spin, assists
+  tires.ts       "Pacejka-lite": normalized slip vector gives a friction ellipse
+  surfaces.ts    surfaces and tyre types as plain data (grip per combination)
+  drivetrain.ts  engine curve, turbo boost, clutch, gearbox (auto/manual), differential
+  collision.ts   sequential impulses against static boxes and the ground
+  params.ts      the cars (fictional), in class 1 and class 2
+  world.ts       the test track's elevation, surfaces and obstacles
+  stage.ts       stage as a spline with elevation, width and surface per control point
+src/account/   account: protocol (shared with sync/), recovery key, sync in the browser
+sync/          the sync server (Cloudflare Worker, Durable Objects)
+src/render/    Three.js (WebGPU), clay look, deformable body, terrain, dust per surface, debug
+  bodies/        the body shape per car, built in code
+  models/        cars modelled in Blender (generated files, see below)
+blender/       Blender sources: a build script and a .blend per modelled car
+src/main.ts    game loop: fixed physics step at 240 Hz, rendering decoupled
+tests/         physics tests with expected ranges
 ```
 
-### Bilar från Blender
+### Cars from Blender
 
-Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Kvarn 240 (GL och Turbo, samma modell), Ljung 1600 S och Ljung 2000 16V är modellerade i Blender i stället för byggda av en form i
-`src/render/bodies/`. `blender/<bil>/<bil>.blend` är källan (t.ex. `blender/soraTurbo/soraTurbo.blend`): redigera den i Blender och för över den till spelet med
+Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Kvarn 240 (GL and Turbo, same model), Ljung 1600 S and Ljung 2000 16V are modelled in Blender instead of built from a shape in
+`src/render/bodies/`. `blender/<car>/<car>.blend` is the source (e.g. `blender/soraTurbo/soraTurbo.blend`): edit it in Blender and transfer it to the game with
 
 ```sh
-blender -b blender/soraTurbo/soraTurbo.blend -P blender/export.py   # skriver src/render/models/soraTurbo.ts
-blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- /tmp/sora   # hela bilen och närbilder av delarna
+blender -b blender/soraTurbo/soraTurbo.blend -P blender/export.py   # writes src/render/models/soraTurbo.ts
+blender -b blender/soraTurbo/soraTurbo.blend -P blender/render.py -- /tmp/sora   # the whole car and close-ups of the parts
 ```
 
-Modellen ligger i bilens koordinater (origo i tyngdpunkten, marken på y = −0,486) med Blenders
-X = x, Y = −z, Z = y, så bilen pekar mot −Y. Objekten i samlingen *Export* blir bilens delar:
-`body` och `body_…` (Soras dörrar, stötfångare och baklucka) är paneler som bucklas var för sig och har
-sitt origo i bilens; övriga är lösa detaljer som ramlar av (`flap…` = stänkskydd, `pod…` = extraljus, bara
-klass 2). En del som heter `wheel` är ett helt hjul med utsidan åt +x, speglat på höger sida; en del som
-heter `rim` är bara fälgen och sätts i ett ihåligt däck. Färgen väljs per yta med materialets namn
+The model is in the car's coordinates (origin at the centre of mass, the ground at y = −0.486) with Blender's
+X = x, Y = −z, Z = y, so the car points towards −Y. The objects in the *Export* collection become the car's parts:
+`body` and `body_…` (the Sora's doors, bumpers and tailgate) are panels that dent separately and have
+their origin at the car's; the others are loose details that fall off (`flap…` = mud flaps, `pod…` = auxiliary lights, only
+class 2). A part named `wheel` is a whole wheel with the outside towards +x, mirrored on the right side; a part
+named `rim` is only the rim and is fitted into a hollow tyre. The colour is chosen per face by the material's name
 (`paint`, `shade`, `glass`, `black`, `dark`, `chrome`, `lamp`, `amber`, `tail`, `reverse`, `plate`, `white`,
-`gold`, `rubber`); `paint` och `shade` följer bilens lack. Soras byggskript är uppdelat per del:
-`shell.py` (karossen, lyktorna och panelerna), `parts.py` (vinge, avgassystem, hjul och övriga detaljer)
-och `common.py` (mått, material och nätverktyg). Samlingen
-*Reference* (hjul och mark) exporteras inte. `blender/<bil>/build.py` bygger en ny .blend från
-början och skriver över den gamla. Byggskripten glesar ut karossen efter färgsättningen med `blender/simplify.py`
-(färgkanter och skarpa kanter låses), så nätet håller sig nära formen med en tredjedel av trianglarna. Hoshins strålkastare är uppfällda (`popup…`).
-Kvarnens lyktor, grill och stötfångare är egna delar (`headlamp…`, `grille`, `bumper…`, `taillamp…`).
-Volpen har dessutom takspoiler, huvventiler och extraljus som egna delar (`spoiler`, `vents…`, `pod`).
-Ljungen har runda dubbla strålkastare och svarta plastbreddare runt hjulhusen (`flare…`). Ljung 2000 16V byggs av
-samma skript (`blender/ljung1600/build.py -- ljung2000`): samma kaross och hjulbas, breddad över kitcarens bredare spårvidd,
-lägre, med en stor lykta per sida, kitfront (`bumper_holes`, `spoiler_vents`) och luftintag på taket (`scoop`).
+`gold`, `rubber`); `paint` and `shade` follow the car's paint. The Sora's build script is split per part:
+`shell.py` (the body, the lamps and the panels), `parts.py` (wing, exhaust, wheels and other details)
+and `common.py` (dimensions, materials and mesh tools). The
+*Reference* collection (wheels and ground) is not exported. `blender/<car>/build.py` builds a new .blend from
+scratch and overwrites the old one. The build scripts decimate the body after colouring with `blender/simplify.py`
+(colour edges and sharp edges are locked), so the mesh stays close to the shape with a third of the triangles. The Hoshi's headlights are popped up (`popup…`).
+The Kvarn's lamps, grille and bumpers are separate parts (`headlamp…`, `grille`, `bumper…`, `taillamp…`).
+The Volpe also has a roof spoiler, bonnet vents and auxiliary lights as separate parts (`spoiler`, `vents…`, `pod`).
+The Ljung has round twin headlights and black plastic flares around the wheel arches (`flare…`). The Ljung 2000 16V is built by
+the same script (`blender/ljung1600/build.py -- ljung2000`): same body and wheelbase, widened over the kit car's wider track,
+lower, with one large lamp per side, a kit front (`bumper_holes`, `spoiler_vents`) and a roof scoop (`scoop`).
 
-### Fysikens viktigaste val
+### The physics' key choices
 
-- **Fast steg 240 Hz**, helt skilt från renderingen.
-- **Hjulet löses semi-implicit** (Rosenbrock). Annars blir däckkraften instabil vid låg fart.
-- Däckkraften beror på slip i längd- och sidled, hjullast (lastkänslighet) och underlag × däcktyp.
-- Fjädring: fjäder, separat dämpning för ihop/isär, krängningshämmare, gummianslag.
-- Drivlina: koppling slirar vid start, motorns tröghet reflekteras till hjulen, differential med spärr och förspänning.
-- Skada: kollisioner ger impulser per kontaktpunkt. Plåten bucklas (vertexförskjutning på kroppen),
-  och skadan påverkar effekt, hjulinställning och grepp.
+- **Fixed step at 240 Hz**, fully separate from rendering.
+- **The wheel is solved semi-implicitly** (Rosenbrock). Otherwise the tyre force becomes unstable at low speed.
+- The tyre force depends on longitudinal and lateral slip, wheel load (load sensitivity) and surface × tyre type.
+- Suspension: spring, separate bump/rebound damping, anti-roll bars, bump stops.
+- Drivetrain: the clutch slips at launch, the engine's inertia is reflected to the wheels, differential with lock and preload.
+- Damage: collisions give impulses per contact point. The panels dent (vertex displacement on the body),
+  and the damage affects power, wheel alignment and grip.
 
-### Uppmätta värden (se `npm run test:physics`)
+### Measured values (see `npm run test:physics`)
 
-| Mått | Resultat |
+| Measure | Result |
 | --- | --- |
-| 0–100 km/h asfalt, asfaltsdäck | ~9,1 s |
-| 0–100 km/h grus, grusdäck | ~10,9 s |
-| Broms 100–0 asfalt / grus | ~41 m / ~50 m |
-| Sidgrepp asfalt / grus | ~0,87 g / ~0,68 g |
+| 0–100 km/h tarmac, tarmac tyres | ~9.1 s |
+| 0–100 km/h gravel, gravel tyres | ~10.9 s |
+| Braking 100–0 tarmac / gravel | ~41 m / ~50 m |
+| Lateral grip tarmac / gravel | ~0.87 g / ~0.68 g |
 
-Siffrorna är rimliga för en 1250 kg bakhjulsdriven hobbybil, men är **inte kalibrerade mot riktig data**.
-Det som återstår är att köra och känna.
+The figures are reasonable for a 1250 kg rear-wheel-drive hobby car, but are **not calibrated against real data**.
+What remains is to drive and feel.
 
-## Nästa steg
+## Next steps
 
-1. Köra, trimma. Känslan avgör parametrarna, inte tvärtom.
-2. Fler etapper och mästerskap (`STAGES` i `src/physics/stage.ts`, `CHAMPIONSHIPS` i `src/career/championship.ts`).
+1. Drive, tune. The feel decides the parameters, not the other way round.
+2. More stages and championships (`STAGES` in `src/physics/stage.ts`, `CHAMPIONSHIPS` in `src/career/championship.ts`).
 
-## Karriär
+## Career
 
-Karriär i huvudmenyn har en kassa som synkas med kontot. Pengar kommer från:
+Karriär in the main menu has a wallet that is synced with the account. Money comes from:
 
-- **Dagsbonus:** 500 kr första gången man öppnar Karriär varje dag.
-- **Enstaka lopp:** prispengar efter tid (guld, silver, brons, annars en målpeng). Bilen lagas
-  gratis efteråt, så bilarna i garaget tar aldrig skada.
-- **Mästerskap** (Skogsrallyt, Myrkullarallyt, Vinterrallyt och Forsrallyt, tre till fem etapper vardera, några i skymning, gryning eller natt; prispengarna växer med antalet etapper): man kör mot sju
-  slumpade fiktiva förare, och efter varje etapp visas ställningen. Placeringen avgör
-  prispengarna, som är större än för enstaka lopp och skalas med svårighetsgraden (lätt ×0,75, svår ×1,25, `DIFFICULTY_PRIZE`). Fältets bästa kör på guldtid; har man
-  egna rekord på etapperna läggs de två snabbaste nära ens takt, och är man snabbare än hela
-  fältet hittar en eller två av dem samma fart till nästa etapp (`src/career/rivals.ts`). Skador följer med mellan etapperna; på servicen lagar man för egna
-  pengar eller kör vidare skadad. Omstart finns inte. Den som avbryter får bilen lagad gratis
-  men inga prispengar. Framsteget sparas i webbläsaren, eftersom sidan laddas om mellan
-  etapperna (`?mastarskap=<däck>` laddar nästa etapp med däcken som valdes före omladdningen).
-- **Klass 2:** när alla tre mästerskapen i klass 1 är vunna säljer bilhandlaren sju snabbare
-  bilar (Ljung 2000 16V med framhjulsdrift, Strand 2.0 GT med bakhjulsdrift och fem med
-  fyrhjulsdrift och mittdiff: Kvarn Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé och
-  Sora 2.0 Turbo). De har egna delar i garaget, efter drivlina och motor (mittdiff för
-  fyrhjulsdrift, laddtryck och antilag för turbo, gasspjäll för sugmotorer, några delar till en enda
-  bil, och Brenner har egna Grupp B-delar), och egna mästerskap
-  (Tallmoklassikern, Ljunghedsrallyt och Israllyt). Medaljgränserna och fältet är
-  8 % snabbare och prispengarna dubbla (`TIER_PACE` och `TIER_PRIZE` i `src/career/career.ts`).
-  Varje klass kör bara sina egna mästerskap.
+- **Daily bonus:** 500 kr the first time you open Karriär each day.
+- **Single races:** prize money by time (gold, silver, bronze, otherwise a finishing fee). The car is repaired
+  for free afterwards, so the cars in the garage never take damage.
+- **Championships** (Skogsrallyt, Myrkullarallyt, Vinterrallyt and Forsrallyt, three to five stages each, some at dusk, dawn or night; the prize money grows with the number of stages): you race against seven
+  randomized fictional drivers, and the standings are shown after each stage. The placing decides
+  the prize money, which is larger than for single races and scales with difficulty (easy ×0.75, hard ×1.25, `DIFFICULTY_PRIZE`). The field's best drives at gold time; if you have
+  your own records on the stages, the two fastest are placed close to your pace, and if you are faster than the whole
+  field, one or two of them find the same speed for the next stage (`src/career/rivals.ts`). Damage carries over between stages; at service you repair with your own
+  money or drive on damaged. There is no restart. If you retire, the car is repaired for free
+  but you get no prize money. Progress is saved in the browser, since the page reloads between
+  stages (`?mastarskap=<tyre>` loads the next stage with the tyres chosen before the reload).
+- **Class 2:** once all three championships in class 1 are won, the car dealer sells seven faster
+  cars (Ljung 2000 16V with front-wheel drive, Strand 2.0 GT with rear-wheel drive and five with
+  four-wheel drive and a centre diff: Kvarn Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé and
+  Sora 2.0 Turbo). They have their own parts in the garage, by drivetrain and engine (centre diff for
+  four-wheel drive, boost and anti-lag for turbo, throttle bodies for naturally aspirated engines, some parts for a single
+  car, and the Brenner has its own Group B parts), and their own championships
+  (Tallmoklassikern, Ljunghedsrallyt and Israllyt). The medal thresholds and the field are
+  8 % faster and the prize money doubled (`TIER_PACE` and `TIER_PRIZE` in `src/career/career.ts`).
+  Each class races only its own championships.
 
-Pengarna köper uppgraderingar i garaget (motor, drivlina, bromsar, fjädring, kaross och däck, en gång per bil) och
-bilar hos bilhandlaren. Man börjar med Kvarn 240 GL. Regler och priser finns i
-`src/career/career.ts`. Fri körning finns kvar med alla bilar och utan pengar.
+The money buys upgrades in the garage (engine, drivetrain, brakes, suspension, body and tyres, once per car) and
+cars at the car dealer. You start with the Kvarn 240 GL. Rules and prices are in
+`src/career/career.ts`. Fri körning is still there with all cars and without money.
 
-## Driftsättning
+## Deployment
 
-`.github/workflows/deploy.yml` bygger och testar vid varje push och pull request. Vid push till
-main driftsätts spelet på GitHub Pages (https://www.auner.se/rally-sim/) och synkservern
-på Cloudflare Workers. Det kräver, en gång:
+`.github/workflows/deploy.yml` builds and tests on every push and pull request. On push to
+main the game is deployed to GitHub Pages (https://www.auner.se/rally-sim/) and the sync server
+to Cloudflare Workers. This requires, once:
 
 - Settings → Pages → Source: GitHub Actions.
-- Secret `CLOUDFLARE_API_TOKEN` (Cloudflare-mallen "Edit Cloudflare Workers").
-- Variabel `SYNC_URL` med synkserverns adress, som visas efter första `npm run deploy` i `sync/`.
+- Secret `CLOUDFLARE_API_TOKEN` (the Cloudflare template "Edit Cloudflare Workers").
+- Variable `SYNC_URL` with the sync server's address, which is shown after the first `npm run deploy` in `sync/`.
 
-Vilka adresser som får anropa synkservern står i `ALLOWED_ORIGINS` i `sync/wrangler.jsonc`.
+Which origins may call the sync server is set in `ALLOWED_ORIGINS` in `sync/wrangler.jsonc`.
 
-## Konto och synk
+## Account and sync
 
-Upplägget kommer från season-o-meter. Kontot skapas automatiskt vid första besöket: en
-128-bitars hemlighet i webbläsaren. Servern (`sync/`, Cloudflare Worker med en Durable Object
-per konto) lagrar kontot under SHA-256 av hemligheten och ser aldrig själva hemligheten.
-Under Konto i huvudmenyn finns återställningsnyckeln (Crockford base32 med checksumma, så en
-felskriven nyckel avvisas) och "Återställ med nyckel", som byter konto och tar med rekorden.
+The design comes from season-o-meter. The account is created automatically on the first visit: a
+128-bit secret in the browser. The server (`sync/`, a Cloudflare Worker with one Durable Object
+per account) stores the account under the SHA-256 of the secret and never sees the secret itself.
+Under Konto in the main menu are the recovery key (Crockford base32 with a checksum, so a
+mistyped key is rejected) and "Återställ med nyckel", which switches account and brings the records along.
 
-Det som synkas är bästa tid, mellantider och ghost per bana. Nyckeln innehåller banans
-versionsepok, och servern behåller alltid lägsta tiden, så ett rekord skrivs aldrig över av ett
-sämre åk från en annan enhet. Utan `VITE_SYNC_URL` finns kontot bara lokalt.
+What is synced is the best time, splits and ghost per track. The key contains the track's
+version epoch, and the server always keeps the lowest time, so a record is never overwritten by a
+worse run from another device. Without `VITE_SYNC_URL` the account exists only locally.
 
 ```sh
 cd sync && npm install
-npm run dev                                        # synkservern på :8787, tillåter :5173
-VITE_SYNC_URL=http://localhost:8787 npm run dev    # spelet mot den lokala servern (i roten)
+npm run dev                                        # the sync server on :8787, allows :5173
+VITE_SYNC_URL=http://localhost:8787 npm run dev    # the game against the local server (in the root)
 ```
