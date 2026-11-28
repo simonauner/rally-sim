@@ -334,7 +334,8 @@ export function strandGt(): CarParams {
       { mount: [0.73, yMount, zR], front: false, left: true },
       { mount: [-0.73, yMount, zR], front: false, left: false },
     ],
-    body: { halfX: 0.84, halfZ: 2.0, bottomY: -0.29, topY: 0.78 },
+    // As the Blender model, bumpers included: 1.80 m forward, 2.24 m back, roof 0.875 m above the centre of gravity.
+    body: { halfX: 0.84, halfZ: 2.02, centerZ: -0.22, bottomY: -0.28, topY: 0.875 },
     susp: {
       kFront: 29000,
       kRear: 27000,
