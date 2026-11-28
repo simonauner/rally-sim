@@ -16,7 +16,10 @@ import {
   applyUpgrades,
   sponsorsOf,
   buyCar,
+  buyPaint,
   buyUpgrade,
+  PAINTS,
+  paintPrice,
   CAR_PRICES,
   claimDailyBonus,
   formatMoney,
@@ -85,6 +88,10 @@ function ownedModels(career: CareerState): CarModel[] {
     make: () =>
       applyUpgrades(m.make(), loadCareer().career.garage[nameOf(m)]!.upgrades),
     sponsors: () => sponsorsOf(loadCareer().career.garage[nameOf(m)]!.upgrades),
+    // Read when the car is built, like the upgrades, so a new paint shows up immediately.
+    get paint() {
+      return loadCareer().career.garage[nameOf(m)]?.paint ?? m.paint;
+    },
   }));
 }
 
@@ -463,12 +470,18 @@ async function upgrades(car: string) {
             value: g,
           };
         }),
+        {
+          label: "Lack",
+          detail: PAINTS.find((p) => p.color === career.garage[car]?.paint)?.name ?? "fabrikslack",
+          value: "paint",
+        },
         { label: "← Tillbaka", value: "" },
       ],
       cancel: "",
     });
     if (!group) return;
-    await parts(car, group);
+    if (group === "paint") await paints(car);
+    else await parts(car, group);
   }
 }
 
@@ -519,6 +532,48 @@ async function parts(car: string, group: string) {
       u.price,
       `<div class="ahead">${u.name} monterad.</div>`,
     );
+  }
+}
+
+const swatch = (color: number) =>
+  `<span style="display:inline-block;width:0.9em;height:0.9em;margin-right:0.5em;vertical-align:-0.1em;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25);background:#${color.toString(16).padStart(6, "0")}"></span>`;
+
+/** Paint colours for the car: cosmetic only. */
+async function paints(car: string) {
+  const factory = CARS.find((m) => nameOf(m) === car)!.paint;
+  let message = "";
+  let chosen: number | undefined;
+  for (;;) {
+    const career = loadCareer().career;
+    const current = career.garage[car]?.paint ?? null;
+    const choices = [{ name: "Fabrikslack", color: null, price: 0 }, ...PAINTS.map((p) => ({ ...p, price: paintPrice(car, p) }))];
+    const pick = await showMenu<number>({
+      title: "Lack",
+      initial: chosen,
+      subtitle: `${car} · Kassa: ${formatMoney(career.money)}`,
+      side: true,
+      body: message,
+      items: [
+        ...choices.map((p, i) => ({
+          label: swatch(p.color ?? factory) + p.name,
+          detail: p.color === current ? "lackerad" : p.price ? formatMoney(p.price) : "gratis",
+          value: i,
+          denied: () => buyPaint(career, car, p.color) === "poor",
+          confirm: p.color === current || !p.price ? undefined : () => `Lackera för ${formatMoney(p.price)}?`,
+        })),
+        { label: "← Tillbaka", value: -1 },
+      ],
+      cancel: -1,
+    });
+    if (pick < 0) return;
+    chosen = pick;
+    const p = choices[pick]!;
+    const result = buyPaint(career, car, p.color);
+    if (typeof result === "object") {
+      commit(result);
+      if (p.price) coins();
+    }
+    message = buyMessage(result, p.price, `<div class="ahead">${car} är nu lackerad i ${p.name.toLowerCase()}.</div>`);
   }
 }
 
