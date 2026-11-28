@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three/webgpu';
 import { color, float, mix, select, smoothstep, texture, vec2, vec3 } from 'three/tsl';
-import type { Sponsor } from '../physics/params';
+import type { Livery, Sponsor } from '../physics/params';
 import type { BodyShape } from './bodies/shape';
 
 type Range = readonly [number, number];
@@ -32,8 +32,9 @@ export const startNumber = (name: string) => ([...name].reduce((h, c) => (h * 31
 const cache = new Map<string, THREE.CanvasTexture>();
 
 /** The canvas for one car. Cached, so the menu's cars driving lap after lap don't build new textures. */
-export function decalTexture(b: BodyShape, wheelZ: Range, paint: THREE.Color, number: number, sponsors: Sponsor[]): THREE.CanvasTexture {
-  const key = JSON.stringify([b, wheelZ, paint.getHex(), number, sponsors]);
+export function decalTexture(b: BodyShape, wheelZ: Range, paint: THREE.Color, number: number, sponsors: Sponsor[], livery?: Livery): THREE.CanvasTexture {
+  if (livery) sponsors = [livery.sponsor, ...sponsors];
+  const key = JSON.stringify([b, wheelZ, paint.getHex(), number, sponsors, livery]);
   const hit = cache.get(key);
   if (hit) return hit;
   const canvas = document.createElement('canvas');
@@ -77,6 +78,41 @@ export function decalTexture(b: BodyShape, wheelZ: Range, paint: THREE.Color, nu
     text(cx, cy - ((h - band) * S) / 2, 'RALLY', w * 0.8, band * 0.75, '#f4f4f0');
     text(cx, cy + (band * S) / 2, String(number), w * 0.85, (h - band) * 0.85, '#141414', false);
   };
+
+  if (livery) {
+    // Bands on each side row, from nose to tail; the left side has the nose at the canvas' left edge, the right side at the far end.
+    const len = (nose - tail) * S;
+    for (const row of [0, ROW]) {
+      // Canvas x at a fraction of the length from the nose; the ends reach past the bumpers.
+      const x = (f: number) => {
+        const d = f * len + (f <= 0 ? -M : f >= 1 ? M : 0);
+        return row ? M + len - d : M + d;
+      };
+      const y = (f: number) => row + M + f * (belt - bottom) * S;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, row, W, ROW);
+      ctx.clip();
+      for (const { color, top, bottom: low, from = 0, to = 1, rise = 0, flare = 0, bend = 0 } of livery.bands) {
+        const [x0, x1, xm] = [x(from), x(to), x((from + to) / 2)];
+        const [t1, b1] = [top - rise - flare, low - rise];
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x0, y(top));
+        ctx.quadraticCurveTo(xm, y((top + t1) / 2 + 2 * bend), x1, y(t1));
+        ctx.lineTo(x1, y(b1));
+        ctx.quadraticCurveTo(xm, y((low + b1) / 2 + 2 * bend), x0, y(low));
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Stripes over the top fields; the boot lid and roof are drawn mirrored (read from behind).
+    for (const st of livery.stripes ?? [])
+      for (const [cx, dir] of [[HOOD_X, 1], [TRUNK_X, -1], [ROOF_X, -1]] as const) {
+        ctx.fillStyle = st.color;
+        ctx.fillRect(cx + (dir * st.x - st.w / 2) * S, TOPS, st.w * S, H - TOPS);
+      }
+  }
 
   /** A field: the canvas centre (x) and top edge (y) for each place it is drawn, and its size in metres. */
   type Area = { at: [number, number][]; w: number; h: number; rowH: number };

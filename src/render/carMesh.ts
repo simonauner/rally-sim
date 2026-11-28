@@ -398,7 +398,7 @@ export class CarMesh {
     this.hits = zoneHits(b);
     const wheels = car.params.wheels;
     const wheelZ: Range = [wheels.find((w) => w.front)!.mount[2], wheels.find((w) => !w.front)!.mount[2]];
-    const decals = decalTexture(b, wheelZ, c, startNumber(car.params.name), model.sponsors?.() ?? []);
+    const decals = decalTexture(b, wheelZ, c, startNumber(car.params.name), model.sponsors?.() ?? [], model.livery?.());
     const data = MODELS[model.body];
     if (!data) throw new Error(`Car model ${model.body} is not fetched (loadCarModel)`);
     const built = buildModel(data, b, c, this.lampGlow, this.tailGlow, decals, tierOf(car.params.name) === 2);
