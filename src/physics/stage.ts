@@ -136,6 +136,9 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
+/** The rolling hills of the terrain away from the road (m), also used by the scenery beyond the corridor. */
+export const terrainHills = (x: number, z: number) => 1.8 * Math.sin(x * 0.021 + 1) * Math.cos(z * 0.017) + 0.9 * Math.sin(z * 0.043 + x * 0.029);
+
 /**
  * Stage along a spline (centripetal Catmull-Rom) through the control points.
  * The road is flat across; beyond it comes a ditch and then hilly terrain.
@@ -524,7 +527,7 @@ export class Stage extends World {
     // Winter roads have ploughed snowbanks where other roads have a ditch.
     const edge = this.def.winter ? SNOWBANK_HEIGHT * smooth(hw + 0.3, hw + 1.4, d) * (1 - smooth(hw + 2.4, hw + 4.5, d)) : -0.35 * smooth(hw + 0.3, hw + 1.5, d) * (1 - smooth(hw + 2.5, hw + 4.5, d));
     const bank = smooth(hw + 2.5, hw + 8, d) * 0.12 * (d - hw - 2.5);
-    const hills = smooth(hw + 4, hw + 30, d) * (1.8 * Math.sin(x * 0.021 + 1) * Math.cos(z * 0.017) + 0.9 * Math.sin(z * 0.043 + x * 0.029));
+    const hills = smooth(hw + 4, hw + 30, d) * terrainHills(x, z);
     let h = roadY + edge + bank + hills;
     if (area) {
       // Fields, farmyards and bogs are flatter than the forest (clear-cuts keep their hills); the lake bed lies below the water surface out to

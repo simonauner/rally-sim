@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { STAGE_CORRIDOR, START_S, type Stage } from '../physics/stage';
+import { STAGE_CORRIDOR, START_S, terrainHills, type Stage } from '../physics/stage';
 import { rng } from '../physics/rng';
 import { COLORS } from './terrain';
 import { buildLandmarks } from './landmarks';
@@ -12,6 +12,11 @@ const AREA: Record<string, number> = { field: 0xaaa65c, farm: 0x86a04e, bog: 0xa
 const WINTER_FOREST = 0xf2f5f7;
 const BANK_SHADE = 0xaab9cd;
 const STEP = 0.75;
+/** The coarse scenery terrain beyond the corridor reaches this far from the road, about where the day fog is thick. */
+const RING = 400;
+const RING_STEP = 10;
+/** Ring vertices inside the corridor sink this far, so the ring passes under the corridor's edge without poking through. */
+const RING_SINK = 2.5;
 
 /**
  * Terrain for a stage: a grid over the stage's extent where only vertices near the road are kept.
@@ -85,6 +90,7 @@ export function buildStage(stage: Stage): THREE.Group {
   group.add(ground);
 
   group.add(buildTracks(stage));
+  group.add(buildRing(stage, x0, z0, nx * STEP, nz * STEP, forest));
 
   const outer = new THREE.Mesh(
     new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2),
@@ -250,6 +256,87 @@ function buildWater(stage: Stage): THREE.Group {
     i = j;
   }
   return group;
+}
+
+/**
+ * Coarse terrain from the corridor's edge out to RING, so hills further ahead don't float over the flat
+ * outer plane. Beyond the corridor the height continues from the corridor's edge: the bank slope levels
+ * out and the hills go on, but lakes stay flat. Only quads reaching outside the corridor are kept.
+ */
+function buildRing(stage: Stage, cx0: number, cz0: number, w: number, h: number, forest: number): THREE.Mesh {
+  const x0 = cx0 - RING;
+  const z0 = cz0 - RING;
+  const nx = Math.ceil((w + 2 * RING) / RING_STEP);
+  const nz = Math.ceil((h + 2 * RING) / RING_STEP);
+  // Distance to the nearest road sample (every 4 m) per vertex: cheaper than a nearest-point search for each.
+  const dist = new Float32Array((nx + 1) * (nz + 1)).fill(Infinity);
+  const near = new Int32Array((nx + 1) * (nz + 1)).fill(-1);
+  const reach = Math.ceil(RING / RING_STEP);
+  for (let k = 0; k < stage.xs.length; k += 4) {
+    const ci = Math.round((stage.xs[k]! - x0) / RING_STEP);
+    const cj = Math.round((stage.zs[k]! - z0) / RING_STEP);
+    for (let j = Math.max(0, cj - reach); j <= Math.min(nz, cj + reach); j++) {
+      for (let i = Math.max(0, ci - reach); i <= Math.min(nx, ci + reach); i++) {
+        const d = Math.hypot(x0 + i * RING_STEP - stage.xs[k]!, z0 + j * RING_STEP - stage.zs[k]!);
+        const v = j * (nx + 1) + i;
+        if (d < dist[v]!) {
+          dist[v] = d;
+          near[v] = k;
+        }
+      }
+    }
+  }
+  const index = new Int32Array((nx + 1) * (nz + 1)).fill(-1);
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const c = new THREE.Color();
+  const area = new THREE.Color();
+  for (let j = 0; j <= nz; j++) {
+    for (let i = 0; i <= nx; i++) {
+      const v = j * (nx + 1) + i;
+      const d = dist[v]!;
+      if (d > RING + RING_STEP) continue;
+      const x = x0 + i * RING_STEP;
+      const z = z0 + j * RING_STEP;
+      const k = near[v]!;
+      // The point on the corridor's edge in the same direction from the road.
+      const t = STAGE_CORRIDOR / Math.max(d, 1);
+      const ex = stage.xs[k]! + (x - stage.xs[k]!) * t;
+      const ez = stage.zs[k]! + (z - stage.zs[k]!) * t;
+      const edgeY = stage.heightAt(ex, ez);
+      const hit = stage.project(ex, ez);
+      const a = stage.landmarks.length ? stage.areaAt(hit.s, hit.side) : null;
+      const lake = a?.lm.kind === 'lake' ? 1 - a.t : 1;
+      // Fields, farms and bogs are flatter, as in the corridor.
+      const hilly = a && a.lm.kind !== 'lake' && a.lm.kind !== 'clearcut' ? 1 - 0.75 * a.t : 1;
+      const out = d - STAGE_CORRIDOR;
+      // Outside: the corridor's bank slope (0.12) levels out about 5 m higher. Inside: below the corridor.
+      const y = out > 0 ? edgeY + lake * (40 * 0.12 * (1 - Math.exp(-out / 40)) + hilly * (terrainHills(x, z) - terrainHills(ex, ez))) : edgeY + 0.12 * out - RING_SINK;
+      c.setHex(forest);
+      if (!stage.def.winter && a && a.lm.kind !== 'lake') c.lerp(area.setHex(AREA[a.lm.kind]!), a.t);
+      positions.push(x, y, z);
+      colors.push(c.r, c.g, c.b);
+      index[v] = positions.length / 3 - 1;
+    }
+  }
+  const idx: number[] = [];
+  for (let j = 0; j < nz; j++) {
+    for (let i = 0; i < nx; i++) {
+      const v = j * (nx + 1) + i;
+      const q = [v, v + 1, v + nx + 1, v + nx + 2];
+      if (q.some((u) => index[u]! < 0) || q.every((u) => dist[u]! <= STAGE_CORRIDOR)) continue;
+      const [a, b, d, e] = q.map((u) => index[u]!) as [number, number, number, number];
+      idx.push(a, d, b, b, d, e);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ vertexColors: true }));
+  mesh.receiveShadow = true;
+  return mesh;
 }
 
 /** Wheel-track colour per surface: packed snow turns beige-grey, gravel and mud darker where the stones are swept away. */
