@@ -12,18 +12,18 @@ import { CARS, type CarParams, type Sponsor } from '../physics/params';
  */
 export const START_MONEY = 10000;
 export const DAILY_BONUS = 500;
-/** What the cars cost at the dealer. */
+/** What the cars cost at the dealer. Class 2 is priced so that a player who also upgraded in class 1 has to save up after unlocking it. */
 export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 GL': 6000,
   'Kvarn 240 Turbo': 15000,
   'Ljung 1600 S': 9000,
-  'Ljung 2000 16V': 30000,
-  'Strand 1800': 38000,
-  'Strand 2.0 Turbo 4x4': 50000,
-  'Brenner 5T Coupé': 45000,
-  'Sora 2.0 Turbo': 52000,
-  'Hoshi 2.0 4WD': 55000,
-  'Volpe 2.0 Turbo 16V': 60000,
+  'Ljung 2000 16V': 50000,
+  'Strand 1800': 58000,
+  'Strand 2.0 Turbo 4x4': 70000,
+  'Brenner 5T Coupé': 65000,
+  'Sora 2.0 Turbo': 72000,
+  'Hoshi 2.0 4WD': 75000,
+  'Volpe 2.0 Turbo 16V': 80000,
 };
 
 /**
