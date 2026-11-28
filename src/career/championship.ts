@@ -131,15 +131,17 @@ const CHAMPIONSHIP_MEDALS = [
   { name: 'brons', prize: 625 },
 ] as const;
 export const CHAMPIONSHIP_FINISH_PRIZE = 1000;
+/** Medal money for a championship already won: the first win pays in full, so repeating it is no shortcut to money. */
+export const REPEAT_PRIZE = 0.4;
 
 /** The championship's stages combined (km), from the precomputed lengths. */
 export const championshipKm = (def: ChampionshipDef) => def.legs.reduce((sum, leg) => sum + (STAGE_LENGTHS[leg] ?? 0), 0) / 1000;
 
-/** The medals with prize money that grows with distance, so long championships pay for their repairs. */
-export const championshipMedals = (def: ChampionshipDef, difficulty: Difficulty) =>
+/** The medals with prize money that grows with distance, so long championships pay for their repairs. `won`: already won before. */
+export const championshipMedals = (def: ChampionshipDef, difficulty: Difficulty, won = false) =>
   CHAMPIONSHIP_MEDALS.map((m) => ({
     name: m.name,
-    prize: Math.round((m.prize * championshipKm(def) * DIFFICULTY_PRIZE[difficulty]) / 500) * 500 * TIER_PRIZE[def.tier],
+    prize: Math.round((m.prize * championshipKm(def) * DIFFICULTY_PRIZE[difficulty] * (won ? REPEAT_PRIZE : 1)) / 500) * 500 * TIER_PRIZE[def.tier],
   }));
 
 export const championshipById = (id: string) => CHAMPIONSHIPS.find((c) => c.id === id) ?? null;
@@ -151,9 +153,9 @@ export function championshipTargets(def: ChampionshipDef): [number, number, numb
   return [0, 1, 2].map((i) => Math.round(all.reduce((sum, t) => sum + t![i]!, 0) * TIER_PACE[def.tier])) as [number, number, number];
 }
 
-/** The prize money by championship position (1 = win). */
-export function championshipPrize(def: ChampionshipDef, place: number, difficulty: Difficulty): { medal: string | null; prize: number } {
-  const medal = championshipMedals(def, difficulty)[place - 1];
+/** The prize money by championship position (1 = win); `won` if the championship was already won before. */
+export function championshipPrize(def: ChampionshipDef, place: number, difficulty: Difficulty, won = false): { medal: string | null; prize: number } {
+  const medal = championshipMedals(def, difficulty, won)[place - 1];
   return medal ? { medal: medal.name, prize: medal.prize } : { medal: null, prize: CHAMPIONSHIP_FINISH_PRIZE * TIER_PRIZE[def.tier] };
 }
 

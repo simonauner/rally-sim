@@ -103,6 +103,8 @@ const CAR = 'Kvarn 240 GL';
   check('championship: prize money', prizes.map((p) => p.medal).join() === 'guld,silver,brons,' && prizes[0]!.prize > prizes[1]!.prize && prizes[2]!.prize > prizes[3]!.prize && prizes[0]!.prize % 500 === 0, prizes.map((p) => `${p.medal ?? 'finish'} ${p.prize}`).join(', '));
   const byDifficulty = (['easy', 'medium', 'hard'] as const).map((d) => championshipPrize(def, 1, d).prize);
   check('championship: prize money per difficulty', byDifficulty.join() === '15500,20500,25500' && difficultyOf(newProgress(def, 'Kvarn 240 GL', 1, 'hard')) === 'hard' && difficultyOf({ id: def.id, car: 'Kvarn 240 GL', leg: 0, times: [], damage: null }) === 'easy', byDifficulty.join(' / '));
+  const rewon = [1, 4].map((place) => championshipPrize(def, place, 'easy', true).prize);
+  check('championship: repeat wins pay less', rewon[0] === 6000 && rewon[1] === championshipPrize(def, 4, 'easy').prize, `win again ${rewon[0]} kr, finish ${rewon[1]} kr`);
   const none: CarDamage = { body: { front: 0, rear: 0, left: 0, right: 0, roof: 0 }, wheels: [0, 0, 0, 0], powerFactor: 1 };
   const crashed: CarDamage = { body: { front: 0.6, rear: 0, left: 0.2, right: 0, roof: 0 }, wheels: [0.3, 0, 0, 0], powerFactor: 0.76 };
   const noLamp: CarDamage = { ...crashed, lamps: [0.6, 0] };
