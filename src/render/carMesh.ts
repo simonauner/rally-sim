@@ -328,10 +328,12 @@ function buildUnderbody(b: BodyShape, wheels: WheelDef[], frontShare: number, ex
   const low = y0 - 0.03;
   const axleY = Math.max(hubY, low + 0.035);
 
-  box(2 * b.halfX - 0.14, 0.02, b.nose - b.tail - 0.2, 0, y0 - 0.012, (b.nose + b.tail) / 2, floor);
+  // The floor stays between the wheels and just past the axles, so its corners never poke out of the rounded body.
+  const floorW = 2 * Math.min(...wheels.map((w) => Math.abs(w.mount[0]))) - 0.3;
+  box(floorW, 0.02, zF - zR + 0.4, 0, y0 - 0.012, (zF + zR) / 2, floor);
   box(0.5, 0.06, 0.55, 0, y0, zF - 0.05, metal); // engine sump
   box(0.28, 0.05, 0.5, 0, y0, zF - 0.55, metal); // gearbox
-  box(2 * b.halfX - 0.5, 0.04, 0.1, 0, y0, zF + 0.05, metal); // front crossmember
+  box(floorW, 0.04, 0.1, 0, y0, zF + 0.05, metal); // front crossmember
   for (const w of front) rod(0.025, v(0, axleY, zF), v(w.mount[0] * 0.9, axleY, zF), frontShare > 0 ? metal : pipe);
   // Rear axle tube between the hubs; a diff and a propshaft when the rear is driven.
   rod(0.035, v(rear[0]!.mount[0] * 0.9, axleY, zR), v(rear[1]!.mount[0] * 0.9, axleY, zR), metal);
@@ -339,7 +341,7 @@ function buildUnderbody(b: BodyShape, wheels: WheelDef[], frontShare: number, ex
     box(0.26, 0.2, 0.24, 0, Math.max(axleY, low + 0.1), zR, metal);
     rod(0.035, v(0, y0 - 0.005, zF - 0.8), v(0, axleY, zR + 0.12), pipe);
   }
-  box(0.8, 0.06, 0.42, 0, y0, (zR + b.tail) / 2 + 0.05, metal); // fuel tank
+  box(0.8, 0.06, 0.42, 0, y0, zR + 0.45, metal); // fuel tank, ahead of the rear axle
   if (exhaust) rod(0.02, v(-0.32, y0 - 0.01, zF - 0.3), v(-0.32, y0 - 0.01, b.tail - 0.05), pipe);
   return g;
 }
