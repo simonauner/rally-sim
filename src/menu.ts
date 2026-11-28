@@ -176,17 +176,19 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
     b.classList.add('flipped');
     choose(true);
   };
-  const select = (i: number) => {
+  const select = (i: number, scroll = true) => {
     if ((i + buttons.length) % buttons.length !== sel) {
       click(3000);
       unflip();
     }
     sel = (i + buttons.length) % buttons.length;
     buttons.forEach((b, j) => b.classList.toggle('selected', j === sel));
-    buttons[sel]?.scrollIntoView({ block: 'nearest' });
+    if (scroll) buttons[sel]?.scrollIntoView({ block: 'nearest' });
     opts.onSelect?.(opts.items[sel]!.value);
   };
-  select(Math.max(0, opts.items.findIndex((it) => it.value === opts.initial)));
+  const first = Math.max(0, opts.items.findIndex((it) => it.value === opts.initial));
+  // Opening on the first row stays at the top, so a long body (e.g. Historik) is read from its start.
+  select(first, first > 0);
   const input = el.querySelector('input');
   input?.focus();
 
