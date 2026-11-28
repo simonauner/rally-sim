@@ -857,7 +857,7 @@ def mirror(body, s, side):
 
 
 # The auxiliary light pod (class 2): four round lamps close together in a row in front of the grille and headlights, on a
-# painted bracket. The same x as podX in src/render/bodies/volpeTurbo.ts.
+# painted bracket.
 POD_X, POD_Y, POD_Z, POD_R = (0.285, 0.095, -0.095, -0.285), 0.2, 1.8, 0.085
 
 

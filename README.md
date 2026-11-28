@@ -123,7 +123,7 @@ src/physics/   pure TypeScript, no browser code (also runs in Node)
 src/account/   account: protocol (shared with sync/), recovery key, sync in the browser
 sync/          the sync server (Cloudflare Worker, Durable Objects)
 src/render/    Three.js (WebGPU), clay look, deformable body, terrain, dust per surface, debug
-  bodies/        the body shape per car, built in code
+  bodies/        each car's dimensions for decals, dents and tail lights
   models/        cars modelled in Blender (generated files, see below)
 blender/       Blender sources: a build script and a .blend per modelled car
 src/main.ts    game loop: fixed physics step at 240 Hz, rendering decoupled
@@ -132,8 +132,8 @@ tests/         physics tests with expected ranges
 
 ### Cars from Blender
 
-Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé, Strand 1800, Strand 2.0 Turbo 4x4, Kvarn 240 (GL and Turbo, same model), Ljung 1600 S and Ljung 2000 16V are modelled in Blender instead of built from a shape in
-`src/render/bodies/`. `blender/<car>/<car>.blend` is the source (e.g. `blender/soraTurbo/soraTurbo.blend`): edit it in Blender and transfer it to the game with
+Every car is modelled in Blender (Kvarn 240 GL and Turbo share a model); `src/render/bodies/` only gives each car's
+dimensions for the decals, the dents and the tail lights. `blender/<car>/<car>.blend` is the source (e.g. `blender/soraTurbo/soraTurbo.blend`): edit it in Blender and transfer it to the game with
 
 ```sh
 blender -b blender/soraTurbo/soraTurbo.blend -P blender/export.py   # writes src/render/models/soraTurbo.ts
