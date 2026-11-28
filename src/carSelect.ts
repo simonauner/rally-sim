@@ -150,7 +150,8 @@ export function showroom(renderer: THREE.WebGPURenderer): Showroom {
   let idle = 0;
   const menu = document.getElementById('menu')!;
   const down = (e: PointerEvent) => {
-    if (e.target !== menu) return;
+    // Anywhere but the panels: the side menu wraps them in a full-width .panels row.
+    if ((e.target as Element).closest('.panel, .corner')) return;
     dragging = true;
     menu.setPointerCapture(e.pointerId);
   };
