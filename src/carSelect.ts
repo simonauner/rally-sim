@@ -333,7 +333,7 @@ export async function pickCar(renderer: THREE.WebGPURenderer, cars: CarModel[], 
     // The car you browsed to, not the one shown when the menu opened.
     const m = cars[current]!;
     view = null;
-    const close = await opts.action.run(m, (p) => show(p));
+    const close = await opts.action.run(m, (p) => room.show(p));
     view = 'browse';
     if (close) break;
     data.clear();
