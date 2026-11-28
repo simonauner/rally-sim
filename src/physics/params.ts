@@ -307,10 +307,10 @@ export function ljung2000(): CarParams {
 
 /**
  * Class 2: a fictional light two-door saloon from the late 70s in rally trim, with rear-wheel drive and a
- * high-revving two-litre engine set far back in the engine bay. Short wheelbase and lots of power, so it
+ * high-revving four-cylinder set far back in the engine bay. Short wheelbase and lots of power, so it
  * turns easily; for those who like to slide.
  */
-export function strandGt(): CarParams {
+export function strand1800(): CarParams {
   const mass = 1050;
   const R = 0.31;
   const cg = 0.48;
@@ -319,7 +319,7 @@ export function strandGt(): CarParams {
   const zR = -wheelbase * 0.52;
   const yMount = R - cg + 0.125;
   return {
-    name: 'Strand 2.0 GT',
+    name: 'Strand 1800',
     mass,
     // Low yaw inertia: heavy parts near the middle and a short body.
     inertia: boxInertia(mass, 4.1, 1.7, 1.3, 0.72),
@@ -379,10 +379,11 @@ export function strandGt(): CarParams {
 }
 
 /**
- * Class 2: the Kvarn saloon body with four-wheel drive and a big turbo, like a Group A car.
+ * Class 2: a fictional four-door saloon from around 1990 with four-wheel drive and a big turbo, a Group A
+ * car. Until it gets a model of its own it keeps the Kvarn's chassis dimensions.
  * Lots of grip and the most power, but heavy and sluggish low down; forgiving but hard to slide.
  */
-export function kvarnTurbo4x4(): CarParams {
+export function strandTurbo4x4(): CarParams {
   const p = kvarn240();
   const mass = 1230;
   const zF = p.wheelbase * 0.42;
@@ -390,7 +391,7 @@ export function kvarnTurbo4x4(): CarParams {
   const [, y] = p.wheels[0]!.mount;
   return {
     ...p,
-    name: 'Kvarn Turbo 4x4',
+    name: 'Strand 2.0 Turbo 4x4',
     mass,
     inertia: boxInertia(mass, 4.7, 1.75, 1.4, 0.8),
     cgHeight: 0.52,
@@ -448,7 +449,7 @@ const wheelsAt = (y: number, xF: number, xR: number, zF: number, zR: number): Wh
  * but reluctant to turn in; even torque split with a viscous centre diff.
  */
 export function hoshi4wd(): CarParams {
-  const p = kvarnTurbo4x4();
+  const p = strandTurbo4x4();
   const mass = 1200;
   const R = 0.31;
   const cg = 0.48;
@@ -489,7 +490,7 @@ export function hoshi4wd(): CarParams {
  * Turns in willingly but is nervous over crests; for those who want to slide on four wheels.
  */
 export function volpeTurbo(): CarParams {
-  const p = kvarnTurbo4x4();
+  const p = strandTurbo4x4();
   const mass = 1200;
   const R = 0.31;
   const cg = 0.52;
@@ -532,7 +533,7 @@ export function volpeTurbo(): CarParams {
  * that understeers; brake early and get on the throttle late.
  */
 export function brenner5t(): CarParams {
-  const p = kvarnTurbo4x4();
+  const p = strandTurbo4x4();
   const mass = 1250;
   const R = 0.31;
   const cg = 0.53;
@@ -578,7 +579,7 @@ export function brenner5t(): CarParams {
  * 6,500 rpm and 352 Nm at 4,000 rpm, tyres 205/50 R16.
  */
 export function soraTurbo(): CarParams {
-  const p = kvarnTurbo4x4();
+  const p = strandTurbo4x4();
   const mass = 1260;
   const R = 0.31;
   const cg = 0.47;
@@ -627,7 +628,7 @@ export interface Sponsor {
 export interface CarModel {
   make: () => CarParams;
   /** The car's own body in src/render/bodies/ (same name as the file). */
-  body: 'kvarn240' | 'kvarn240Turbo' | 'kvarnTurbo4x4' | 'soraTurbo' | 'ljung1600' | 'ljung2000' | 'strandGt' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
+  body: 'kvarn240' | 'kvarn240Turbo' | 'strandTurbo4x4' | 'soraTurbo' | 'ljung1600' | 'ljung2000' | 'strand1800' | 'brenner5t' | 'volpeTurbo' | 'hoshi4wd';
   /** A one-line description of the car in the car picker. */
   blurb: string;
   /** Paint colour. */
@@ -659,14 +660,14 @@ export const CARS: CarModel[] = [
     blurb: 'Kitcar på Ljungens kaross. Varvglad och nervös, och spärren fram drar i ratten när du gasar.',
   },
   {
-    make: strandGt,
-    body: 'strandGt',
+    make: strand1800,
+    body: 'strand1800',
     paint: 0x2f7d4f,
     blurb: 'Lätt bakhjulsdriven tvådörrars sedan med kort hjulbas. Mycket gas och vrider sig lätt; för den som vill sladda.',
   },
   {
-    make: kvarnTurbo4x4,
-    body: 'kvarnTurbo4x4',
+    make: strandTurbo4x4,
+    body: 'strandTurbo4x4',
     paint: 0x1a1a1e,
     blurb: 'Fyrhjulsdriven turbosedan i Grupp A-stil. Mest effekt och grepp, men tung och seg under 3 000 rpm.',
   },

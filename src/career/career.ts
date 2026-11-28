@@ -18,8 +18,8 @@ export const CAR_PRICES: Record<string, number> = {
   'Kvarn 240 Turbo': 15000,
   'Ljung 1600 S': 9000,
   'Ljung 2000 16V': 30000,
-  'Strand 2.0 GT': 38000,
-  'Kvarn Turbo 4x4': 50000,
+  'Strand 1800': 38000,
+  'Strand 2.0 Turbo 4x4': 50000,
   'Brenner 5T Coupé': 45000,
   'Sora 2.0 Turbo': 52000,
   'Hoshi 2.0 4WD': 55000,
@@ -33,8 +33,8 @@ export const CAR_PRICES: Record<string, number> = {
 export type Tier = 1 | 2;
 const CAR_TIERS: Record<string, Tier> = {
   'Ljung 2000 16V': 2,
-  'Strand 2.0 GT': 2,
-  'Kvarn Turbo 4x4': 2,
+  'Strand 1800': 2,
+  'Strand 2.0 Turbo 4x4': 2,
   'Hoshi 2.0 4WD': 2,
   'Volpe 2.0 Turbo 16V': 2,
   'Brenner 5T Coupé': 2,
@@ -574,11 +574,20 @@ const OLD_UPGRADES: Record<string, number[]> = {
   tyres: [1500, 3500, 6000],
 };
 
-/** Swaps old levelled upgrades, and parts that no longer fit the car, for a refund. Same result every time, so it can run on every load. */
+/** Cars that changed name: old name → new. Careers and championships saved before are moved over on load. */
+export const RENAMED_CARS: Record<string, string> = { 'Strand 2.0 GT': 'Strand 1800', 'Kvarn Turbo 4x4': 'Strand 2.0 Turbo 4x4' };
+export const currentCarName = (car: string) => RENAMED_CARS[car] ?? car;
+
+/**
+ * Moves renamed cars to their new names, and swaps old levelled upgrades, and parts that no longer fit the
+ * car, for a refund. Same result every time, so it can run on every load.
+ */
 export function migrateCareer(career: CareerState): CareerState {
   let refund = 0;
+  const renamed = Object.keys(career.garage).some((car) => car in RENAMED_CARS) || !!career.history?.some((e) => (e.car ?? '') in RENAMED_CARS || (e.kind === 'car' && e.name in RENAMED_CARS));
   const garage: CareerState['garage'] = {};
-  for (const [car, { upgrades }] of Object.entries(career.garage)) {
+  for (const [old, { upgrades }] of Object.entries(career.garage)) {
+    const car = currentCarName(old);
     const kept: Record<string, number> = {};
     for (const [id, level] of Object.entries(upgrades)) {
       const old = OLD_UPGRADES[id];
@@ -588,9 +597,15 @@ export function migrateCareer(career: CareerState): CareerState {
       else if (part && p && !fits(part, p)) refund += part.price;
       else kept[id] = level;
     }
-    garage[car] = { upgrades: kept };
+    garage[car] = { upgrades: { ...garage[car]?.upgrades, ...kept } };
   }
-  return refund ? { ...career, money: career.money + refund, garage } : career;
+  if (!refund && !renamed) return career;
+  const history = career.history?.map((e) => ({
+    ...e,
+    ...(e.car && { car: currentCarName(e.car) }),
+    ...(e.kind === 'car' && { name: currentCarName(e.name) }),
+  }));
+  return { ...career, money: career.money + refund, garage, ...(history && { history }) };
 }
 
 export function newCareer(): CareerState {

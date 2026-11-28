@@ -1,7 +1,7 @@
 import type { BodyShape } from './shape';
 
-/** Kvarn Turbo 4x4: boxy 80s saloon: long flat hood and boot lid, large square lamps. */
-export const kvarnTurbo4x4: BodyShape = {
+/** Strand 2.0 Turbo 4x4: four-door saloon from around 1990; for now the Kvarn's boxy shape until it gets a model of its own. */
+export const strandTurbo4x4: BodyShape = {
   halfX: 0.85,
   bottom: -0.31,
   nose: 1.96,

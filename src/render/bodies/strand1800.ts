@@ -1,11 +1,11 @@
 import type { BodyShape } from './shape';
 
 /**
- * Strand 2.0 GT: boxy two-door saloon from the late 70s in rally trim with arch extensions. The body is
- * drawn by the Blender model (blender/strandGt/), so this shape is only used for the damage zones, the
+ * Strand 1800: boxy two-door saloon from the late 70s in rally trim with arch extensions. The body is
+ * drawn by the Blender model (blender/strand1800/), so this shape is only used for the damage zones, the
  * decals and the tail lamp glow, and follows the model's measurements.
  */
-export const strandGt: BodyShape = {
+export const strand1800: BodyShape = {
   halfX: 0.785,
   bottom: -0.277,
   nose: 1.722,

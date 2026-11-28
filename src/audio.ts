@@ -92,7 +92,7 @@ const ENGINE_SOUND: Record<string, EngineSound> = {
   'Ljung 1600 S': SMALL_FOUR,
   // Road car: turbo but no anti-lag.
   'Kvarn 240 Turbo': { ...BIG_FOUR, turbo: { level: 0.02, hz: [800, 1500] } },
-  'Kvarn Turbo 4x4': RALLY_FOUR,
+  'Strand 2.0 Turbo 4x4': RALLY_FOUR,
   'Hoshi 2.0 4WD': RALLY_FOUR,
   'Volpe 2.0 Turbo 16V': RALLY_FOUR,
   'Brenner 5T Coupé': FIVE,

@@ -132,7 +132,7 @@ tests/         physics tests with expected ranges
 
 ### Cars from Blender
 
-Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé, Strand 2.0 GT, Kvarn 240 (GL and Turbo, same model), Ljung 1600 S and Ljung 2000 16V are modelled in Blender instead of built from a shape in
+Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé, Strand 1800, Kvarn 240 (GL and Turbo, same model), Ljung 1600 S and Ljung 2000 16V are modelled in Blender instead of built from a shape in
 `src/render/bodies/`. `blender/<car>/<car>.blend` is the source (e.g. `blender/soraTurbo/soraTurbo.blend`): edit it in Blender and transfer it to the game with
 
 ```sh
@@ -206,8 +206,8 @@ Karriär in the main menu has a wallet that is synced with the account. Money co
   but you get no prize money. Progress is saved in the browser, since the page reloads between
   stages (`?mastarskap=<tyre>` loads the next stage with the tyres chosen before the reload).
 - **Class 2:** once all three championships in class 1 are won, the car dealer sells seven faster
-  cars (Ljung 2000 16V with front-wheel drive, Strand 2.0 GT with rear-wheel drive and five with
-  four-wheel drive and a centre diff: Kvarn Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé and
+  cars (Ljung 2000 16V with front-wheel drive, Strand 1800 with rear-wheel drive and five with
+  four-wheel drive and a centre diff: Strand 2.0 Turbo 4x4, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé and
   Sora 2.0 Turbo). They have their own parts in the garage, by drivetrain and engine (centre diff for
   four-wheel drive, boost and anti-lag for turbo, throttle bodies for naturally aspirated engines, some parts for a single
   car, and the Brenner has its own Group B parts), and their own championships

@@ -4,7 +4,7 @@
  */
 
 import { isCareerState, type CareerState } from '../account/protocol';
-import { migrateCareer, newCareer } from './career';
+import { currentCarName, migrateCareer, newCareer } from './career';
 import { isProgress, type ChampionshipProgress } from './championship';
 
 const KEY = 'rally.career';
@@ -43,7 +43,7 @@ const CHAMPIONSHIP_KEY = 'rally.championship';
 export function loadChampionship(): ChampionshipProgress | null {
   try {
     const p: unknown = JSON.parse(localStorage.getItem(CHAMPIONSHIP_KEY) ?? 'null');
-    return isProgress(p) ? p : null;
+    return isProgress(p) ? { ...p, car: currentCarName(p.car) } : null;
   } catch {
     return null;
   }

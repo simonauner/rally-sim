@@ -1,7 +1,7 @@
 """
-Builds the Strand 2.0 GT in Blender and saves strandGt.blend next to this script.
+Builds the Strand 1800 in Blender and saves strand1800.blend next to this script.
 
-    blender -b --factory-startup -P blender/strandGt/build.py
+    blender -b --factory-startup -P blender/strand1800/build.py
 
 Each part is built on its own: the shell (shell.py) is split into body, doors, aprons and boot lid that
 dent separately, the tail lamps are lifted out as units of their own, and headlamps, bumpers, arch
@@ -94,7 +94,7 @@ def main():
             c.objects.unlink(obj)
         export.objects.link(obj)
     reference(next(o for o in objs if o.name == 'wheel'))
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'strandGt.blend')
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'strand1800.blend')
     bpy.ops.wm.save_as_mainfile(filepath=out)
     for obj in objs:
         print(f'{obj.name}: {len(obj.data.vertices)} vertices')
