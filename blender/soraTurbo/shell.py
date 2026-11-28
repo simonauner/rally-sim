@@ -18,7 +18,7 @@ from simplify import SHARP
 
 # Front and rear outline seen from the side: how far forward/back the panel reaches at height y.
 # Front: the bumper sticks out with a step at its top edge, the headlights and grille are set back under the bonnet.
-FRONT = [(-0.30, 1.93), (-0.26, 1.975), (-0.10, 1.995), (0.02, 1.99), (0.04, 1.955), (0.15, 1.94), (0.21, 1.9)]
+FRONT = [(-0.26, 1.93), (-0.225, 1.975), (-0.10, 1.995), (0.05, 1.99), (0.07, 1.955), (0.19, 1.94), (0.215, 1.9)]
 # Rear: the bumper sticks out below the lights, which end in a step; above that the boot lid leans in.
 REAR = [(-0.27, -2.30), (-0.2, -2.355), (0.0, -2.365), (0.13, -2.36), (0.16, -2.325), (0.3, -2.315), (0.46, -2.3), (0.51, -2.285), (0.53, -2.255)]
 
@@ -50,7 +50,7 @@ def hood_crown(z):
 
 
 def body_bottom(z):
-    return piecewise([(-2.36, -0.27), (-1.9, -0.32), (1.6, -0.32), (1.99, -0.30)], z)
+    return piecewise([(-2.36, -0.27), (-1.9, -0.32), (1.6, -0.32), (1.99, -0.26)], z)
 
 
 def body_halfwidth(z):
@@ -251,14 +251,24 @@ def mirrored(x):
 Y = lambda y: plane(0, 1, 0, y)  # noqa: E731
 Z = lambda z: plane(0, 0, 1, z)  # noqa: E731
 
-# The front: headlights with two reflectors and a chrome centre strip, dark grille between them, indicators
-# high in the bumper corners, painted covers over the fog lights, a large dark intake with a painted centre
-# strut and a black lip at the very bottom.
-LAMP_Y, LAMP_X, LAMP_DIV, GRILLE_X = (0.085, 0.205), (0.25, 0.8), (0.45, 0.47), 0.23
-BLINK_Y, BLINK_X = (-0.03, 0.012), (0.52, 0.8)
-FOG_Y, FOG_X = (-0.2, -0.045), (0.4, 0.66)
-INTAKE_Y, INTAKE_X, INTAKE_BAR = (-0.24, 0.0), 0.35, 0.025
-LIP_Y = -0.265
+# The front (measured from a front photo): wide headlights with two lamps and a clear outer corner, a wide
+# dark grille between them, indicators in the bumper's outer corners with orange reflector slats below,
+# recessed fog light covers inside them, a large dark intake behind the number plate and a black lip.
+LAMP_Y, LAMP_X, LAMP_DIV = (0.08, 0.19), (0.34, 0.78), (0.655, 0.668)
+# The headlights' inner edge leans out towards the top, and the grille beside it is a trapezoid parallel to
+# it, its top a little below the lamps'. The top edge is level and falls only over the clear corner.
+HEAD_IN = plane(1, -0.418, 0, 0.3146)  # for |x|: the lamp is above it
+GRILLE_EDGE, GRILLE_TOP = plane(1, -0.389, 0, 0.2739), 0.17  # for |x|: the grille is below it
+HEAD_TOP = plane(0.2, 1, 0, 0.321)  # for |x|
+BLINK_Y, BLINK_X = (-0.064, -0.007), (0.64, 0.76)
+SLAT_Y, SLAT_X = (-0.165, -0.1), (0.628, 0.728)
+FOG_Y, FOG_X = (-0.183, 0.0), (0.428, 0.6)
+# The intake, with a painted bar across it behind the number plate.
+INTAKE_Y, INTAKE_X, INTAKE_BAR = (-0.171, -0.014), 0.343, (-0.1, -0.074)
+# Two small vents on the bonnet beside the scoop's front, on each side.
+VENT_Z, VENT_X = (1.1, 1.18), ((0.38, 0.47), (0.49, 0.58))
+BONNET_ZONE = lambda c: 1.0 < c[2] < 1.3 and c[1] > 0.2 and abs(c[0]) < 0.7  # noqa: E731
+LIP_Y = -0.232
 # Rear: lights (clear at the bottom) and number plate.
 # Rear: wide lights directly on top of the bumper, red at the top and orange at the bottom with the reversing
 # light innermost, the number plate up on the bumper and a dark lower edge.
@@ -280,7 +290,7 @@ BACKLIGHT_X, BACKLIGHT_Y = 0.52, 0.5
 # Seams: the doors' front and rear edges and the bumpers' top edges front and rear.
 SEAM_W = 0.012
 DOOR_SEAMS = (0.78, -0.68)
-BUMPER_SEAM = {'front': 0.03, 'rear': 0.155}
+BUMPER_SEAM = {'front': 0.06, 'rear': 0.155}
 SIDE_ZONE = lambda c: abs(c[0]) > 0.7 and -0.3 < c[1] < 0.37  # noqa: E731
 # The side: a faint line along the doors and wings, and the sill (side skirt) below the doors.
 CREASE_Y, SKIRT_Y = 0.2, -0.17
@@ -297,8 +307,10 @@ REAR_ZONE = lambda c: c[2] < -2.0  # noqa: E731
 CABIN_ZONE = lambda c: -1.7 < c[2] < 0.6 and c[1] > 0.3  # noqa: E731
 
 CUTS = [
-    (FRONT_ZONE, [Y(v) for v in (*LAMP_Y, *BLINK_Y, *FOG_Y, *INTAKE_Y, LIP_Y)]
-     + [p for v in (*LAMP_X, *LAMP_DIV, GRILLE_X, *BLINK_X, *FOG_X, INTAKE_X, INTAKE_BAR) for p in mirrored(v)]),
+    (FRONT_ZONE, [Y(v) for v in (*LAMP_Y, GRILLE_TOP, *BLINK_Y, *SLAT_Y, *FOG_Y, *INTAKE_Y, *INTAKE_BAR, LIP_Y)]
+     + [p for v in (LAMP_X[1], *LAMP_DIV, *BLINK_X, *SLAT_X, *FOG_X, INTAKE_X) for p in mirrored(v)]
+     + [q for n, d in (HEAD_IN, GRILLE_EDGE, HEAD_TOP) for q in ((n, d), (Vector((-n.x, n.y, n.z)), d))]),
+    (BONNET_ZONE, [Z(v) for v in VENT_Z] + [p for xs in VENT_X for v in xs for p in mirrored(v)]),
     (REAR_ZONE, [Y(v) for v in (*TAIL_Y, TAIL_AMBER, TAIL_AMBER + 0.008, *PLATE_Y, REAR_LIP_Y)] + [p for v in (*TAIL_X, TAIL_REVERSE, PLATE_X) for p in mirrored(v)]
      + [TAIL_TOP, plane(0.111, 1, 0, 0.2556)]),
     (CABIN_ZONE, [BELT, A_LINE, C_LINE, Y(ROOF_EDGE), Y(BACKLIGHT_Y), Z(DOOR_FRONT), Z(QUARTER_REAR), *(Z(v) for v in B_PILLAR),
@@ -366,23 +378,25 @@ def face_material(p, n):
             return pane
     # The headlights and indicators follow the corner a little way onto the wing.
     if FRONT_ZONE(p) and n.z > 0.05 and z > 1.75 and ax > 0.6:
-        if inside(LAMP_Y, y) and ax < 0.8:
-            return M['lamp']
-        if inside(BLINK_Y, y) and ax < 0.8:
+        if inside(LAMP_Y, y) and ax < LAMP_X[1] and not above((ax, y, z), HEAD_TOP):
+            return M['black'] if inside(LAMP_DIV, ax) else M['lamp']
+        if inside(BLINK_Y, y) and ax < BLINK_X[1]:
             return M['amber']
     if FRONT_ZONE(p) and n.z > 0.25:
-        if inside(LAMP_X, ax) and inside(LAMP_Y, y):
-            return M['chrome'] if inside(LAMP_DIV, ax) else M['lamp']
-        if ax < GRILLE_X and inside(LAMP_Y, y):
+        if ax < LAMP_X[1] and above((ax, y, z), HEAD_IN) and inside(LAMP_Y, y) and not above((ax, y, z), HEAD_TOP):
+            return M['black'] if inside(LAMP_DIV, ax) else M['lamp']  # a black slot before the clear corner
+        if not above((ax, y, z), GRILLE_EDGE) and LAMP_Y[0] < y < GRILLE_TOP:
             return M['black']
-        if inside(BLINK_X, ax) and inside(BLINK_Y, y):
+        if inside(BLINK_X, ax) and inside(BLINK_Y, y) or inside(SLAT_X, ax) and inside(SLAT_Y, y):
             return M['amber']
         if y < LIP_Y:
             return M['black']
         if ax < INTAKE_X and inside(INTAKE_Y, y):
-            return M['paint'] if ax < INTAKE_BAR else M['dark']
+            return M['paint'] if inside(INTAKE_BAR, y) else M['dark']
         if inside(FOG_X, ax) and inside(FOG_Y, y):
             return M['shade']
+    if BONNET_ZONE(p) and n.y > 0.8 and inside(VENT_Z, z) and any(inside(v, ax) for v in VENT_X):
+        return M['black']
     if REAR_ZONE(p) and (n.z < -0.25 or abs(n.x) > 0.5):
         if inside(TAIL_Y, y) and not above((ax, y, z), TAIL_TOP) and ax > TAIL_X[0] and (n.z < -0.25 or z < -2.15):
             if TAIL_AMBER < y < TAIL_AMBER + 0.008:
@@ -518,33 +532,10 @@ def set_origin(obj):
 # --- Lights ----------------------------------------------------------------------------------
 
 
-# The headlights' two lamps behind the glass: (x, y, radius) on the left side, mirrored to the right.
-HEAD_BULBS = [(0.34, 0.145, 0.045), (0.6, 0.145, 0.052)]
-
-
-def bulbs(bm, s, normal):
-    """Round glowing lamps on the headlight's chrome housing, placed on the glass where they sit."""
-    for x, y, r in HEAD_BULBS:
-        target = to_blender(s * x, y, 2.0)
-        near = min(bm.verts, key=lambda v: (v.co.x - target.x) ** 2 + (v.co.z - target.z) ** 2)
-        normal = near.normal.normalized()  # the glass is curved: the lamp follows the glass where it sits
-        c = near.co + normal * 0.008
-        # A thin disc perpendicular to the glass normal.
-        u = normal.cross(Vector((0, 0, 1))).normalized()
-        w = normal.cross(u).normalized()
-        ring = [bm.verts.new(c + (u * math.cos(t) + w * math.sin(t)) * r) for t in (2 * math.pi * i / 20 for i in range(20))]
-        back = [bm.verts.new(v.co - normal * 0.02) for v in ring]
-        top = bm.faces.new(ring)
-        top.material_index = M['lamp']
-        for i in range(20):
-            j = (i + 1) % 20
-            bm.faces.new([ring[i], back[i], back[j], ring[j]]).material_index = M['chrome']
-
-
 def lamp_unit(obj, bezel, depth, side=0):
     """A light as a unit of its own: the glass a little outside the panel, a frame around the edge and sides
-    down into the light's cavity, so it has depth and isn't a painted surface. The headlights (side ±1) get
-    a chrome housing with two round lamps, as behind clear glass."""
+    down into the light's cavity, so it has depth and isn't a painted surface. The headlights (side ±1) are
+    chrome all over, like the reflectors behind clear glass."""
 
     def fn(bm, info):
         normal = sum((f.normal for f in bm.faces), Vector()).normalized()
@@ -562,8 +553,6 @@ def lamp_unit(obj, bezel, depth, side=0):
         bmesh.ops.translate(bm, vec=-normal * depth, verts=verts)
         for f in (e for e in ret['geom'] if isinstance(e, bmesh.types.BMFace)):
             f.material_index = M['black']
-        if side:
-            bulbs(bm, side, normal)
 
     edit(obj, fn)
     set_origin(obj)
@@ -615,16 +604,21 @@ def door_handle(obj, s):
 
 
 def front_bumper(obj):
-    """The intake recessed with a mesh grille, the covers over the fog lights raised, the lip extended forward."""
+    """The intake recessed with a mesh grille, the covers over the fog lights recessed, the lip extended forward."""
 
     def fn(bm, info):
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
         intake = [f for f in bm.faces if info(f)[2] == 'dark' and abs(info(f)[0][0]) < INTAKE_X]
         push(bm, intake, (0, 0, -0.05), wall='black', top='black')
-        for i in range(5):
+        for i in range(3):
             y = INTAKE_Y[0] + 0.03 + i * 0.045
             box(bm, (0, y, 1.955), (2 * INTAKE_X - 0.02, 0.01, 0.012), 'dark')
         fog = [f for f in bm.faces if info(f)[2] == 'shade' and info(f)[1].z > 0.25 and FOG_Y[0] < info(f)[0][1] < FOG_Y[1]]
-        push(bm, fog, (0, 0, 0.012), top='paint', wall='shade')
+        # A black frame around each cover, so they read as housings and not as paint.
+        frame = bmesh.ops.inset_region(bm, faces=fog, thickness=0.012, depth=0, use_even_offset=True)['faces']
+        for f in frame:
+            f.material_index = M['black']
+        push(bm, fog, (0, 0, -0.015), top='shade', wall='black')
         lip = [f for f in bm.faces if info(f)[2] == 'black' and info(f)[0][1] < LIP_Y and info(f)[1].z > 0.25]
         push(bm, lip, (0, -0.005, 0.03), wall='black')
 

@@ -204,6 +204,41 @@ def mirror(s, side, surface):
     return new_object(f'mirror_{side}', bm, (x0, y0, z0))
 
 
+POD_X = (0.27, 0.09, -0.09, -0.27)  # the lamps' centres
+POD_LAMP = (0.2, 0.085)  # (y, radius)
+
+
+def pod():
+    """The auxiliary light pod (class 2): a painted housing that sits on the bonnet's front edge and reaches
+    forward over the grille, with four large round lamps close together in its vertical front, each in a
+    chrome ring. One piece, so it falls off whole. Origin at the front face's centre."""
+    import bpy
+
+    # Side profile (z, y) relative to the front face: the top rounds off and runs back down onto the bonnet,
+    # the underside lies inside the body.
+    side = [(0, -0.1), (0, 0.06), (-0.02, 0.095), (-0.06, 0.11), (-0.13, 0.1), (-0.23, 0.07), (-0.3, 0.02), (-0.06, -0.1)]
+    bm = bmesh.new()
+    prism(bm, side, -0.4, 0.4, 'paint')
+    obj = new_object('pod', bm, (0, POD_LAMP[0], 1.98))
+    bevel = obj.modifiers.new('bevel', 'BEVEL')
+    bevel.width, bevel.segments, bevel.limit_method = 0.025, 3, 'ANGLE'
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier='bevel')
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    r = POD_LAMP[1]
+    for x in POD_X:
+        # Chrome ring standing out of the front, the lens a little behind its edge and a dark gap inside the ring.
+        ring = [(-0.01, r - 0.012, 'chrome'), (0.012, r - 0.012, 'chrome'), (0.018, r - 0.004, 'chrome'), (0.012, r + 0.004, 'chrome'),
+                (-0.01, r + 0.004, 'chrome')]
+        revolve(bm, ring, 'z', 24, center=(x, 0, 0))
+        lens = [(-0.01, 0.002, 'lamp'), (-0.01, r - 0.01, 'lamp'), (0.006, r - 0.012, 'lamp'), (0.01, 0.002, 'lamp')]
+        revolve(bm, lens, 'z', 24, center=(x, 0, 0))
+    bm.to_mesh(obj.data)
+    bm.free()
+    return obj
+
+
 def details(surface):
     """The loose parts. surface(s, y, z) gives the body surface (x) on side s, for parts mounted on it."""
     objs = [wing(), exhaust(), wheel()]
@@ -215,14 +250,7 @@ def details(surface):
     objs.append(simple('scoop', (0, 0.34, 1.04), [((0, 0, 0), (0.6, 0.08, 0.32), 'paint'), ((0, 0.01, 0.165), (0.5, 0.05, 0.01), 'black')]))
     # Cabin air intake at the front of the roof, with a black opening facing forward.
     objs.append(simple('roofvent', (0, 0.835, -0.2), [((0, 0, 0), (0.34, 0.05, 0.3), 'paint'), ((0, 0.003, 0.152), (0.28, 0.03, 0.006), 'black')]))
-    objs.append(simple('plate_front', (0, 0.0, 1.995), [((0, 0, 0), (0.34, 0.06, 0.02), 'plate')]))
-    # The auxiliary light pod (class 2): four lamps close together in a painted box on the bonnet's front edge.
-    objs.append(simple('pod_body', (0, 0.205, 1.78), [((0, 0, 0), (0.8, 0.1, 0.22), 'paint')]))
-    for i, x in enumerate((0.3, 0.1, -0.1, -0.3)):
-        bm = bmesh.new()
-        revolve(bm, [(-0.05, 0.002, 'paint'), (-0.05, 0.09, 'paint'), (0.05, 0.09, 'paint'), (0.05, 0.002, 'paint')], 'z', 20)
-        objs.append(new_object(f'pod_lamp_{i}', bm, (x, 0.265, 1.86)))
-        bm = bmesh.new()
-        revolve(bm, [(-0.005, 0.002, 'lamp'), (-0.005, 0.075, 'lamp'), (0.005, 0.075, 'lamp'), (0.005, 0.002, 'lamp')], 'z', 20)
-        objs.append(new_object(f'pod_lens_{i}', bm, (x, 0.265, 1.915)))
+    # The number plate in front of the intake.
+    objs.append(simple('plate_front', (0, -0.075, 2.0), [((0, 0, 0), (0.36, 0.125, 0.015), 'plate')]))
+    objs.append(pod())
     return objs

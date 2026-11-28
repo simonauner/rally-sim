@@ -91,6 +91,7 @@ def main():
         shell.merge_flat(obj)
         shell.mark_sharp(obj)
     objs = [body, *lamps, *panels, *parts.details(surface([body, *panels]))]
+    shell.mark_sharp(next(o for o in objs if o.name == 'pod'))
     for obj in objs:
         for c in obj.users_collection:
             c.objects.unlink(obj)
