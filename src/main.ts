@@ -554,6 +554,8 @@ async function main() {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
   });
+  // The viewport can change without a resize event (embedded panes, zoom, some fullscreen toggles); <html> is 100% high, so it tracks the viewport.
+  new ResizeObserver(() => dispatchEvent(new Event('resize'))).observe(document.documentElement);
 
   const restart = () => {
     if (!stage) return;
