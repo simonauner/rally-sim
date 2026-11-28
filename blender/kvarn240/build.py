@@ -12,9 +12,9 @@ Blender's front view. The ground is at y = -0.55 and the wheel centres at y ≈ 
 rest in the game.
 
 The dimensions follow the original (a boxy Swedish four-door saloon from the 80s): wheelbase 2.64 m,
-4.64 m long over the bumpers, 1.71 m wide, 1.39 m high. Lengths and heights are measured from a straight
-side view, scaled by the wheelbase. The body is the shell; lights, grille, bumpers and rims are parts of
-their own.
+4.785 m long over the bumpers, 1.71 m wide, 1.44 m high. Lengths and heights are measured from a straight
+side view, scaled by the wheelbase, and stretched to those dimensions by real_size(). The body is the
+shell; lights, grille, bumpers and rims are parts of their own.
 """
 
 import math
@@ -830,6 +830,36 @@ def reference():
     coll.objects.link(g)
 
 
+# The body above is drawn from a side view and came out shorter and lower than the original (4.785 m long
+# over the bumpers, 1.435–1.45 m high). real_size() stretches the overhangs beyond ARCH_ZONE from the axles
+# by OVERHANG, so the wheel arches keep their shape, and the height above the ground by RAISE.
+ARCH_ZONE = 0.42
+OVERHANG = 1.114
+RAISE = 1.024
+
+
+def real_size(p):
+    x, y, z = p
+    front, rear = WHEELS[0][0] + ARCH_ZONE, WHEELS[1][0] - ARCH_ZONE
+    if z > front:
+        z = front + (z - front) * OVERHANG
+    elif z < rear:
+        z = rear + (z - rear) * OVERHANG
+    return Vector((x, GROUND + (y - GROUND) * RAISE, z))
+
+
+def apply_warp(objs, f):
+    """Stretches the parts' meshes; the panels (body) keep their origin at the car's origin, other parts move along."""
+    # matrix_world is only recomputed when the scene updates; otherwise newly created parts stay at the origin.
+    bpy.context.view_layer.update()
+    for obj in objs:
+        mw = obj.matrix_world.copy()
+        at = Vector((0, 0, 0)) if obj.name == 'body' else f(to_car(mw.translation))
+        for v in obj.data.vertices:
+            v.co = to_blender(*(f(to_car(mw @ v.co)) - at))
+        obj.matrix_world = Matrix.Translation(to_blender(*at))
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     export = bpy.data.collections.new('Export')
@@ -840,7 +870,9 @@ def main():
     merge_flat(body)
     mark_sharp(body)
     wheel_rim = rim()
-    for obj in [body, *details(body), wheel_rim]:
+    parts = [body, *details(body)]
+    apply_warp(parts, real_size)
+    for obj in [*parts, wheel_rim]:
         bpy.context.scene.collection.objects.unlink(obj)
         export.objects.link(obj)
     reference()

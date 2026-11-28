@@ -92,17 +92,20 @@ export function kvarn240(): CarParams {
     wheels: [
       { mount: [0.715, yMount, zF], front: true, left: true },
       { mount: [-0.715, yMount, zF], front: true, left: false },
-      { mount: [0.72, yMount, zR], front: false, left: true },
-      { mount: [-0.72, yMount, zR], front: false, left: false },
+      // The original's rear track is 7 cm narrower than the front: the rear wheels sit inside the arches.
+      { mount: [0.68, yMount, zR], front: false, left: true },
+      { mount: [-0.68, yMount, zR], front: false, left: false },
     ],
-    body: { halfX: 0.85, halfZ: 2.25, bottomY: -0.33, topY: 0.85 },
+    // As the Blender model, bumpers included: 2.09 m forward, 2.69 m back, roof 0.88 m above the centre of gravity.
+    body: { halfX: 0.855, halfZ: 2.39, centerZ: -0.3, bottomY: -0.33, topY: 0.88 },
     susp: {
       kFront: 28000,
       kRear: 26000,
       bump: 2200,
       rebound: 3600,
       arbFront: 14000,
-      arbRear: 8000,
+      // Stiffer than the track alone would need: keeps the roll stiffness of the earlier, wider rear track.
+      arbRear: 10000,
       freeLen: 0.25,
       minLen: 0,
       maxLen: 0.25,
