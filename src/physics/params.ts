@@ -306,8 +306,9 @@ export function ljung2000(): CarParams {
 }
 
 /**
- * Class 2: a fictional light rear-wheel-drive coupé with a two-litre naturally aspirated engine set far back in the bay.
- * Short wheelbase and lots of power, so it rotates easily; for those who want to slide.
+ * Class 2: a fictional light two-door saloon from the late 70s in rally trim, with rear-wheel drive and a
+ * high-revving two-litre engine set far back in the engine bay. Short wheelbase and lots of power, so it
+ * turns easily; for those who like to slide.
  */
 export function strandGt(): CarParams {
   const mass = 1050;
@@ -660,7 +661,7 @@ export const CARS: CarModel[] = [
     make: strandGt,
     body: 'strandGt',
     paint: 0x2f7d4f,
-    blurb: 'Lätt bakhjulsdriven coupé med kort hjulbas. Mycket gas och vrider sig lätt; för den som vill sladda.',
+    blurb: 'Lätt bakhjulsdriven tvådörrars sedan med kort hjulbas. Mycket gas och vrider sig lätt; för den som vill sladda.',
   },
   {
     make: kvarnTurbo4x4,

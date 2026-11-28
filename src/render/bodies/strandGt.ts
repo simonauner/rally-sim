@@ -1,32 +1,36 @@
 import type { BodyShape } from './shape';
 
-/** Strand 2.0 GT: low two-door coupé: long hood, steeply raked windscreen, short roof and short boot lid. */
+/**
+ * Strand 2.0 GT: boxy two-door saloon from the late 70s in rally trim with arch extensions. The body is
+ * drawn by the Blender model (blender/strandGt/), so this shape is only used for the damage zones, the
+ * decals and the tail lamp glow, and follows the model's measurements.
+ */
 export const strandGt: BodyShape = {
-  halfX: 0.84,
-  bottom: -0.29,
-  nose: 1.84,
-  tail: -2.2,
-  belt: 0.35,
-  roof: 0.76,
-  crease: 0.14,
-  screen: [0.5, -0.12],
-  backlight: [-1.62, -1.02],
-  hoodDrop: 0.1,
+  halfX: 0.785,
+  bottom: -0.277,
+  nose: 1.722,
+  tail: -2.165,
+  belt: 0.455,
+  roof: 0.875,
+  crease: 0.3,
+  screen: [0.594, 0.036],
+  backlight: [-1.495, -1.06],
+  hoodDrop: 0.15,
   trunkDrop: 0.03,
-  cabinHalfX: 0.7,
-  archY: -0.22,
-  archR: [0.375, 0.37],
-  doorSeams: [-0.78],
+  cabinHalfX: 0.72,
+  archY: -0.203,
+  archR: [0.345, 0.345],
+  doorSeams: [-0.596],
   sideGlass: [
-    [-0.72, Infinity],
-    [-Infinity, -0.82],
+    [-0.54, Infinity],
+    [-Infinity, -0.6],
   ],
-  doorHandles: [-0.64],
-  lampY: [0.0, 0.14],
-  grilleX: 0.3,
-  lampX: [0.34, 0.76],
-  tailY: [0.03, 0.2],
-  tailX: 0.4,
-  bumperY: [-0.12, -0.09],
-  rearBumperDepth: 0.36,
+  doorHandles: [-0.476],
+  lampY: [0.08, 0.26],
+  grilleX: 0.76,
+  lampX: [0.54, 0.72],
+  tailY: [0.1, 0.24],
+  tailX: 0.52,
+  bumperY: [0.015, 0.024],
+  rearBumperDepth: 0.08,
 };

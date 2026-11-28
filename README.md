@@ -132,7 +132,7 @@ tests/         physics tests with expected ranges
 
 ### Cars from Blender
 
-Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé, Kvarn 240 (GL and Turbo, same model), Ljung 1600 S and Ljung 2000 16V are modelled in Blender instead of built from a shape in
+Sora 2.0 Turbo, Hoshi 2.0 4WD, Volpe 2.0 Turbo 16V, Brenner 5T Coupé, Strand 2.0 GT, Kvarn 240 (GL and Turbo, same model), Ljung 1600 S and Ljung 2000 16V are modelled in Blender instead of built from a shape in
 `src/render/bodies/`. `blender/<car>/<car>.blend` is the source (e.g. `blender/soraTurbo/soraTurbo.blend`): edit it in Blender and transfer it to the game with
 
 ```sh
@@ -157,6 +157,8 @@ The Kvarn's lamps, grille and bumpers are separate parts (`headlamp…`, `grille
 The Volpe also has a roof spoiler, bonnet vents and auxiliary lights as separate parts (`spoiler`, `vents…`, `pod`).
 The Brenner is built from the same modules as the Sora (`blender/brenner5t/`): box flares that end at the door seams, a
 sharp shoulder crease, a lamp band with a grille, a black ribbed tail panel, a spoiler on the deck (`wing`), twin tailpipes and silver rims with twenty spokes.
+The Strand is built from the same modules: round headlamps (`headlight…`) and split black bumpers (`bumper…`) as loose
+parts, painted bolt-on arch extensions (`flare…`), a lip spoiler on the boot (`wing`) and white eight-spoke rims.
 The Ljung has round twin headlights and black plastic flares around the wheel arches (`flare…`). The Ljung 2000 16V is built by
 the same script (`blender/ljung1600/build.py -- ljung2000`): same body and wheelbase, widened over the kit car's wider track,
 lower, with one large lamp per side, a kit front (`bumper_holes`, `spoiler_vents`) and a roof scoop (`scoop`).
