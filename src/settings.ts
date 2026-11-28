@@ -31,14 +31,14 @@ let voice = read(VOICE_KEY) !== 'off';
 let sound = read(SOUND_KEY);
 let menuSound = read(MENU_SOUND_KEY) !== 'off';
 let menuCars = read(MENU_CARS_KEY) !== 'off';
-let tc = read(TC_KEY) !== 'off';
+let tc = read(TC_KEY) === 'on';
 const savedDifficulty = read(DIFFICULTY_KEY);
 let difficulty: Difficulty = savedDifficulty && savedDifficulty in DIFFICULTY_PACE ? (savedDifficulty as Difficulty) : 'easy';
 
 const STEER_ASSISTS = [0, 0.5, 1];
 const STEER_ASSIST_LABEL = ['av', 'halv', 'full'];
-const savedSteerAssist = Number(read(STEER_ASSIST_KEY) ?? 1);
-let steerAssist = STEER_ASSISTS.includes(savedSteerAssist) ? savedSteerAssist : 1;
+const savedSteerAssist = Number(read(STEER_ASSIST_KEY) ?? 0.5);
+let steerAssist = STEER_ASSISTS.includes(savedSteerAssist) ? savedSteerAssist : 0.5;
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'lätt', medium: 'medel', hard: 'svår' };
@@ -129,23 +129,21 @@ export async function showWelcome() {
       ],
     });
   }
-  let c: 'steerAssist' | 'tc' | 'done' | undefined;
+  let c: 'steerAssist' | 'done' | undefined;
   for (;;) {
-    c = await showMenu<'steerAssist' | 'tc' | 'done'>({
+    c = await showMenu<'steerAssist' | 'done'>({
       title: 'Hur mycket hjälpmedel vill du ha?',
       solid: true,
-      body: 'Enklast är full motstyrning och antispinn på, och det är förvalt. Välj en rad för att ändra den. Det går att ändra under Inställningar senare.',
+      body: 'Förvalt är halv motstyrning, full är enklast. Välj raden för att ändra den. Det går att ändra under Inställningar senare.',
       items: [
         { label: 'Motstyrning', detail: steerAssistLabel(), note: 'Bilen styr själv emot i sladd.', value: 'steerAssist' },
-        { label: 'Antispinn', detail: settings.tc ? 'på (enklast)' : 'av', note: 'Drar ner gasen när drivhjulen spinner.', value: 'tc' },
         { label: 'Klart', value: 'done' },
       ],
       cancel: 'done',
       initial: c,
     });
     if (c === 'done') return;
-    if (c === 'steerAssist') cycleSteerAssist();
-    else settings.tc = !settings.tc;
+    cycleSteerAssist();
   }
 }
 
