@@ -373,7 +373,7 @@ export class Car {
 
     // The handbrake locks the rear wheels; with driven rear wheels the driver declutches, otherwise the engine drags the speed down and the gearbox shifts down to first.
     const declutch = p.frontShare < 1 && input.handbrake > 0.1;
-    const shaftTorque = dtn.update(dt, gas, shaftOmega, input.throttle, declutch);
+    const shaftTorque = dtn.update(dt, gas, shaftOmega, input.throttle, declutch, this.forwardSpeed / p.wheelRadius);
     const iRef = p.engine.inertia * dtn.ratio * dtn.ratio * dtn.engage * dtn.engage;
 
     const axleTorque = [0, 0, 0, 0];

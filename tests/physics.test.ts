@@ -559,6 +559,18 @@ for (const def of STAGES) {
   check('kickdown', held === 4 && kicked === 3 && d.gear === 4, `part throttle ${held}, floored ${kicked}, without lift ${d.gear}`);
 }
 
+// 16a2. Launch on snow with the wrong tyres: wheelspin must not make the gearbox hunt between first and second.
+{
+  const car = makeCar(new FlatWorld('snow'), 'tarmac');
+  let last = car.drivetrain.gear;
+  let shifts = 0;
+  run(car, 4, () => ({ ...idle, throttle: 1 }), () => {
+    if (car.drivetrain.gear !== last) shifts++;
+    last = car.drivetrain.gear;
+  });
+  check('snow launch: no gear hunting', shifts <= 1, `${shifts} shifts in 4 s, ${(car.forwardSpeed * 3.6).toFixed(0)} km/h`);
+}
+
 // 16b. Turbo: boost builds after applying throttle, drops when lifting, and anti-lag holds it.
 {
   const p = kvarnTurbo4x4();

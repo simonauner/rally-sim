@@ -114,8 +114,9 @@ export class Drivetrain {
    * @param shaftOmega angular velocity of the drive shaft (rad/s), average of the driven wheels
    * @param pedal the driver's throttle pedal 0..1 before assists, for kickdown
    * @param declutch clutch disengaged (handbrake on a rear-wheel-drive car), the gear stays in
+   * @param groundOmega angular velocity the driven wheels would have rolling at the car's speed (rad/s), differs from shaftOmega under wheelspin
    */
-  update(dt: number, throttle: number, shaftOmega: number, pedal: number, declutch = false): number {
+  update(dt: number, throttle: number, shaftOmega: number, pedal: number, declutch = false, groundOmega = shaftOmega): number {
     const { engine, gearbox } = this;
 
     this.ratio = this.totalRatio(this.gear);
@@ -125,7 +126,15 @@ export class Drivetrain {
     if (pedal < 0.5) this.kickdownArmed = true;
 
     if (this.autoShift && !declutch && this.gear >= 1 && this.shiftTimer <= 0) {
-      if (this.rpm > gearbox.upshiftRpm && throttle > 0.1 && this.gear < gearbox.ratios.length) this.shiftUp();
+      // Upshift only if the car's speed is enough for the next gear; rpm from wheelspin would otherwise trigger an
+      // upshift that the downshift below takes straight back, and the gearbox hunts 1-2 when launching on snow.
+      if (
+        this.rpm > gearbox.upshiftRpm &&
+        throttle > 0.1 &&
+        this.gear < gearbox.ratios.length &&
+        Math.abs(groundOmega * this.totalRatio(this.gear + 1)) * (60 / (2 * Math.PI)) > gearbox.downshiftRpm
+      )
+        this.shiftUp();
       // Downshift even when the clutch slips and holds the revs up while the wheels have nearly stopped,
       // e.g. after wheelspin on a steep snowy hill; otherwise the car gets stuck in a high gear.
       else if (Math.min(this.rpm, shaftRpmIn) < gearbox.downshiftRpm && this.gear > 1) this.shiftDown();
