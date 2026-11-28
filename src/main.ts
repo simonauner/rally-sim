@@ -18,7 +18,7 @@ import { START_S, Stage, STAGE_ASJON, STAGE_GRINSBOL, STAGES, type StageDef } fr
 import { pickStage, stagePreviewHtml } from './stageMenu';
 import { forcedWeather, isTyre, pickTyre } from './tyreMenu';
 import type { TyreType } from './physics/surfaces';
-import { aheadOnRoad, CHAMPIONSHIPS, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
+import { aheadOnRoad, CHAMPIONSHIPS, championshipById, championshipUnlocked, legWeather, type CarDamage, type ChampionshipProgress } from './career/championship';
 import { GhostRecorder, sampleGhost } from './physics/ghost';
 import { generateNotes, NoteCaller } from './physics/pacenotes';
 import { StageTimer } from './physics/timing';
@@ -311,7 +311,11 @@ async function main() {
   // Etappkortet står kvar under laddningen, med vad som görs just nu vid snurren.
   const loading = choice === 'test'
     ? showLoading('Laddar: Testbana')
-    : showLoading(`Laddar: ${stageDef.name}`, `<div>Väder: ${WEATHER_NAMES[weather]}.</div>${stagePreviewHtml(stageDef)}`);
+    : showLoading(
+        `Laddar: ${stageDef.name}`,
+        `<div>Väder: ${WEATHER_NAMES[weather]}.</div>${stagePreviewHtml(stageDef)}`,
+        champ ? `Etapp ${champ.leg + 1} av ${championshipById(champ.id)!.legs.length}` : '',
+      );
   let hideLoading: (() => void) | null = loading.hide;
   await loading.status('Bygger vägen…');
   const stage = choice === 'test' ? null : new Stage(stageDef);

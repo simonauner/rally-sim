@@ -279,10 +279,10 @@ export function showMenu<T>(opts: MenuOptions<T>): Promise<T> {
  * Laddningsskärm som täcker spelet, med `body` (t.ex. etappkortet) under snurren, så att den syns ovanför kartan. `status` byter raden
  * vid snurren och väntar tills den syns; `hide` tar bort skärmen.
  */
-export function showLoading(title: string, body = ''): { status: (text: string) => Promise<void>; hide: () => void } {
+export function showLoading(title: string, body = '', subtitle = ''): { status: (text: string) => Promise<void>; hide: () => void } {
   const el = root();
   el.className = 'solid';
-  el.innerHTML = `<div class="panel"><h1>${title}</h1><div class="loading"><span class="spinner"></span><span>Laddar…</span></div>${body ? `<div class="body">${body}</div>` : ''}</div>`;
+  el.innerHTML = `<div class="panel"><h1>${title}</h1>${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}<div class="loading"><span class="spinner"></span><span>Laddar…</span></div>${body ? `<div class="body">${body}</div>` : ''}</div>`;
   el.style.display = 'flex';
   const text = el.querySelector('.loading > span:last-child')!;
   return {
